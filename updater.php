@@ -17,23 +17,19 @@ class fs_updater
    public $tr_options;
    public $tr_updates;
    public $version;
-   public $xid;
    
-   private $cache;
    private $download_list2;
    private $plugin_updates;
    
    public function __construct()
    {
       $this->btn_fin = FALSE;
-      $this->cache = new fs_cache();
       $this->errores = '';
       $this->mensajes = '';
       $this->plugins = array();
       $this->tr_options = '';
       $this->tr_updates = '';
       $this->version = '';
-      $this->xid = '';
       
       if( isset($_COOKIE['user']) AND isset($_COOKIE['logkey']) )
       {
@@ -82,9 +78,9 @@ class fs_updater
             {
                $this->tr_updates = '<tr>'
                        . '<td><b>Núcleo</b></td>'
-                       . '<td>Núcleo de SARTIN.</td>'
+                       . '<td>Núcleo del sistema.</td>'
                        . '<td class="text-right">'.$version_actual.'</td>'
-                       . '<td class="text-right"><a href="" target="_blank">'.$nueva_version.'</a></td>'
+                       . '<td class="text-right">'.$nueva_version.'</td>'
                        . '<td class="text-right">
                            <a class="btn btn-sm btn-primary" href="updater.php?update=TRUE" role="button">
                               <span class="glyphicon glyphicon-upload" aria-hidden="true"></span> &nbsp; Actualizar
@@ -96,9 +92,9 @@ class fs_updater
             {
                $this->tr_options = '<tr>'
                        . '<td><b>Núcleo</b></td>'
-                       . '<td>Núcleo de SARTIN.</td>'
+                       . '<td>Núcleo del sistema.</td>'
                        . '<td class="text-right">'.$version_actual.'</td>'
-                       . '<td class="text-right"><a href="" target="_blank">'.$nueva_version.'</a></td>'
+                       . '<td class="text-right">'.$nueva_version.'</td>'
                        . '<td class="text-right">
                           <a class="btn btn-xs btn-default" href="updater.php?reinstall=TRUE" role="button">
                               <span class="glyphicon glyphicon-repeat" aria-hidden="true"></span> &nbsp; Reinstalar
@@ -106,7 +102,53 @@ class fs_updater
                        . '</tr>';
                
                /// comprobamos los plugins
-              
+               foreach($this->check_for_plugin_updates() as $plugin)
+               {
+                  if($plugin['depago'])
+                  {
+                     if($plugin['private_key'])
+                     {
+                        $this->tr_updates .= '<tr>'
+                                . '<td>'.$plugin['name'].'</td>'
+                                . '<td>'.$plugin['description'].'<br/>'
+                                . '<a href="#" data-toggle="modal" data-target="#modal_key_'.$plugin['name'].'">'
+                                . '<span class="glyphicon glyphicon-edit" aria-hidden="true"></span> Cambiar la clave'
+                                . '</a>'
+                                . '</td>'
+                                . '<td class="text-right">'.$plugin['version'].'</td>'
+                                . '<td class="text-right"><a href="https://www.facturascripts.com/comm3/index.php?page=community_changelog&version='
+                                . $plugin['new_version'].'&plugin='.$plugin['name'].'" target="_blank">'.$plugin['new_version'].'</a></td>'
+                                . '<td class="text-right">'
+                                . '<div class="btn-group">'
+                                . '<a href="updater.php?idplugin='.$plugin['idplugin'].'&name='.$plugin['name'].'&key='.$plugin['private_key']
+                                .'" class="btn btn-xs btn-primary">'
+                                . '<span class="glyphicon glyphicon-upload" aria-hidden="true"></span> &nbsp; Actualizar'
+                                . '</a>'
+                                . '</div>'
+                                . '</td></tr>';
+                     }
+                     else
+                     {
+                        $this->tr_updates .= '<tr>'
+                                . '<td>'.$plugin['name'].'</td>'
+                                . '<td>'.$plugin['description'].'</td>'
+                                . '<td class="text-right">'.$plugin['version'].'</td>'
+                                . '<td class="text-right"><a href="https://www.facturascripts.com/comm3/index.php?page=community_changelog&version='
+                                . $plugin['new_version'].'&plugin='.$plugin['name'].'" target="_blank">'.$plugin['new_version'].'</a></td>'
+                                . '<td class="text-right">'
+                                . '<div class="btn-group">'
+                                . '<a href="#" class="btn btn-xs btn-warning" data-toggle="modal" data-target="#modal_key_'.$plugin['name'].'">'
+                                . '<span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> &nbsp; Añadir clave'
+                                . '</a>'
+                                . '</div>'
+                                . '</td></tr>';
+                     }
+                  }
+                  else
+                  {
+                     $this->tr_updates .= '';
+                  }
+               }
                
                if($this->tr_updates == '')
                {
@@ -114,12 +156,6 @@ class fs_updater
                           . ' <a href="index.php?page=admin_home&updated=TRUE">Volver</a></td></tr>';
                   $this->btn_fin = TRUE;
                }
-            }
-            
-            $e = $this->cache->get_array('empresa');
-            if($e)
-            {
-               $this->xid = $e[0]['xid'];
             }
          }
          else
@@ -160,7 +196,7 @@ class fs_updater
                $this->delTree('raintpl/');
                $this->delTree('view/');
                
-               /// ahora hay que copiar todos los archivos de facturascripts-master a . y borrar
+               
                $this->recurse_copy('fuerzasespeciales-master/', '.');
                $this->delTree('fuerzasespeciales-master/');
                
@@ -178,6 +214,109 @@ class fs_updater
       }
    }
    
+   private function actualizar_plugin()
+   {
+      /// leemos el ini del plugin
+      $plugin_ini = parse_ini_file('plugins/' . $_GET['plugin'] . '/facturascripts.ini');
+      if($plugin_ini)
+      {
+         /// descargamos el zip
+         if( @file_put_contents('update.zip', $this->curl_get_contents($plugin_ini['update_url'])) )
+         {
+            $zip = new ZipArchive();
+            $zip_status = $zip->open('update.zip');
+            
+            if($zip_status === TRUE)
+            {
+               /// nos guardamos la lista previa de plugins
+               $plugins_list = scandir(getcwd().'/plugins');
+               
+               /// eliminamos los archivos antiguos
+               $this->delTree('plugins/' . $_GET['plugin']);
+               
+               /// descomprimimos
+               $zip->extractTo('plugins/');
+               $zip->close();
+               unlink('update.zip');
+               
+               /// renombramos si es necesario
+               foreach( scandir(getcwd().'/plugins') as $f)
+               {
+                  if( is_dir('plugins/'.$f) AND $f != '.' AND $f != '..')
+                  {
+                     $encontrado2 = FALSE;
+                     foreach($plugins_list as $f2)
+                     {
+                        if($f == $f2)
+                        {
+                           $encontrado2 = TRUE;
+                           break;
+                        }
+                     }
+                     
+                     if(!$encontrado2)
+                     {
+                        rename('plugins/'.$f, 'plugins/'.$_GET['plugin']);
+                        break;
+                     }
+                  }
+               }
+               
+               /// limpiamos la caché
+               $this->clean_cache();
+               
+               $this->mensajes = 'Plugin actualizado correctamente.';
+            }
+            else
+               $this->errores = 'Ha habido un error con el archivo update.zip. Código: '.$zip_status;
+         }
+         else
+            $this->errores = 'Error al descargar el archivo zip.';
+      }
+      else
+         $this->errores = 'Error al leer el archivo plugins/' . $_GET['plugin'] . '/facturascripts.ini';
+   }
+   
+   private function actualizar_plugin_pago()
+   {
+      $url = 'https://www.facturascripts.com/comm3/index.php?page=community_edit_plugin&id='.
+              $_GET['idplugin'].'&key='.$_GET['key'];
+      
+      /// descargamos el zip
+      if( @file_put_contents('update.zip', $this->curl_get_contents($url)) )
+      {
+         $zip = new ZipArchive();
+         $zip_status = $zip->open('update.zip');
+         
+         if($zip_status === TRUE)
+         {
+            /// eliminamos los archivos antiguos
+            $this->delTree('plugins/' . $_GET['name']);
+            
+            /// descomprimimos
+            $zip->extractTo('plugins/');
+            $zip->close();
+            unlink('update.zip');
+            
+            if( file_exists('plugins/' . $_GET['name'] . '-master') )
+            {
+               /// renombramos el directorio
+               rename('plugins/' . $_GET['name'] . '-master', 'plugins/' . $_GET['name']);
+            }
+            
+            /// limpiamos la caché
+            $this->clean_cache();
+            
+            $this->mensajes = 'Plugin actualizado correctamente.';
+         }
+         else
+            $this->errores = 'Ha habido un error con el archivo update.zip <a href="updater.php?idplugin='.
+                 $_GET['idplugin'].'&name='.$_GET['name'].'">¿Clave incorrecta?</a>';
+      }
+      else
+         $this->errores = 'Error al descargar el archivo zip. <a href="updater.php?idplugin='.
+              $_GET['idplugin'].'&name='.$_GET['name'].'">¿Clave incorrecta?</a>';
+   }
 
    private function recurse_copy($src, $dst)
    {
@@ -323,6 +462,108 @@ class fs_updater
       }
    }
    
+   public function check_for_plugin_updates()
+   {
+      if( !isset($this->plugin_updates) )
+      {
+         $this->plugin_updates = array();
+         foreach( scandir(getcwd() . '/plugins') as $f )
+         {
+            if( is_dir('plugins/' . $f) AND $f != '.' AND $f != '..' )
+            {
+               $plugin = array(
+                   'name' => $f,
+                   'description' => 'Sin descripción.',
+                   'version' => 0,
+                   'update_url' => '',
+                   'version_url' => '',
+                   'new_version' => 0,
+                   'depago' => FALSE,
+                   'idplugin' => NULL,
+                   'private_key' => FALSE
+               );
+               
+               $this->plugins[] = $plugin['name'];
+               
+               if( file_exists('plugins/' . $f . '/facturascripts.ini') )
+               {
+                  if( file_exists('plugins/' . $f . '/description') )
+                  {
+                     $plugin['description'] = file_get_contents('plugins/' . $f . '/description');
+                  }
+                  
+                  $ini_file = parse_ini_file('plugins/' . $f . '/facturascripts.ini');
+                  if( isset($ini_file['version']) )
+                  {
+                     $plugin['version'] = intval($ini_file['version']);
+                  }
+                  
+                  if( isset($ini_file['update_url']) )
+                  {
+                     $plugin['update_url'] = $ini_file['update_url'];
+                  }
+                  
+                  if( isset($ini_file['version_url']) )
+                  {
+                     $plugin['version_url'] = $ini_file['version_url'];
+                  }
+                  
+                  if( isset($ini_file['idplugin']) )
+                  {
+                     $plugin['idplugin'] = $ini_file['idplugin'];
+                  }
+                  
+                  if($plugin['version_url'] != '' AND $plugin['update_url'] != '')
+                  {
+                     /// plugin con descarga gratuita
+                     $internet_ini = @parse_ini_string($this->curl_get_contents($plugin['version_url']));
+                     if($internet_ini)
+                     {
+                        if( $plugin['version'] < intval($internet_ini['version']) )
+                        {
+                           $plugin['new_version'] = intval($internet_ini['version']);
+                           $this->plugin_updates[] = $plugin;
+                        }
+                     }
+                  }
+                  else if($plugin['idplugin'])
+                  {
+                     /// plugin de pago/oculto
+                     
+                     foreach($this->download_list2() as $ditem)
+                     {
+                        if($ditem->id == $plugin['idplugin'])
+                        {
+                           if( intval($ditem->version) > $plugin['version'] )
+                           {
+                              $plugin['new_version'] = intval($ditem->version);
+                              $plugin['depago'] = TRUE;
+                              
+                              if( file_exists('tmp/'.FS_TMP_NAME.'private_keys/'.$plugin['idplugin']) )
+                              {
+                                 $plugin['private_key'] = trim( @file_get_contents('tmp/'.FS_TMP_NAME.'private_keys/'.$plugin['idplugin']) );
+                              }
+                              else if( !file_exists('tmp/'.FS_TMP_NAME.'private_keys/') )
+                              {
+                                 if( mkdir('tmp/'.FS_TMP_NAME.'private_keys/') )
+                                 {
+                                    file_put_contents('tmp/'.FS_TMP_NAME.'private_keys/.htaccess', 'Deny from all');
+                                 }
+                              }
+                              
+                              $this->plugin_updates[] = $plugin;
+                           }
+                           break;
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      }
+      
+      return $this->plugin_updates;
+   }
    
    private function download_list2()
    {
@@ -375,10 +616,10 @@ $updater = new fs_updater();
 <html xmlns="http://www.w3.org/1999/xhtml" lang="es" xml:lang="es" >
    <head>
       <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-      <title>Actualizador de Sartin</title>
-      <meta name="description" content="Actualizador de Sartin" />
+      <title>Actualizador de Fuerzas Especiales</title>
+      <meta name="description" content="Script de actualización de Fuerzas Especiales." />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <meta name="generator" content="FacturaScripts" />
+      <meta name="generator" content="Fuerzas Especiales" />
       <link rel="shortcut icon" href="view/img/favicon.ico" />
       <link rel="stylesheet" href="view/css/bootstrap-yeti.min.css" />
       <script type="text/javascript" src="view/js/jquery.min.js"></script>
@@ -393,7 +634,7 @@ $updater = new fs_updater();
                      <a href="index.php?page=admin_home&updated=TRUE" class="btn btn-xs btn-default">
                         <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span>
                      </a>
-                     Actualizador de Sartin
+                     Actualizador de Fuerzas Especiales
                   </h1>
                </div>
             </div>
@@ -422,7 +663,7 @@ $updater = new fs_updater();
          <div class="row">
             <div class="col-sm-12">
                <p class="help-block">
-                  Este actualizador permite actualizar su sistema, es recomendable utilizarlo periodicamente para poder evitar fallos y ademas de algunas modificaciones solicitadas por usted. Saludos :)
+                 Este actualizador permite actualizar su sistema, es recomendable utilizarlo periodicamente para poder evitar fallos y ademas de algunas modificaciones solicitadas por usted. Saludos :)
                </p>
                <br/>
             </div>
@@ -436,7 +677,12 @@ $updater = new fs_updater();
                         <span class="hidden-xs">&nbsp; Actualizaciones</span>
                      </a>
                   </li>
-               
+                  <li role="presentation" style="display: none">
+                     <a href="#opciones" aria-controls="opciones" role="tab" data-toggle="tab">
+                        <span class="glyphicon glyphicon-wrench" aria-hidden="true"></span>
+                        <span class="hidden-xs">&nbsp; Opciones</span>
+                     </a>
+                  </li>
                </ul>
                <div class="tab-content">
                   <div role="tabpanel" class="tab-pane active" id="actualizaciones">
@@ -464,7 +710,7 @@ $updater = new fs_updater();
                                  <th></th>
                               </tr>
                            </thead>
-                           <?php echo $updater->tr_options; ?>
+                           
                         </table>
                      </div>
                   </div>
@@ -472,9 +718,59 @@ $updater = new fs_updater();
             </div>
          </div>
       </div>
- 
+      <?php
+      foreach($updater->check_for_plugin_updates() as $plug)
+      {
+         if($plug['depago'])
+         {
+         ?>
+         <form action="updater.php?idplugin=<?php echo $plug['idplugin'].'&name='.$plug['name']; ?>" method="post" class="form">
+            <div class="modal" id="modal_key_<?php echo $plug['name']; ?>" tabindex="-1" role="dialog">
+               <div class="modal-dialog" role="document">
+                  <div class="modal-content">
+                     <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                           <span aria-hidden="true">&times;</span>
+                        </button>
+                        <h4 class="modal-title">Añadir clave de actualización</h4>
+                        <p class="help-block">Imprescindible para actualizar el plugin <b><?php echo $plug['name']; ?></b>.</p>
+                     </div>
+                     <div class="modal-body">
+                        <div class="row">
+                           <div class="col-xs-12">
+                              <div class="form-group">
+                                 Clave:
+                                 <input type="text" name="key" class="form-control" autocomplete="off" autofocus/>
+                              </div>
+                           </div>
+                        </div>
+                        <div class="row">
+                           <div class="col-xs-6">
+                              <a href="https://www.facturascripts.com/comm3/index.php?page=community_tus_plugins" target="_blank" class="btn btn-sm btn-default">
+                                 <span class="glyphicon glyphicon-eye-open" aria-hidden="true"></span>
+                                 <span class="hidden-xs">&nbsp; Ver mis claves</span>
+                              </a>
+                           </div>
+                           <div class="col-xs-6 text-right">
+                              <button type="submit" class="btn btn-sm btn-primary">
+                                 <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>
+                                 <span class="hidden-xs">&nbsp; Añadir</span>
+                              </button>
+                           </div>
+                        </div>
+                     </div>
+                  </div>
+               </div>
+            </div>
+         </form>
+         <?php
+         }
+      }
+      ?>
       <br/><br/>
+      <div class="container">
       
+      </div>
       <div class="text-center">;-)</div>
       <?php
       if(!FS_DEMO)
