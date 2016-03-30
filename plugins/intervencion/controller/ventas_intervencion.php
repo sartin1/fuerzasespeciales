@@ -169,7 +169,7 @@ class ventas_intervencion extends fs_controller
          $this->cliente_s = $this->cliente->get($this->servicio->codcliente);
       }
       else
-         $this->new_error_msg("¡Brecha de objetivo no encontrado!");
+         $this->new_error_msg("¡Intervencion de objetivo no encontrado!");
    }
 
    public function url()
@@ -272,7 +272,7 @@ class ventas_intervencion extends fs_controller
             $this->servicio->hora = $_POST['hora'];
          }
          else
-            $this->new_error_msg('No se encuentra el ejercicio asociado a la ¡Brecha ');
+            $this->new_error_msg('No se encuentra el ejercicio asociado a la ¡Intervencion ');
          
          /// ¿cambiamos el cliente?
          if ($_POST['cliente'] != $this->servicio->codcliente OR $this->servicio->cifnif == '')
@@ -505,11 +505,11 @@ class ventas_intervencion extends fs_controller
 
       if ($this->servicio->save())
       {
-         $this->new_message("Brecha modificada correctamente.");
+         $this->new_message("Intervencion modificada correctamente.");
          $this->new_change(ucfirst(FS_SERVICIO) . ' objetivo ' . $this->servicio->codigo, $this->servicio->url());
       }
       else
-         $this->new_error_msg("¡Imposible modificar la Brecha!");
+         $this->new_error_msg("¡Imposible modificar la Intervencion!");
       
       if($this->servicio->idestado != $_POST['estado'])
       {
@@ -562,7 +562,7 @@ class ventas_intervencion extends fs_controller
       $albaran->neto = $this->servicio->neto;
       $albaran->nombrecliente = $this->servicio->nombrecliente;
       
-      $albaran->observaciones = "Brecha: ".$this->servicio->codigo." | Fecha: ".$this->servicio->fecha
+      $albaran->observaciones = "Intervencion: ".$this->servicio->codigo." | Fecha: ".$this->servicio->fecha
               ."\nDescripcion: ".$this->servicio->descripcion."\nSolución: ". $this->servicio->solucion
               ."\nObservaciones: ".$this->servicio->observaciones;
       

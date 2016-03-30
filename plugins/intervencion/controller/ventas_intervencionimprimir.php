@@ -5,9 +5,9 @@ require_model('detalle_sat.php');
 require_model('agente.php');
 require_model('articulo.php');
 require_model('cliente.php');
-require_model('servicio_cliente.php');
-require_model('estado_servicio.php');
-require_model('detalle_servicio.php');
+require_model('servicio_clientei.php');
+require_model('estado_servicioi.php');
+require_model('detalle_servicioi  .php');
 
 class ventas_intervencionimprimir extends fs_controller
 {
@@ -94,10 +94,10 @@ class ventas_intervencionimprimir extends fs_controller
          $this->importar_sat();
       }
    
-      $servicio = new servicio_cliente();
+      $servicio = new servicio_clientei();
       $this->agente = new agente();
       $this->serie = new serie();
-      $this->estados = new estado_servicio();
+      $this->estados = new estado_servicioi();
       $this->estado = '';
       $this->offset = 0;
       if( isset($_REQUEST['offset']) )
@@ -155,7 +155,7 @@ class ventas_intervencionimprimir extends fs_controller
          $articulo = new articulo();
          $this->articulo = $articulo->get($_GET['ref']);
          
-         $linea = new linea_servicio_cliente();
+         $linea = new linea_servicio_clientei();
          $this->resultados = $linea->all_from_articulo($_GET['ref'], $this->offset);
       }
       else
@@ -235,7 +235,7 @@ class ventas_intervencionimprimir extends fs_controller
       $this->template = 'ajax/ventas_lineas_servicios';
       
       $this->buscar_lineas = $_POST['buscar_lineas'];
-      $linea = new linea_servicio_cliente();
+      $linea = new linea_servicio_clientei();
       
       if( isset($_POST['codcliente']) )
       {
@@ -249,7 +249,7 @@ class ventas_intervencionimprimir extends fs_controller
 
    private function delete_servicio()
    {
-      $serv = new servicio_cliente();
+      $serv = new servicio_clientei();
       $serv1 = $serv->get($_POST['delete']);
       if ($serv1)
       {
@@ -384,7 +384,7 @@ class ventas_intervencionimprimir extends fs_controller
          {
             foreach($data2 as $d)
             {
-               $this->resultados[] = new servicio_cliente($d);
+               $this->resultados[] = new servicio_clientei($d);
             }
          }
          
@@ -412,7 +412,7 @@ class ventas_intervencionimprimir extends fs_controller
             $servicio = $this->registro_sat->get($d['nsat']);
             if($servicio)
             {
-               $servicio = new servicio_cliente();
+               $servicio = new servicio_clientei();
                $servicio->numero2 = "SAT_".$d['nsat'];
                $servicio->fecha = $d['fentrada'];
                if(isset($d['fcomienzo']))

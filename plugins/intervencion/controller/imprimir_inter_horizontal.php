@@ -1,6 +1,5 @@
 <?php
 
-require_model('documento_servicios.php');
 require_model('servicio_clientei.php');
 
 /**
@@ -15,7 +14,6 @@ class imprimir_inter_horizontal extends fs_controller
    public $servicios_setup;
    public $st;
    public $cliente;
-   public $documentos1;
 
    public function __construct()
    {
@@ -75,7 +73,7 @@ class imprimir_inter_horizontal extends fs_controller
       $this->servicio = FALSE;
       if( isset($_REQUEST['id']) )
       {
-         $serv = new servicio_cliente();
+         $serv = new servicio_clientei();
          $this->servicio = $serv->get($_REQUEST['id']);
          if($this->servicio)
          {
@@ -115,7 +113,7 @@ class imprimir_inter_horizontal extends fs_controller
         array(
               'name' => 'imprimir_servicio_sin_detalles_horizontal',
               'page_from' => __CLASS__,
-              'page_to' => 'ventas_servicio',
+              'page_to' => 'ventas_intervencion',
               'type' => 'pdf',
               'text' => 'Imprimir brecha',
               'params' => ''

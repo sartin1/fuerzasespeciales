@@ -79,7 +79,7 @@
                <span class="hidden-xs">&nbsp; Dirección</span>
             </a>
          </li>
-         <li role="presentation">
+         <li role="presentation" style="display: none">
             <a href="#opciones" aria-controls="opciones" role="tab" data-toggle="tab">
                <span class="glyphicon glyphicon-option-vertical" aria-hidden="true"></span>
                <span class="hidden-xs">&nbsp; Opciones</span>
@@ -97,34 +97,29 @@
                     <div class="panel panel-default">
                       <div class="panel-heading text-center">Lado Blanco</div>
                         <div class="panel-body">
-                            <input type="radio" name="material" value="Si"> SI
-                            <br>
-                            <input type="radio" name="material" value="No"> NO
-                            <br>
-                            <input type="radio" name="material" value="PUERTA DE CHAPA"> PUERTA DE CHAPA
-                            <br>
-                            <input type="radio" name="material" value="PUERTA METÁLICA"> PUERTA METÁLICA
-                            <br>
-                            <input type="radio" name="material" value="PM C/REJAS"> PM C/REJAS
-                            <br>
-                            <input type="radio" name="material" value="PM VIDRIADA PANEL SUPERIOR"> PM VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="material" value="PM VIDRIADA PANEL INFERIOR"> PM VIDRIADA PANEL INFERIOR
-                            <br>
-                            <input type="radio" name="material" value="PM VIDRIADA AMBOS PANELES"> PM VIDRIADA AMBOS PANELES
-                            <br>
-                            <input type="radio" name="material" value="PUERTA MADERA"> PUERTA MADERA
-                            <br>
-                            <input type="radio" name="material" value="PUERTA MADERA SOLIDA"> PUERTA MADERA SOLIDA
-                            <br>
-                            <input type="radio" name="material" value="PMa C/REJAS"> PMa C/REJAS
-                            <br>
-                            <input type="radio" name="material" value="PUERTA CORREDIZA "> PUERTA CORREDIZA 
-                            <br>
-                            <input type="radio" name="material" value="PUERTA PENTAGONO"> PUERTA PENTAGONO
-                            <br>
-                            <input type="radio" name="material" value="OTRAS"> OTRAS
+                        <input type="text" class="form-control" name="material" list="listidmaterial">
+                              <datalist id="listidmaterial">
+                              
+                            <option value="SI"> 
+                          <option value="NO">
+                            <option value="PUERTA DE CHAPA">
+                            <option value="PUERTA METÁLICA"> 
+                            <option value="PM C/REJAS">
                           
+                           <option value="PM VIDRIADA PANEL SUPERIOR"> 
+                          <option value="PM VIDRIADA PANEL INFERIOR"> 
+                           <option value="PM VIDRIADA AMBOS PANELES"> 
+                           <option value="PUERTA MADERA"> 
+                          <option value="PUERTA MADERA SOLIDA">
+                            <option value="PMa C/REJAS">
+                           <option value="PMa PANEL SUPERIOR">
+                           <option value="PMa PANEL INFERIOR">
+                           
+                          <option value="PMa AMBOS PANELES">
+                          <option value="PUERTA CORREDIZA">
+                            <option value="PUERTA PENTAGONO">
+                           <option value="OTRAS">
+                           </datalist>
                         </div>
                       </div>
                     </div>
@@ -134,40 +129,29 @@
                     <div class="panel panel-default">
                       <div class="panel-heading text-center" style="background-color: #474747;color: #fff">Lado Negro</div>
                         <div class="panel-body">
-                            <input type="radio" name="material_estado" value="SI"> SI
-                            <br>
-                            <input type="radio" name="material_estado" value="NO"> NO
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA DE CHAPA"> PUERTA DE CHAPA
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA METÁLICA"> PUERTA METÁLICA
-                            <br>
-                            <input type="radio" name="material_estado" value="PM C/REJAS"> PM C/REJAS
-                            <br>
-                            <input type="radio" name="material_estado" value="PM VIDRIADA PANEL SUPERIOR"> PM VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="material_estado" value="PM VIDRIADA PANEL INFERIOR"> PM VIDRIADA PANEL INFERIOR
-                            <br>
-                            <input type="radio" name="material_estado" value="PM VIDRIADA AMBOS PANELES"> PM VIDRIADA AMBOS PANELES
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA MADERA"> PUERTA MADERA
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA MADERA SOLIDA"> PUERTA MADERA SOLIDA
-                            <br>
-                            <input type="radio" name="material_estado" value="PMa C/REJAS"> PMa C/REJAS
-                            <br>
-                            <input type="radio" name="material_estado" value="PMa PANEL SUPERIOR"> PMa PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="material_estado" value="PMa INFERIOR"> PMa INFERIOR
-                            <br>
-                            <input type="radio" name="material_estado" value="PMa AMBOS PANELES"> PMa AMBOS PANELES
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA CORREDIZA"> PUERTA CORREDIZA
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA PENTAGONO"> PUERTA PENTAGONO
-                            <br>
-                            <input type="radio" name="material_estado" value="OTRAS"> OTRAS
+                        <input type="text" class="form-control" name="material_estado" list="listidme">
+                              <datalist id="listidme">
                           
+                            <option value="SI"> 
+                          <option value="NO">
+                            <option value="PUERTA DE CHAPA">
+                            <option value="PUERTA METÁLICA"> 
+                            <option value="PM C/REJAS">
+                          
+                           <option value="PM VIDRIADA PANEL SUPERIOR"> 
+                          <option value="PM VIDRIADA PANEL INFERIOR"> 
+                           <option value="PM VIDRIADA AMBOS PANELES"> 
+                           <option value="PUERTA MADERA"> 
+                          <option value="PUERTA MADERA SOLIDA">
+                            <option value="PMa C/REJAS">
+                           <option value="PMa PANEL SUPERIOR">
+                           <option value="PMa PANEL INFERIOR">
+                           
+                          <option value="PMa AMBOS PANELES">
+                          <option value="PUERTA CORREDIZA">
+                            <option value="PUERTA PENTAGONO">
+                           <option value="OTRAS">
+                           </datalist>
                         </div>
                       </div>
                     </div>
@@ -177,36 +161,29 @@
                     <div class="panel panel-default">
                       <div class="panel-heading text-center" style="background-color: #FF6B6B">Lado Rojo</div>
                         <div class="panel-body">
-                            <input type="radio" name="accesorios" value="SI"> SI
-                            <br>
-                            <input type="radio" name="accesorios" value="NO"> NO
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA DE CHAPA"> PUERTA DE CHAPA
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA METÁLICA"> PUERTA METÁLICA
-                            <br>
-                            <input type="radio" name="accesorios" value="PM C/REJAS"> PM C/REJAS
-                            <br>
-                            <input type="radio" name="accesorios" value="PM VIDRIADA PANEL SUPERIOR"> PM VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="accesorios" value="PM VIDRIADA PANEL INFERIOR"> PM VIDRIADA PANEL INFERIOR
-                            <br>
-                            <input type="radio" name="accesorios" value="PM VIDRIADA AMBOS PANELES"> PM VIDRIADA AMBOS PANELES
-                            <br>
-                            <input type="radio" name="accesorios" value="PM INYECTADA CON POLIUTERANO"> PM INYECTADA CON POLIUTERANO
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA MADERA"> PUERTA MADERA
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA MADERA SOLIDA"> PUERTA MADERA SOLIDA
-                            <br>
-                            <input type="radio" name="accesorios" value="PMa C/REJAS"> PMa C/REJAS
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA CORREDIZA "> PUERTA CORREDIZA 
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA PENTAGONO"> PUERTA PENTAGONO
-                            <br>
-                            <input type="radio" name="accesorios" value="OTRAS"> OTRAS
+                        <input type="text" class="form-control" name="accesorios" list="listidacc">
+                              <datalist id="listidacc">
+                          
+                            <option value="SI"> 
+                          <option value="NO">
+                            <option value="PUERTA DE CHAPA">
+                            <option value="PUERTA METÁLICA"> 
+                            <option value="PM C/REJAS">
+                          
+                           <option value="PM VIDRIADA PANEL SUPERIOR"> 
+                          <option value="PM VIDRIADA PANEL INFERIOR"> 
+                           <option value="PM VIDRIADA AMBOS PANELES"> 
+                           <option value="PUERTA MADERA"> 
+                          <option value="PUERTA MADERA SOLIDA">
+                            <option value="PMa C/REJAS">
+                           <option value="PMa PANEL SUPERIOR">
+                           <option value="PMa PANEL INFERIOR">
                            
+                          <option value="PMa AMBOS PANELES">
+                          <option value="PUERTA CORREDIZA">
+                            <option value="PUERTA PENTAGONO">
+                           <option value="OTRAS">
+                           </datalist>
                         </div>
                       </div>
                     </div>
@@ -219,42 +196,30 @@
                       <div class="panel-heading text-center" style="background-color: 
                       #a1d490">Lado Verde</div>
                         <div class="panel-body">
-                            <input type="radio" name="descripcion" value="SI"> SI
-                            <br>
-                            <input type="radio" name="descripcion" value="NO"> NO
-                            <br>
-                            <input type="radio" name="descripcion" value="PUERTA DE CHAPA"> PUERTA DE CHAPA
-                            <br>
-                            <input type="radio" name="descripcion" value="PUERTA METÁLICA"> PUERTA METÁLICA
-                            <br>
-                            <input type="radio" name="descripcion" value="PM C/REJAS"> PM C/REJAS
-                            <br>
-                            <input type="radio" name="descripcion" value="PM VIDRIADA PANEL SUPERIOR"> PM VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="descripcion" value="PM VIDRIADA PANEL INFERIOR"> PM VIDRIADA PANEL INFERIOR
-                            <br>
-                            <input type="radio" name="descripcion" value="PM VIDRIADA AMBOS PANELES"> PM VIDRIADA AMBOS PANELES
-                            <br>
-                            <input type="radio" name="descripcion" value="PM INYECTADA CON POLIUTERANO"> PM INYECTADA CON POLIUTERANO
-                            <br>
-                            <input type="radio" name="descripcion" value="PUERTA MADERA"> PUERTA MADERA
-                            <br>
-                            <input type="radio" name="descripcion" value="PUERTA MADERA SOLIDA"> PUERTA MADERA SOLIDA
-                            <br>
-                            <input type="radio" name="descripcion" value="PMa C/REJAS"> PMa C/REJAS
-                            <br>
-                            <input type="radio" name="descripcion" value="PMa VIDRIADA PANEL SUPERIOR"> PMa VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="descripcion" value="PMa VIDRIADA PANEL INFERIOR "> PPMa VIDRIADA PANEL INFERIOR 
-                            <br>
-                            <input type="radio" name="descripcion" value="PMa VIDRIADA AMBOS PANELES"> PMa VIDRIADA AMBOS PANELES
-                             <br>
-                            <input type="radio" name="descripcion" value="PUERTA CORREDIZA"> PUERTA CORREDIZA
-                             <br>
-                            <input type="radio" name="descripcion" value="PUERTA PENTAGONO"> PUERTA PENTAGONO
-                             <br>
-                            <input type="radio" name="descripcion" value="OTRAS"> OTRAS
-                            
+                            <input type="text" class="form-control" name="descripcion" list="listidesc">
+                              <datalist id="listidesc">
+                         
+                              
+                            <option value="SI"> 
+                          <option value="NO">
+                            <option value="PUERTA DE CHAPA">
+                            <option value="PUERTA METÁLICA"> 
+                            <option value="PM C/REJAS">
+                          
+                           <option value="PM VIDRIADA PANEL SUPERIOR"> 
+                          <option value="PM VIDRIADA PANEL INFERIOR"> 
+                           <option value="PM VIDRIADA AMBOS PANELES"> 
+                           <option value="PUERTA MADERA"> 
+                          <option value="PUERTA MADERA SOLIDA">
+                            <option value="PMa C/REJAS">
+                           <option value="PMa PANEL SUPERIOR">
+                           <option value="PMa PANEL INFERIOR">
+                           
+                          <option value="PMa AMBOS PANELES">
+                          <option value="PUERTA CORREDIZA">
+                            <option value="PUERTA PENTAGONO">
+                           <option value="OTRAS">
+                           </datalist>
                         </div>
                       </div>
                     </div>
@@ -263,11 +228,11 @@
                   <div class="col-sm-6">
                      <div class="form-group">
                         <div class="panel panel-default">
-                          <div class="panel-heading text-center">Brechero principal</div>
+                          <div class="panel-heading text-center">Brechero principal</div><div class="panel-body" >
                             {loop="$fsc->agente->all()"}
                             <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="brprincipal" value="{$value->get_fullname()}"> {$value->get_fullname()}<BR>
                             {/loop}
-                        </div>
+                        </div></div>
                       </div>
                   </div>
                   {/if}
@@ -275,7 +240,7 @@
                   <div class="col-sm-6">
                       <div class="form-group">
                           <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Brechero Auxiliar</div>
+                            <div class="panel-heading text-center" >Brechero Auxiliar</div><div class="panel-body"> 
                               {loop="$fsc->agente->all()"}
                               <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="braux" value="{$value->get_fullname()}"> {$value->get_fullname()}<br>
                               {/loop}
@@ -292,79 +257,80 @@
                       <div class="form-group">
                           <div class="panel panel-default">
                             <div class="panel-heading text-center" >Manual</div>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="manual" value="SI"> SI
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="manual" value="NO"> NO
+                            <div class="panel-body">
+                            <input type="text" class="form-control" name="manual" list="listidman">
+                              <datalist id="listidman">
+                              <option value="SI">
+                              <option value="NO">
+                              </datalist>
+                            </div></div>
+                          </div>
+                      </div>
+                  
+                  <div class="col-sm-4">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Mecánica</div><div class="panel-body">
+                            <input type="text" class="form-control" name="mecanica" list="listidmeca">
+                              <datalist id="listidmeca">
                               
-                            </div>
+                          <option value="NO">
+                              <option value="ARIETE 15 KG">
+                              <option value="ARIETE 13 KG">
+                             <option value="ARIETE INF. 12 KG">
+                             <option value="ARIETE DOBLE 25 KG">
+                           <option value="ARIETE CON ANILLA">
+                         <option value="HOOLIGANS 1 MTS">
+                          <option value="HOOLIGANS 1.5 MTS">
+                         <option value="PINZA NAPOLEON GRANDE">
+                          <option value="PINZA NAPOLEON CHICA">
+                             <option value="ESLINGA CON MOSQUETON">
+                               </datalist>
+                            </div></div>
                           </div>
                       </div>
                   
                   <div class="col-sm-4">
                       <div class="form-group">
                           <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Mecánica</div>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="NO">NO</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE 15 KG">ARIETE 15 KG</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE 13 KG">ARIETE 13 KG</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE INF. 12 KG">ARIETE INF. 12 KG</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE DOBLE 25 KG">ARIETE DOBLE 25 KG</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE CON ANILLA">ARIETE CON ANILLA</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="HOOLIGANS 1 MTS">HOOLIGANS 1 MTS</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="HOOLIGANS 1.5 MTS">HOOLIGANS 1.5 MTS</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="PINZA NAPOLEON GRANDE">PINZA NAPOLEON GRANDE</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="PINZA NAPOLEON CHICA">PINZA NAPOLEON CHICA</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ESLINGA CON MOSQUETON">ESLINGA CON MOSQUETON</option>
-                           
-                            </div>
-                          </div>
-                      </div>
-                  
-                  <div class="col-sm-4">
-                      <div class="form-group">
-                          <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Balística</div>
-                              <input style="margin-left: 15px;margin-top: 15px;margin-bottom: 15px" type="text" name="balistica" placeholder="Personalizado">
-                            </div>
+                            <div class="panel-heading text-center" >Balística</div><div class="panel-body">
+                              <input class="form-control" type="text" name="balistica" placeholder="Personalizado">
+                            </div></div>
                           </div>
                       </div></div>
                   <div class="col-sm-4">
                       <div class="form-group">
                           <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Explosiva</div>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="explosiva" value="NO">NO</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="explosiva" value="PENTITRA">PENTITRA</option>
-                            </div>
+                            <div class="panel-heading text-center" >Explosiva</div><div class="panel-body">
+                            <input type="text" class="form-control" name="explosiva" list="listidexpl">
+                              <datalist id="listidexpl">
+                          
+                              
+                              <option value="NO">
+                              <option value="PENTITRA"></datalist>
+                            </div></div>
                           </div>
                       </div>
                   <div class="col-sm-4">
                       <div class="form-group">
                           <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Especial</div>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="especial" value="NO">NO</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="especial" value="BRECHA DURA">BRECHA DURA</option>
-                            </div>
+                            <div class="panel-heading text-center" >Especial</div><div class="panel-body">
+                            <input type="text" class="form-control" name="especial" list="listidesp">
+                              <datalist id="listidesp">
+                           
+                              
+                               <option value="NO">NO</option>
+                              <option value="BRECHA DURA">BRECHA DURA</option></datalist>
+                            </div></div>
                           </div>
                       </div>
                   <div class="col-sm-4">
                       <div class="form-group">
                           <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Combinada</div>
-                              <input style="margin-left: 15px;margin-top: 15px;margin-bottom: 15px" type="text" name="combinada" placeholder="Personalizado">
+                            <div class="panel-heading text-center" >Combinada</div><div class="panel-body">
+                              <input class="form-control" type="text" name="combinada" placeholder="Personalizado">
                             </div>
-
+</div>
                           </div>
 
                       </div>
@@ -398,18 +364,22 @@
                               Cantidad balísticas:<input name="balisiticascant" type="number"  class="form-control">
                               </div>
                               <div class="col-sm-5">Tipo de cartuchos:<br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="NINGUNO"> NINGUNO</option><br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="MASILLA"> MASILLA</option><br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="NRO 7"> NRO 7</option><br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="PG"> PG</option><br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="OTROS"> OTROS</option>
+                              <input type="text" class="form-control" name="tipocart" list="listidcart">
+                              <datalist id="listidcart">
+                              
+                              
+                            <option value="NINGUNO"> NINGUNO</option><br>
+                             <option value="MASILLA"> MASILLA</option><br>
+                             <option value="NRO 7"> NRO 7</option><br>
+                             <option value="PG"> PG</option><br>
+                             <option value="OTROS"> OTROS</option></datalist>
                               </div>
                             </div>
                       </div>
                     </div>
                   </div>
                   </div>
-
+</div>
                <div class="row">
                {if="$fsc->servicios_setup['servicios_mostrar_fechainicio']"}
                 <div class='col-sm-3'>

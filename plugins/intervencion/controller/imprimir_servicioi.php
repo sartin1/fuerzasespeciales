@@ -88,7 +88,7 @@ class imprimir_servicioi extends fs_controller
      
      if( isset($_REQUEST['id']) )
       {
-         $serv = new servicio_cliente();
+         $serv = new servicio_clientei();
          $this->servicio = $serv->get($_REQUEST['id']);
          if($this->servicio)
          {
@@ -114,7 +114,7 @@ class imprimir_servicioi extends fs_controller
           array(
               'name' => 'email_servicio',
               'page_from' => __CLASS__,
-              'page_to' => 'ventas_servicio',
+              'page_to' => 'ventas_intervencion',
               'type' => 'email',
               'text' => 'Enviar',
               'params' => ''

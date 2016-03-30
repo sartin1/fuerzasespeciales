@@ -143,7 +143,7 @@
 
          </div>
          <div class="col-md-4 col-sm-4 col-xs-4 text-right">
-            <a class="btn btn-sm btn-success" href="index.php?page=nuevo_servicio">
+            <a class="btn btn-sm btn-success" href="index.php?page=nuevo_intervencion">
                <span class="glyphicon glyphicon-plus"></span>
             </a>
             <div class="btn-group">
@@ -166,8 +166,8 @@
          <div class="col-md-12">
             <br/>
             <ol class="breadcrumb" style="margin-bottom: 5px;">
-               <li><a href="<?php echo $fsc->ppage->url();?>">Seccion de Brechas</a></li>
-               <li><a href="<?php echo $fsc->ppage->url();?>">Brechas</a></li>
+               <li><a href="<?php echo $fsc->ppage->url();?>">Seccion de intervenciones</a></li>
+               <li><a href="<?php echo $fsc->ppage->url();?>">Intervencions</a></li>
                <li>
                   <a href="<?php echo $fsc->servicio->cliente_url();?>"><?php echo $fsc->servicio->nombrecliente;?></a>
                </li>
@@ -189,11 +189,11 @@
             <p class="help-block">
                <?php if( $fsc->agente ){ ?>
 
-               <span class="text-capitalize">Brecha</span> creada por
+               <span class="text-capitalize">Intervención</span> creada por
                <a href="<?php echo $fsc->agente->url();?>"><?php echo $fsc->agente->get_fullname();?></a>.
                <?php }else{ ?>
 
-               Sin datos de qué empleado ha creado esta Brecha.
+               Sin datos de qué efectivo policial ha creado esta Intervención.
                <?php } ?>
 
             </p>
@@ -219,7 +219,7 @@
             <div class="form-group">
                Solicitó:
                <div class="input-group">
-                  <input class="form-control" disabled="" type="text" value="<?php echo $fsc->servicio->solucion;?>"/>
+                  <input class="form-control" disabled="" type="text" value="<?php echo $fsc->servicio->material_estado;?>"/>
                   
                </div>
             </div>
@@ -324,168 +324,185 @@
 
       </ul>
       <div class="tab-content">
-         <div role="tabpanel" class="tab-pane active" id="servicio">
-         <center> <h2>Descripción de punto de brecha</h2></center>
+         <div role="tabpanel" style="background: rgba(255,255,255,1);
+background: -moz-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
+background: -webkit-gradient(left top, left bottom, color-stop(0%, rgba(255,255,255,1)), color-stop(100%, rgba(191,217,248,1)));
+background: -webkit-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
+background: -o-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
+background: -ms-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
+background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#bfd9f8', GradientType=0 );"class="tab-pane active" id="servicio">
+         <center> <h2>Informe de intervención</h2></center>
 <hr>
-            <div class="container-fluid" style="margin-top: 10px;">   
+            <div class="container-fluid" style="margin-top: 10px;">
                <div class="row">
-               <div class="col-sm-3 ">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Lado Blanco</div>
-                               <?php echo $fsc->servicio->material;?>
+                  <?php if( $fsc->servicios_setup['servicios_mostrar_material'] ){ ?>
+
+                  <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center">Turno  </div>
+                       <div class="panel-body">
+                             
+                              <?php echo $fsc->servicio->material;?>
+
+                                
+                          </div></div>
+                    </div>
+                  <?php } ?>
+
+                  <?php if( $fsc->servicios_setup['servicios_mostrar_material_estado'] ){ ?>
+
+                  <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Solicitante</div>
+                        <div class="panel-body">
+                            <?php echo $fsc->servicio->material_estado;?>
 
                         </div>
                       </div>
-                  </div>
-                  <div class="col-sm-3">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Lado Negro</div>
-                           <?php echo $fsc->servicio->material_estado;?>
+                    </div>
+                  <?php } ?>
 
-                        </div>
-                      </div>
-                  </div>
-                  <div class="col-sm-3">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Lado Rojo</div>
+                  <?php if( $fsc->servicios_setup['servicios_mostrar_accesorios'] ){ ?>
+
+               <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Juzgado interviniente</div>
+                        <div class="panel-body">
                            <?php echo $fsc->servicio->accesorios;?>
 
-                        </div>
-                      </div>
-                  </div>
-                   <div class="col-sm-3">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Lado Verde</div>
-                           <?php echo $fsc->servicio->descripcion;?>
+                      </div></div>
+                    </div>
+                  <?php } ?>
 
-                        </div>
-                      </div>
-                  </div>
-                  <div class="row">
-                  <div class="col-sm-6">
+                        
+               
+                  <?php if( $fsc->servicios_setup['servicios_mostrar_descripcion'] ){ ?>
+
+                <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Caratulados</div>
+                        <div class="panel-body">
+                            <?php echo $fsc->servicio->descripcion;?>
+
+                      </div></div>
+                    </div>
+                  <?php } ?>
+
+                  <?php if( $fsc->servicios_setup['servicios_mostrar_solucion'] ){ ?>
+
+                  <div class="col-sm-4">
                      <div class="form-group">
                         <div class="panel panel-default">
-                          <div class="panel-heading text-center">Brechero principal</div>
+                          <div class="panel-heading text-center">Expediente</div>
+                           <div class="panel-body">
                            <?php echo $fsc->servicio->brprincipal;?>
 
+                      </div>
                         </div>
                       </div>
                   </div>
-                   <div class="col-sm-6">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Brechero Auxiliar</div>
-                           <?php echo $fsc->servicio->braux;?>
+                  <?php } ?>
 
-                        </div>
-                      </div>
-                  </div>
-                </div>
-                 <center><h2>Tipos de Brecha</h2></center>
-                  <hr>
-             <div class="row">
-                   <div class="col-sm-4" >
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Manual</div>
-                           <?php echo $fsc->servicio->manual;?>
+                  <?php if( $fsc->servicios_setup['servicios_mostrar_solucion'] ){ ?>
 
-                        </div>
-                      </div>
-                  </div>
-               
-                <div class="col-sm-4">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Mecánica</div>
-                           <?php echo $fsc->servicio->mecanica;?>
+                  <div class="col-sm-4">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Pvo N°</div>
+                             <div class="panel-body">
+                            <?php echo $fsc->servicio->braux;?>
 
-                        </div>
+                             </div>
+                            </div>
+                          </div>
                       </div>
-                  </div>
-               
-                <div class="col-sm-4">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Balística</div>
-                           <?php echo $fsc->servicio->balistica;?>
+                 
+                  <?php } ?>   
+                  
+                  <div class="col-sm-4">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Hipotesis</div>
+                            <div class="panel-body">
+                              <?php echo $fsc->servicio->manual;?>
 
-                        </div>
+                            </div>
+                            </div>
+                          </div>
                       </div>
+                  
+                  <div class="col-sm-3">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >N° personas neutralizadas</div> <div class="panel-body">
+                              <?php echo $fsc->servicio->mecanica;?>
+
+                           </div>
+                            </div>
+                          </div>
+                      </div>
+                  
+                  <div class="col-sm-3">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Mayores masculinos</div><div class="panel-body">
+                              <?php echo $fsc->servicio->balistica;?>
+
+                                </div>
+                              </div>
+                          </div>
+                      </div>  
+                  <div class="col-sm-3">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Mayores femeninos</div>
+                              <div class="panel-body">
+                              <?php echo $fsc->servicio->explosiva;?>
+
+                                </div>
+                            </div>
+                          </div>
+                      </div>
+                  <div class="col-sm-3">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Menores</div><div class="panel-body">
+                              <?php echo $fsc->servicio->especial;?>
+
+                                </div>
+                            </div>
+                          </div></div>
+                      </div>
+                  <div class="col-sm-6">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Móvil unidad</div>
+                              <div class="panel-body">
+                              <?php echo $fsc->servicio->combinada;?>
+
+                              </div>
+                            </div>
+
+                          </div>
+
+                      </div>
+                      <div class="col-sm-6">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Móvil prestado</div>
+                              <div class="panel-body">
+                              <?php echo $fsc->servicio->repconf;?>
+
+                             
+                              </div>
+                            </div>
+
+                          </div>
+
+                      
                   </div>
-               </div> </div>
                <div class="row">
-                  <div class="col-sm-4">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Explosiva</div>
-                           <?php echo $fsc->servicio->explosiva;?>
-
-                        </div>
-                      </div>
-                  </div>
-                  <div class="col-sm-4">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Especial</div>
-                           <?php echo $fsc->servicio->especial;?>
-
-                        </div>
-                      </div>
-                  </div>
-                  <div class="col-sm-4">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Combinada</div>
-
-                           <?php echo $fsc->servicio->combinada;?>
-
-                        </div>
-                      </div>
-                  </div>
-               </div>
-              <center><h2>Reporte de apertura</h2></center>
-                    <hr>
-                  <div class="row">
-                   <div class="col-sm-4">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">¿Funcionó conforme a lo acordado?</div>
-                         <div class="row" style="margin-left: 20px;margin-top: 20px;margin-bottom: 20px">
-                           <?php echo $fsc->servicio->repconf;?>
-
-                        </div></div>
-                      </div>
-                  </div>
-                    <div class="col-sm-8">
-                     <div class="form-group">
-                        <div class="panel panel-default">
-                          <div class="panel-heading text-center">Reporte de apertura</div>
-                           <div class="row" style="margin-left: 20px">
-                           <div class="form-group" ><strong><h4>observaciones</h4></strong>
-                              <?php echo $fsc->servicio->obsapertura;?>
-
-                            </div><hr style="width: 700px;color: #000;"></div> 
-                            <div class="row">
-                            <div class="col-sm-3" style="margin-left:20px;">
-                              <strong>Cantidad de arietasos:</strong> <?php echo $fsc->servicio->arietasoscant;?>
-
-                              </div>
-                            
-                            <div class="col-sm-3" style="margin-left:20px;">
-                              <strong>Cantidad balísticas:</strong> <?php echo $fsc->servicio->balisiticascant;?>
-
-                              </div>
-                           </div>   
-                        </div>
-                      </div>
-                  </div>
-                  </div>
-               <div class="row bg-info">
                <script type="text/javascript">
                 $(function () {
                     $('[data-toggle="tooltip"]').tooltip()
@@ -909,7 +926,7 @@
       <div class="row">
          <div class="col-md-12">
             <div class="form-group">
-               Observaciones:
+               Observaciones Extra:
                <textarea class="form-control" name="observaciones" rows="3"><?php echo $fsc->servicio->observaciones;?></textarea>
             </div>
          </div>
@@ -1102,13 +1119,13 @@
                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
                <h4 class="modal-title">
                   <span class="glyphicon glyphicon-envelope"></span>&nbsp;
-                  Enviar brecha
+                  Enviar intervención
                </h4>
                <?php if( $fsc->servicio->femail ){ ?>
 
                <p class="help-block">
                   <span class="glyphicon glyphicon-send"></span> &nbsp;
-                  Esta brecha fue enviada el <?php echo $fsc->servicio->femail;?>.
+                  Esta intervención fue enviada el <?php echo $fsc->servicio->femail;?>.
                </p>
                <?php }else{ ?>
 
@@ -1163,8 +1180,8 @@
                    <input name="adjunto1" type="file"/>
                    <input name="adjunto2" type="file"/>
 <br>
-              <a href="index.php?page=imprimir_rapido_horizontal&id=<?php echo $fsc->servicio->idservicioi;?>" target="_blank" class="btn btn-block btn-default">
-               <span class="glyphicon glyphicon-print"></span> Imprimir Brecha</a>
+              <a href="index.php?page=imprimir_inter_horizontal&id=<?php echo $fsc->servicio->idservicioi;?>" target="_blank" class="btn btn-block btn-default">
+               <span class="glyphicon glyphicon-print"></span> Imprimir Intervención</a>
                </div>
                <?php $loop_var1=$fsc->extensions; $counter1=-1; if($loop_var1) foreach( $loop_var1 as $key1 => $value1 ){ $counter1++; ?>
 
@@ -1192,7 +1209,7 @@
          <div class="modal-content">
             <div class="modal-header">
                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-               <h4 class="modal-title">¿Realmente desea eliminar esta Brecha?</h4>
+               <h4 class="modal-title">¿Realmente desea eliminar esta intervención?</h4>
             </div>
             <div class="modal-footer">
                <button class="btn btn-sm btn-danger" onclick="this.disabled = true;this.form.submit();">

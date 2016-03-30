@@ -769,7 +769,7 @@ class nuevo_intervencion extends fs_controller
                else if( $servicio->save() )
                {
                   $this->new_message("<a href='".$servicio->url()."'>".ucfirst(FS_SERVICIO)."</a> guardado correctamente.");
-                  $this->new_change(ucfirst(FS_SERVICIO)." a Cliente ".$servicio->codigo, $servicio->url(), TRUE);
+                  $this->new_change("intervencion a Objetivo ".$servicio->codigo, $servicio->url(), TRUE);
                   header('Location: '.$servicio->url());
                }
                else

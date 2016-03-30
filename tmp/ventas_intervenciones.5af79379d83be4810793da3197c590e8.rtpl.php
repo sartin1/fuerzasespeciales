@@ -111,7 +111,7 @@
                <a href="index.php?page=<?php echo $value1->from;?><?php echo $value1->params;?>" class="btn btn-sm btn-default"><?php echo $value1->text;?></a>
                <?php } ?>
 
-            <?php } ?><a class="btn btn-sm btn-default" href="index.php?page=ventas_serviciosimprimir">
+            <?php } ?><a class="btn btn-sm btn-default" href="index.php?page=ventas_intervencionimprimir">
                <span class="glyphicon glyphicon-print"></span>
                <span class="hidden-xs">&nbsp; Imprimir lista personalizada</span>
             </a>
@@ -213,7 +213,7 @@
    <li  class="active">
       <a href="#" title="Buscar">
          <span class="glyphicon glyphicon-search"></span>
-         <span class="hidden-xs">&nbsp; Brechas</span>
+         <span class="hidden-xs">&nbsp; Intervenciones</span>
          <span class="hidden-xs badge"><?php echo $fsc->num_resultados;?></span>
       </a>
    </li>
@@ -355,14 +355,13 @@
             <th class="text-left">Código</th>
             <th class="text-left">Lugar</th>
             <th class="text-left">Fecha / Hora</th>           
-            <th class="text-left">Solicito</th>              
-            <th class="text-left">Brechero 1°</th>
-            <th class="text-left">Brechero Aux</th>           
-            <th class="text-left">Manual</th>              
-            <th class="text-left">Mecánica</th>
-            <th class="text-left">Balística</th>           
-            <th class="text-left">Explosiva</th>              
-            <th class="text-left">Funcionó</th>
+            <th class="text-left">Solicitó</th>              
+            <th class="text-left">Juzgado interviniente</th>
+            <th class="text-left">Hipótesis</th>           
+            <th class="text-left">N° personas neutralizadas</th>              
+            <th class="text-left">Móvil unidad</th>
+            <th class="text-left">Móvil prestado</th>           
+            <th class="text-left">Turno</th>              
          </tr>
       </thead>
       <?php $loop_var1=$fsc->resultados; $counter1=-1; if($loop_var1) foreach( $loop_var1 as $key1 => $value1 ){ $counter1++; ?>
@@ -374,30 +373,28 @@
             <?php echo $value1->fechainicio;?>
 
          </td>
-         <td><?php echo $value1->solucion;?></td>
+         <td><?php echo $value1->material_estado;?></td>
          <?php if( $fsc->servicios_setup['servicios_mostrar_material'] ){ ?>
 
-         <td><?php echo $value1->brprincipal;?></td>
+         <td><?php echo $value1->accesorios;?></td>
          <?php } ?>
 
          <?php if( $fsc->servicios_setup['usar_direccion'] ){ ?>
 
-         <td><?php echo $value1->braux;?></td>
+         <td><?php echo $value1->manual;?></td>
          <?php } ?>
 
-         <td class="text-left"><?php echo $value1->manual;?></td>
+         <td class="text-left"><?php echo $value1->mecanica;?></td>
          <td class="text-left">
-           <?php echo $value1->mecanica;?> 
+           <?php echo $value1->combinada;?> 
          </td>
        <td class="text-left">
-           <?php echo $value1->balistica;?> 
-         </td>
-         <td class="text-left">
-           <?php echo $value1->explosiva;?> 
-         </td>
-         <td class="text-left">
            <?php echo $value1->repconf;?> 
          </td>
+         <td class="text-left">
+           <?php echo $value1->material;?> 
+         </td>
+
       </tr>
       <?php }else{ ?>
 

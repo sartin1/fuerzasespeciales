@@ -255,13 +255,13 @@ class ventas_intervenciones extends fs_controller
       {
          if ($serv1->delete())
          {
-            $this->new_message("Brecha " . $serv1->codigo . " borrada correctamente.");
+            $this->new_message("Intervencion " . $serv1->codigo . " borrada correctamente.");
          }
          else
-            $this->new_error_msg("¡Imposible borrar la Brecha!");
+            $this->new_error_msg("¡Imposible borrar la Intervencion!");
       }
       else
-         $this->new_error_msg("¡Brecha no encontrada!");
+         $this->new_error_msg("¡Intervencion no encontrada!");
    }
 
    private function share_extension()
@@ -273,7 +273,7 @@ class ventas_intervenciones extends fs_controller
               'page_from' => __CLASS__,
               'page_to' => 'ventas_cliente',
               'type' => 'button',
-              'text' => '<span class="glyphicon glyphicon-list" aria-hidden="true"></span> &nbsp; Brecha',
+              'text' => '<span class="glyphicon glyphicon-list" aria-hidden="true"></span> &nbsp; Intervencion',
               'params' => ''
           ),
           array(
@@ -281,7 +281,7 @@ class ventas_intervenciones extends fs_controller
               'page_from' => __CLASS__,
               'page_to' => 'admin_agente',
               'type' => 'button',
-              'text' => '<span class="glyphicon glyphicon-list" aria-hidden="true"></span> &nbsp;Brecha de objetivo',
+              'text' => '<span class="glyphicon glyphicon-list" aria-hidden="true"></span> &nbsp;Intervencion de objetivo',
               'params' => ''
           ),
           array(
@@ -289,7 +289,7 @@ class ventas_intervenciones extends fs_controller
               'page_from' => __CLASS__,
               'page_to' => 'ventas_articulo',
               'type' => 'tab_button',
-              'text' => '<span class="glyphicon glyphicon-list" aria-hidden="true"></span> &nbsp; Brecha de objetivo',
+              'text' => '<span class="glyphicon glyphicon-list" aria-hidden="true"></span> &nbsp; Intervencion de objetivo',
               'params' => ''
           ),
       );

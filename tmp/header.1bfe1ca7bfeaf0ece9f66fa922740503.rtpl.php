@@ -156,7 +156,7 @@
                <?php } ?>
 
                
-               <li class="dropdown">
+               <li class="dropdown" style="display: none">
                   <a href="#" class="dropdown-toggle" data-toggle="dropdown" title="Ayuda">
                      <span class="glyphicon glyphicon-question-sign hidden-xs"></span>
                      <span class="visible-xs">Ayuda</span>

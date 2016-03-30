@@ -79,7 +79,7 @@
                <span class="hidden-xs">&nbsp; Dirección</span>
             </a>
          </li>
-         <li role="presentation">
+         <li role="presentation" style="display: none">
             <a href="#opciones" aria-controls="opciones" role="tab" data-toggle="tab">
                <span class="glyphicon glyphicon-option-vertical" aria-hidden="true"></span>
                <span class="hidden-xs">&nbsp; Opciones</span>
@@ -88,86 +88,34 @@
       </ul>
      
       <div class="tab-content">
-         <div role="tabpanel" class="tab-pane active" id="servicio"><center> <h2>Descripción de punto de brecha</h2></center>
+         <div role="tabpanel" class="tab-pane active" id="servicio"><center> <h2>Informe de intervención</h2></center>
 <hr>
             <div class="container-fluid" style="margin-top: 10px;">
                <div class="row">
                   {if="$fsc->servicios_setup['servicios_mostrar_material']"}
                   <div class="col-sm-3">
                     <div class="panel panel-default">
-                      <div class="panel-heading text-center">Lado Blanco</div>
-                        <div class="panel-body">
-                            <input type="radio" name="material" value="Si"> SI
-                            <br>
-                            <input type="radio" name="material" value="No"> NO
-                            <br>
-                            <input type="radio" name="material" value="PUERTA DE CHAPA"> PUERTA DE CHAPA
-                            <br>
-                            <input type="radio" name="material" value="PUERTA METÁLICA"> PUERTA METÁLICA
-                            <br>
-                            <input type="radio" name="material" value="PM C/REJAS"> PM C/REJAS
-                            <br>
-                            <input type="radio" name="material" value="PM VIDRIADA PANEL SUPERIOR"> PM VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="material" value="PM VIDRIADA PANEL INFERIOR"> PM VIDRIADA PANEL INFERIOR
-                            <br>
-                            <input type="radio" name="material" value="PM VIDRIADA AMBOS PANELES"> PM VIDRIADA AMBOS PANELES
-                            <br>
-                            <input type="radio" name="material" value="PUERTA MADERA"> PUERTA MADERA
-                            <br>
-                            <input type="radio" name="material" value="PUERTA MADERA SOLIDA"> PUERTA MADERA SOLIDA
-                            <br>
-                            <input type="radio" name="material" value="PMa C/REJAS"> PMa C/REJAS
-                            <br>
-                            <input type="radio" name="material" value="PUERTA CORREDIZA "> PUERTA CORREDIZA 
-                            <br>
-                            <input type="radio" name="material" value="PUERTA PENTAGONO"> PUERTA PENTAGONO
-                            <br>
-                            <input type="radio" name="material" value="OTRAS"> OTRAS
-                          
-                        </div>
-                      </div>
+                      <div class="panel-heading text-center">Turno  </div>
+                       <div class="panel-body">
+                             
+                              <select class="form-control" name="material">
+                              
+                                 <option value="Mañana">Mañana</option>
+                                 <option value="Tarde">Tarde</option>
+                                 <option value="Noche">Noche</option>
+                                 
+
+                              </select>
+                                
+                          </div></div>
                     </div>
                   {/if}
                   {if="$fsc->servicios_setup['servicios_mostrar_material_estado']"}
                   <div class="col-sm-3">
                     <div class="panel panel-default">
-                      <div class="panel-heading text-center" style="background-color: #474747;color: #fff">Lado Negro</div>
+                      <div class="panel-heading text-center" style="">Solicitante</div>
                         <div class="panel-body">
-                            <input type="radio" name="material_estado" value="SI"> SI
-                            <br>
-                            <input type="radio" name="material_estado" value="NO"> NO
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA DE CHAPA"> PUERTA DE CHAPA
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA METÁLICA"> PUERTA METÁLICA
-                            <br>
-                            <input type="radio" name="material_estado" value="PM C/REJAS"> PM C/REJAS
-                            <br>
-                            <input type="radio" name="material_estado" value="PM VIDRIADA PANEL SUPERIOR"> PM VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="material_estado" value="PM VIDRIADA PANEL INFERIOR"> PM VIDRIADA PANEL INFERIOR
-                            <br>
-                            <input type="radio" name="material_estado" value="PM VIDRIADA AMBOS PANELES"> PM VIDRIADA AMBOS PANELES
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA MADERA"> PUERTA MADERA
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA MADERA SOLIDA"> PUERTA MADERA SOLIDA
-                            <br>
-                            <input type="radio" name="material_estado" value="PMa C/REJAS"> PMa C/REJAS
-                            <br>
-                            <input type="radio" name="material_estado" value="PMa PANEL SUPERIOR"> PMa PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="material_estado" value="PMa INFERIOR"> PMa INFERIOR
-                            <br>
-                            <input type="radio" name="material_estado" value="PMa AMBOS PANELES"> PMa AMBOS PANELES
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA CORREDIZA"> PUERTA CORREDIZA
-                            <br>
-                            <input type="radio" name="material_estado" value="PUERTA PENTAGONO"> PUERTA PENTAGONO
-                            <br>
-                            <input type="radio" name="material_estado" value="OTRAS"> OTRAS
-                          
+                            <input type="text" name="material_estado" class="form-control" autocomplete="off"/>
                         </div>
                       </div>
                     </div>
@@ -175,40 +123,10 @@
                   {if="$fsc->servicios_setup['servicios_mostrar_accesorios']"}
                <div class="col-sm-3">
                     <div class="panel panel-default">
-                      <div class="panel-heading text-center" style="background-color: #FF6B6B">Lado Rojo</div>
+                      <div class="panel-heading text-center" style="">Juzgado interviniente</div>
                         <div class="panel-body">
-                            <input type="radio" name="accesorios" value="SI"> SI
-                            <br>
-                            <input type="radio" name="accesorios" value="NO"> NO
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA DE CHAPA"> PUERTA DE CHAPA
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA METÁLICA"> PUERTA METÁLICA
-                            <br>
-                            <input type="radio" name="accesorios" value="PM C/REJAS"> PM C/REJAS
-                            <br>
-                            <input type="radio" name="accesorios" value="PM VIDRIADA PANEL SUPERIOR"> PM VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="accesorios" value="PM VIDRIADA PANEL INFERIOR"> PM VIDRIADA PANEL INFERIOR
-                            <br>
-                            <input type="radio" name="accesorios" value="PM VIDRIADA AMBOS PANELES"> PM VIDRIADA AMBOS PANELES
-                            <br>
-                            <input type="radio" name="accesorios" value="PM INYECTADA CON POLIUTERANO"> PM INYECTADA CON POLIUTERANO
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA MADERA"> PUERTA MADERA
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA MADERA SOLIDA"> PUERTA MADERA SOLIDA
-                            <br>
-                            <input type="radio" name="accesorios" value="PMa C/REJAS"> PMa C/REJAS
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA CORREDIZA "> PUERTA CORREDIZA 
-                            <br>
-                            <input type="radio" name="accesorios" value="PUERTA PENTAGONO"> PUERTA PENTAGONO
-                            <br>
-                            <input type="radio" name="accesorios" value="OTRAS"> OTRAS
-                           
-                        </div>
-                      </div>
+                            <input type="text" name="accesorios" class="form-control" autocomplete="off"/>
+                      </div></div>
                     </div>
                   {/if}
                         
@@ -216,199 +134,130 @@
                   {if="$fsc->servicios_setup['servicios_mostrar_descripcion']"}
                 <div class="col-sm-3">
                     <div class="panel panel-default">
-                      <div class="panel-heading text-center" style="background-color: 
-                      #a1d490">Lado Verde</div>
+                      <div class="panel-heading text-center" style="">Caratulados</div>
                         <div class="panel-body">
-                            <input type="radio" name="descripcion" value="SI"> SI
-                            <br>
-                            <input type="radio" name="descripcion" value="NO"> NO
-                            <br>
-                            <input type="radio" name="descripcion" value="PUERTA DE CHAPA"> PUERTA DE CHAPA
-                            <br>
-                            <input type="radio" name="descripcion" value="PUERTA METÁLICA"> PUERTA METÁLICA
-                            <br>
-                            <input type="radio" name="descripcion" value="PM C/REJAS"> PM C/REJAS
-                            <br>
-                            <input type="radio" name="descripcion" value="PM VIDRIADA PANEL SUPERIOR"> PM VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="descripcion" value="PM VIDRIADA PANEL INFERIOR"> PM VIDRIADA PANEL INFERIOR
-                            <br>
-                            <input type="radio" name="descripcion" value="PM VIDRIADA AMBOS PANELES"> PM VIDRIADA AMBOS PANELES
-                            <br>
-                            <input type="radio" name="descripcion" value="PM INYECTADA CON POLIUTERANO"> PM INYECTADA CON POLIUTERANO
-                            <br>
-                            <input type="radio" name="descripcion" value="PUERTA MADERA"> PUERTA MADERA
-                            <br>
-                            <input type="radio" name="descripcion" value="PUERTA MADERA SOLIDA"> PUERTA MADERA SOLIDA
-                            <br>
-                            <input type="radio" name="descripcion" value="PMa C/REJAS"> PMa C/REJAS
-                            <br>
-                            <input type="radio" name="descripcion" value="PMa VIDRIADA PANEL SUPERIOR"> PMa VIDRIADA PANEL SUPERIOR
-                            <br>
-                            <input type="radio" name="descripcion" value="PMa VIDRIADA PANEL INFERIOR "> PPMa VIDRIADA PANEL INFERIOR 
-                            <br>
-                            <input type="radio" name="descripcion" value="PMa VIDRIADA AMBOS PANELES"> PMa VIDRIADA AMBOS PANELES
-                             <br>
-                            <input type="radio" name="descripcion" value="PUERTA CORREDIZA"> PUERTA CORREDIZA
-                             <br>
-                            <input type="radio" name="descripcion" value="PUERTA PENTAGONO"> PUERTA PENTAGONO
-                             <br>
-                            <input type="radio" name="descripcion" value="OTRAS"> OTRAS
-                            
-                        </div>
-                      </div>
+                            <input type="text" name="descripcion" class="form-control" autocomplete="off"/>
+                      </div></div>
                     </div>
                   {/if}
                   {if="$fsc->servicios_setup['servicios_mostrar_solucion']"}
-                  <div class="col-sm-6">
+                  <div class="col-sm-4">
                      <div class="form-group">
                         <div class="panel panel-default">
-                          <div class="panel-heading text-center">Brechero principal</div>
-                            {loop="$fsc->agente->all()"}
-                            <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="brprincipal" value="{$value->get_fullname()}"> {$value->get_fullname()}<BR>
-                            {/loop}
+                          <div class="panel-heading text-center">Expediente</div>
+                           <div class="panel-body">
+                            <input type="text" name="brprincipal" class="form-control" autocomplete="off"/>
+                      </div>
                         </div>
                       </div>
                   </div>
                   {/if}
                   {if="$fsc->servicios_setup['servicios_mostrar_solucion']"}
+                  <div class="col-sm-4">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Pvo N°</div>
+                             <div class="panel-body">
+                            <input type="text" name="braux" class="form-control" autocomplete="off"/>
+                             </div>
+                            </div>
+                          </div>
+                      </div>
+                 
+                  {/if}   
+                  
+                  <div class="col-sm-4">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Hipotesis</div>
+                            <div class="panel-body">
+                              <input type="text" class="form-control" name="manual" list="listmanual">
+                              <datalist id="listmanual">
+                              <option value="A.R.D">
+                              <option value="A.A.P">
+                              <option value="CUSTODIAS COSAS">
+                              <option value="CUSTODIAS PERSONAS">
+                              <option value="CUSTODIAS INMUEBLES">
+                              <option value="DETENCION VEHICULO">
+                              <option value="DETENCION PERSONAS">
+                              <option value="SUJETOS ATRINCHERADOS">
+                              <option value="SUJETOS PARAPETADOS">
+                              <option value="SECUESTRO ">
+                              <option value="MISIONES ESPECIALES">
+                              </datalist>
+                            </div>
+                            </div>
+                          </div>
+                      </div>
+                  
+                  <div class="col-sm-3">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >N° personas neutralizadas</div> <div class="panel-body">
+                                 <input type="number" class="form-control" name="mecanica">
+                           </div>
+                            </div>
+                          </div>
+                      </div>
+                  
+                  <div class="col-sm-3">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Mayores masculinos</div><div class="panel-body">
+                              <input class="form-control" type="text" name="balistica" placeholder="">
+                                </div>
+                              </div>
+                          </div>
+                      </div>  
+                  <div class="col-sm-3">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Mayores femeninos</div>
+                              <div class="panel-body">
+                              <input class="form-control" type="text" name="explosiva" placeholder="">
+                                </div>
+                            </div>
+                          </div>
+                      </div>
+                  <div class="col-sm-3">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Menores</div><div class="panel-body">
+                              <input class="form-control" type="text" name="especial" placeholder="">
+                                </div>
+                            </div>
+                          </div></div>
+                      </div>
                   <div class="col-sm-6">
                       <div class="form-group">
                           <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Brechero Auxiliar</div>
-                              {loop="$fsc->agente->all()"}
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="braux" value="{$value->get_fullname()}"> {$value->get_fullname()}<br>
-                              {/loop}
-                  
-                            </div>
-                          </div>
-                      </div>
-                  </div>
-                  {/if}   
-                  <center><h2>Tipos de Brecha</h2></center>
-                  <hr>
-                  <div class="row">
-                  <div class="col-sm-4">
-                      <div class="form-group">
-                          <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Manual</div>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="manual" value="SI"> SI
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="manual" value="NO"> NO
-                              
-                            </div>
-                          </div>
-                      </div>
-                  
-                  <div class="col-sm-4">
-                      <div class="form-group">
-                          <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Mecánica</div>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="NO">NO</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE 15 KG">ARIETE 15 KG</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE 13 KG">ARIETE 13 KG</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE INF. 12 KG">ARIETE INF. 12 KG</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE DOBLE 25 KG">ARIETE DOBLE 25 KG</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ARIETE CON ANILLA">ARIETE CON ANILLA</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="HOOLIGANS 1 MTS">HOOLIGANS 1 MTS</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="HOOLIGANS 1.5 MTS">HOOLIGANS 1.5 MTS</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="PINZA NAPOLEON GRANDE">PINZA NAPOLEON GRANDE</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="PINZA NAPOLEON CHICA">PINZA NAPOLEON CHICA</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="mecanica" value="ESLINGA CON MOSQUETON">ESLINGA CON MOSQUETON</option>
-                           
-                            </div>
-                          </div>
-                      </div>
-                  
-                  <div class="col-sm-4">
-                      <div class="form-group">
-                          <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Balística</div>
-                              <input style="margin-left: 15px;margin-top: 15px;margin-bottom: 15px" type="text" name="balistica" placeholder="Personalizado">
-                            </div>
-                          </div>
-                      </div></div>
-                  <div class="col-sm-4">
-                      <div class="form-group">
-                          <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Explosiva</div>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="explosiva" value="NO">NO</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="explosiva" value="PENTITRA">PENTITRA</option>
-                            </div>
-                          </div>
-                      </div>
-                  <div class="col-sm-4">
-                      <div class="form-group">
-                          <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Especial</div>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="especial" value="NO">NO</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="especial" value="BRECHA DURA">BRECHA DURA</option>
-                            </div>
-                          </div>
-                      </div>
-                  <div class="col-sm-4">
-                      <div class="form-group">
-                          <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Combinada</div>
-                              <input style="margin-left: 15px;margin-top: 15px;margin-bottom: 15px" type="text" name="combinada" placeholder="Personalizado">
+                            <div class="panel-heading text-center" >Móvil unidad</div>
+                              <div class="panel-body">
+                              <input type="text" class="form-control" name="combinada" list="listidcomb">
+                              <datalist id="listidcomb">
+                              <option value="PRIO 468">
+                              <option value="PRIO 593">
+                              <option value="PRIOS 468 y 593">
+                              </datalist>
+                              </div>
                             </div>
 
                           </div>
 
                       </div>
-                  <div class="col-sm-12">
-                    <center><h2>Reporte de apertura</h2></center>
-                    <hr>
-                    <div class="row">
-                    <div class="col-sm-4">
-                      <div class="panel panel-default">
-                        <div class="panel-heading text-center" style="background-color: #008CBA;color: #fff">¿Funcionó conforme a lo acordado?</div>
-                            <div class="form-group">
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="repconf" value="SI">SI</option>
-                              <br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="repconf" value="NO">NO</option>
+                      <div class="col-sm-6">
+                      <div class="form-group">
+                          <div class="panel panel-default">
+                            <div class="panel-heading text-center" >Móvil prestado</div>
+                              <div class="panel-body">
+                              <input type="text" class="form-control" name="repconf" >
+                             
+                              </div>
                             </div>
+
+                          </div>
+
                       </div>
-                    </div>
-                  
-                  <div class="col-sm-8">
-                      <div class="panel panel-default">
-                        <div class="panel-heading text-center" style="background-color: #008CBA;color: #fff;">Reporte de apertura</div>  
-                        <br>
-                            <div class="form-group" >
-                              <textarea style="margin-left:23px;width: 800px" class="form-control" rows="2" name="obsapertura" placeholder="Observaciones"></textarea>
-                            </div>
-                            <div class="row" style="margin-bottom: 20px">
-                              <div class="col-sm-3" style="margin-left:23px;">
-                              Cantidad de arietasos:<input name="arietasoscant" type="number"  class="form-control">
-                              </div>
-                              <div class="col-sm-3">
-                              Cantidad balísticas:<input name="balisiticascant" type="number"  class="form-control">
-                              </div>
-                              <div class="col-sm-5">Tipo de cartuchos:<br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="NINGUNO"> NINGUNO</option><br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="MASILLA"> MASILLA</option><br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="NRO 7"> NRO 7</option><br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="PG"> PG</option><br>
-                              <input style="margin-left: 15px;margin-top: 15px;" type="radio" name="tipocart" value="OTROS"> OTROS</option>
-                              </div>
-                            </div>
-                      </div>
-                    </div>
-                  </div>
-                  </div>
 
                <div class="row">
                {if="$fsc->servicios_setup['servicios_mostrar_fechainicio']"}
@@ -497,14 +346,7 @@
                         </select>
                      </div>
                   </div>
-                  <div class="col-sm-2">
-                     <div class="form-group">
-                       Solicita esta brecha:
-                        <input name="solucion" class="form-control">
-                          
-                     </div>
                   </div>
-               </div>
                <div class="row">
                   <div class="col-sm-12">
                      <div class="form-group">
@@ -849,7 +691,7 @@
    <h1>No puedes entrar aquí</h1>
    <p>
       No tienes un emlpeado asociado a tu <a href="{$fsc->user->url()}">usuario</a>.
-      Habla con el administrador para que te asigne un empleado.
+      Habla con el administrador para que te asigne un efectivo.
    </p>
 
 </div>
@@ -883,12 +725,12 @@
             <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
             <h4 class="modal-title">
                <span class="glyphicon glyphicon-search"></span>
-               &nbsp; Selecciona el cliente
+               &nbsp; Selecciona el Objetivo
             </h4>
             <p class="help-block">
-               Busca y selecciona el cliente o bien crea uno nuevo usando
+               Busca y selecciona el Objetivo o bien crea uno nuevo usando
                el recuadro en azul. Además, puedes cambiar las
-               <a href="index.php?page=ventas_clientes_opciones">opciones para nuevos clientes</a>.
+               <a href="index.php?page=ventas_clientes_opciones">opciones para nuevos Objetivos</a>.
             </p>
          </div>
          <div class="modal-body">
@@ -1032,8 +874,8 @@
    <div class="row">
       <div class="col-lg-12">
          <h1>Paso 1:</h1>
-         <p>Selecciona el cliente del {#FS_SERVICIO#}.</p>
-         <a href="#" class="btn btn-block btn-default" data-toggle="modal" data-target="#modal_cliente">Selecciona el cliente</a>
+         <p>Selecciona el Objetivo del {#FS_SERVICIO#}.</p>
+         <a href="#" class="btn btn-block btn-default" data-toggle="modal" data-target="#modal_cliente">Selecciona el Objetivo</a>
          <h2>Paso 2:</h2>
          <p>Introduce los datos requeridos.</p>
          <h2>Paso 3:</h2>

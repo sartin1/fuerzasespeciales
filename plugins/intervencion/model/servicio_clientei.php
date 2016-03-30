@@ -2,8 +2,8 @@
 
 
 /*Esto es temporal*/
-define('FS_SERVICIOS', 'Servicios');
-define('FS_SERVICIO', 'Servicio');
+define('FS_SERVICIOS', 'Intervenciones');
+define('FS_SERVICIO', 'Intervencion');
 
 
 require_model('albaran_cliente.php');
