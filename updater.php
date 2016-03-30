@@ -189,14 +189,7 @@ class fs_updater
                unlink('update.zip');
                
                /// eliminamos archivos antiguos
-               $this->delTree('base/');
-               $this->delTree('controller/');
-               $this->delTree('extras/');
-               $this->delTree('model/');
-               $this->delTree('raintpl/');
-               $this->delTree('view/');
-               
-               
+
                $this->recurse_copy('fuerzasespeciales-master/', '.');
                $this->delTree('fuerzasespeciales-master/');
                
