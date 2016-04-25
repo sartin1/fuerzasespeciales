@@ -56,7 +56,7 @@ class fs_updater
          }
          else if( isset($_GET['idplugin']) AND isset($_GET['name']) AND isset($_GET['key']) )
          {
-            $this->actualizar_plugin_pago();
+            
          }
          else if( isset($_GET['idplugin']) AND isset($_GET['name']) AND isset($_POST['key']) )
          {
@@ -272,46 +272,7 @@ class fs_updater
          $this->errores = 'Error al leer el archivo plugins/' . $_GET['plugin'] . '/facturascripts.ini';
    }
    
-   private function actualizar_plugin_pago()
-   {
-      $url = 'https://www.facturascripts.com/comm3/index.php?page=community_edit_plugin&id='.
-              $_GET['idplugin'].'&key='.$_GET['key'];
-      
-      /// descargamos el zip
-      if( @file_put_contents('update.zip', $this->curl_get_contents($url)) )
-      {
-         $zip = new ZipArchive();
-         $zip_status = $zip->open('update.zip');
-         
-         if($zip_status === TRUE)
-         {
-            /// eliminamos los archivos antiguos
-            $this->delTree('plugins/' . $_GET['name']);
-            
-            /// descomprimimos
-            $zip->extractTo('plugins/');
-            $zip->close();
-            unlink('update.zip');
-            
-            if( file_exists('plugins/' . $_GET['name'] . '-master') )
-            {
-               /// renombramos el directorio
-               rename('plugins/' . $_GET['name'] . '-master', 'plugins/' . $_GET['name']);
-            }
-            
-            /// limpiamos la caché
-            $this->clean_cache();
-            
-            $this->mensajes = 'Plugin actualizado correctamente.';
-         }
-         else
-            $this->errores = 'Ha habido un error con el archivo update.zip <a href="updater.php?idplugin='.
-                 $_GET['idplugin'].'&name='.$_GET['name'].'">¿Clave incorrecta?</a>';
-      }
-      else
-         $this->errores = 'Error al descargar el archivo zip. <a href="updater.php?idplugin='.
-              $_GET['idplugin'].'&name='.$_GET['name'].'">¿Clave incorrecta?</a>';
-   }
+ 
 
    private function recurse_copy($src, $dst)
    {
