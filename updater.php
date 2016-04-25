@@ -52,7 +52,7 @@ class fs_updater
          }
          else if( isset($_GET['plugin']) )
          {
-            $this->actualizar_plugin();
+           
          }
          else if( isset($_GET['idplugin']) AND isset($_GET['name']) AND isset($_GET['key']) )
          {
@@ -104,50 +104,7 @@ class fs_updater
                /// comprobamos los plugins
                foreach($this->check_for_plugin_updates() as $plugin)
                {
-                  if($plugin['depago'])
-                  {
-                     if($plugin['private_key'])
-                     {
-                        $this->tr_updates .= '<tr>'
-                                . '<td>'.$plugin['name'].'</td>'
-                                . '<td>'.$plugin['description'].'<br/>'
-                                . '<a href="#" data-toggle="modal" data-target="#modal_key_'.$plugin['name'].'">'
-                                . '<span class="glyphicon glyphicon-edit" aria-hidden="true"></span> Cambiar la clave'
-                                . '</a>'
-                                . '</td>'
-                                . '<td class="text-right">'.$plugin['version'].'</td>'
-                                . '<td class="text-right"><a href="https://www.facturascripts.com/comm3/index.php?page=community_changelog&version='
-                                . $plugin['new_version'].'&plugin='.$plugin['name'].'" target="_blank">'.$plugin['new_version'].'</a></td>'
-                                . '<td class="text-right">'
-                                . '<div class="btn-group">'
-                                . '<a href="updater.php?idplugin='.$plugin['idplugin'].'&name='.$plugin['name'].'&key='.$plugin['private_key']
-                                .'" class="btn btn-xs btn-primary">'
-                                . '<span class="glyphicon glyphicon-upload" aria-hidden="true"></span> &nbsp; Actualizar'
-                                . '</a>'
-                                . '</div>'
-                                . '</td></tr>';
-                     }
-                     else
-                     {
-                        $this->tr_updates .= '<tr>'
-                                . '<td>'.$plugin['name'].'</td>'
-                                . '<td>'.$plugin['description'].'</td>'
-                                . '<td class="text-right">'.$plugin['version'].'</td>'
-                                . '<td class="text-right"><a href="https://www.facturascripts.com/comm3/index.php?page=community_changelog&version='
-                                . $plugin['new_version'].'&plugin='.$plugin['name'].'" target="_blank">'.$plugin['new_version'].'</a></td>'
-                                . '<td class="text-right">'
-                                . '<div class="btn-group">'
-                                . '<a href="#" class="btn btn-xs btn-warning" data-toggle="modal" data-target="#modal_key_'.$plugin['name'].'">'
-                                . '<span class="glyphicon glyphicon-pencil" aria-hidden="true"></span> &nbsp; Añadir clave'
-                                . '</a>'
-                                . '</div>'
-                                . '</td></tr>';
-                     }
-                  }
-                  else
-                  {
-                     $this->tr_updates .= '';
-                  }
+                  
                }
                
                if($this->tr_updates == '')
