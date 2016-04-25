@@ -217,7 +217,7 @@
                   <th width="70"></th>
                   <th class="text-left" width="150">Código</th>
                   <th class="text-left">Nombre</th>
-                  <th class="text-left">
+                  <th class="text-left" style="display: none">
                      <a href="{$fsc->tarifa->url()}">Tarifa</a>
                   </th>
                   <th class="text-right" width="120">Acción</th>
@@ -238,7 +238,7 @@
                      <input class="form-control" type="text" name="nombre" value="{$value->nombre}" maxlength="50" autocomplete="off"/>
                   </td>
                   <td>
-                     <select name="codtarifa" class="form-control">
+                     <select name="codtarifa" class="form-control" style="display: none">
                         <option value="---">Ninguna</option>
                         <option value="---">---</option>
                         {loop="$fsc->tarifas"}
@@ -274,8 +274,8 @@
                   <td>
                      <input class="form-control" type="text" name="nombre" maxlength="50" placeholder="Nuevo grupo" autocomplete="off"/>
                   </td>
-                  <td>
-                     <select name="codtarifa" class="form-control">
+                  <td style="display: none">
+                     <select name="codtarifa" class="form-control" >
                         <option value="---">Ninguna</option>
                         <option value="---">---</option>
                         {loop="$fsc->tarifas"}

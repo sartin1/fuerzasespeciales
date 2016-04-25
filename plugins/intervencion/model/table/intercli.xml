@@ -20,6 +20,16 @@
       <nulo>YES</nulo>
    </columna>
    <columna>
+      <nombre>funcion</nombre>
+      <tipo>character varying(12)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>nomyape</nombre>
+      <tipo>character varying(12)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
       <nombre>ciudad</nombre>
       <tipo>character varying(100)</tipo>
       <nulo>YES</nulo>
@@ -177,6 +187,46 @@
    </columna>
    <columna>
       <nombre>descripcion</nombre>
+      <tipo>text</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>alsr</nombre>
+      <tipo>text</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>delint</nombre>
+      <tipo>text</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>jefe</nombre>
+      <tipo>text</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>juez</nombre>
+      <tipo>text</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>secretaria</nombre>
+      <tipo>text</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>oficion</nombre>
+      <tipo>text</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>mision</nombre>
+      <tipo>text</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>brecha</nombre>
       <tipo>text</tipo>
       <nulo>YES</nulo>
    </columna>

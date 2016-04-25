@@ -47,6 +47,22 @@
          }
       });
    });
+    $(document).ready(function() {
+      
+      if(window.location.hash.substring(1) == 'paginas')
+      {
+         $('#tab_panel_control a[href="#t_paginas"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'persona')
+      {
+         $('#tab_panel_control a[href="#t_persona"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'operador')
+      {
+         $('#tab_panel_control a[href="#t_operador"]').tab('show');
+      }
+      
+   });
 </script>
 {/if}
 <script type="text/javascript">
@@ -89,17 +105,14 @@
                <span class="glyphicon glyphicon-refresh"></span>
             </a>
             <div class="btn-group">
-               <a id="b_imprimir" class="btn btn-sm btn-default" href="#">
-                  <span class="glyphicon glyphicon-print"></span>
-                  <span class="hidden-xs"> &nbsp; Imprimir</span>
-               </a>
+     
                {if="$fsc->empresa->can_send_mail()"}
                <a id="b_enviar" class="btn btn-sm btn-default" href="#">
                   <span class="glyphicon glyphicon-envelope"></span>
                   {if="$fsc->servicio->femail"}
-                  <span class="hidden-xs"> &nbsp; Reenviar</span>
+                  <span class="hidden-xs"> &nbsp; Enviar Mail</span>
                   {else}
-                  <span class="hidden-xs"> &nbsp; Enviar</span>
+                  <span class="hidden-xs"> &nbsp; Enviar Mail</span>
                   {/if}
                </a>
                {/if}
@@ -255,11 +268,24 @@
                <span class="hidden-xs">&nbsp; Dirección</span>
             </a>
          </li>
-
+         <li>
+            <a href="#t_persona" aria-controls="t_persona" role="tab" data-toggle="tab">
+               <span class="glyphicon glyphicon-user" aria-hidden="true"></span>
+               <span class="hidden-xs">&nbsp; Personas Neutralizadas</span>
+               <span class="hidden-sm badge">{$fsc->servicio->num_personas()}</span>
+            </a>
+        </li>
+        <li>
+            <a href="#t_operador" aria-controls="t_operador" role="tab" data-toggle="tab">
+               <span class="glyphicon glyphicon-user" aria-hidden="true"></span>
+               <span class="hidden-xs">&nbsp; Operadores Involucrados</span>
+               <span class="hidden-sm badge">{$fsc->servicio->num_operadores()}</span>
+            </a>
+        </li>
          <li>
             <a href="#detalles" aria-controls="detalles" role="tab" data-toggle="tab">
                <span class="glyphicon glyphicon-comment" aria-hidden="true"></span>
-               <span class="hidden-xs">&nbsp; Detalles</span>
+               <span class="hidden-xs">&nbsp; Autocrítica</span>
                <span class="hidden-sm badge">{$fsc->servicio->num_detalles()}</span>
             </a>
         </li>
@@ -279,14 +305,7 @@
          {/loop}
       </ul>
       <div class="tab-content">
-         <div role="tabpanel" style="background: rgba(255,255,255,1);
-background: -moz-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
-background: -webkit-gradient(left top, left bottom, color-stop(0%, rgba(255,255,255,1)), color-stop(100%, rgba(191,217,248,1)));
-background: -webkit-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
-background: -o-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
-background: -ms-linear-gradient(top, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
-background: linear-gradient(to bottom, rgba(255,255,255,1) 0%, rgba(191,217,248,1) 100%);
-filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', endColorstr='#bfd9f8', GradientType=0 );"class="tab-pane active" id="servicio">
+         <div role="tabpanel" style=""class="tab-pane active" id="servicio">
          <center> <h2>Informe de intervención</h2></center>
 <hr>
             <div class="container-fluid" style="margin-top: 10px;">
@@ -301,6 +320,22 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                                 
                           </div></div>
                     </div>
+                    <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Al Señor</div>
+                        <div class="panel-body">
+                            {$fsc->servicio->alsr}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Del</div>
+                        <div class="panel-body">
+                            {$fsc->servicio->delint}
+                        </div>
+                      </div>
+                    </div>
                   {/if}
                   {if="$fsc->servicios_setup['servicios_mostrar_material_estado']"}
                   <div class="col-sm-3">
@@ -311,8 +346,24 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                         </div>
                       </div>
                     </div>
+                    <div class="col-sm-8">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Caratula</div>
+                        <div class="panel-body">
+                            {$fsc->servicio->descripcion}
+                      </div></div>
+                    </div>
                   {/if}
                   {if="$fsc->servicios_setup['servicios_mostrar_accesorios']"}
+                  <div class="col-sm-4">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Jefe</div>
+                        <div class="panel-body">
+                            {$fsc->servicio->jefe}
+                        </div>
+                      </div>
+                    </div>
+                    
                <div class="col-sm-3">
                     <div class="panel panel-default">
                       <div class="panel-heading text-center" style="">Juzgado interviniente</div>
@@ -320,20 +371,37 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                            {$fsc->servicio->accesorios}
                       </div></div>
                     </div>
-                  {/if}
-                        
-               
-                  {if="$fsc->servicios_setup['servicios_mostrar_descripcion']"}
-                <div class="col-sm-3">
+                    <div class="col-sm-3">
                     <div class="panel panel-default">
-                      <div class="panel-heading text-center" style="">Caratulados</div>
+                      <div class="panel-heading text-center" style="">Juez</div>
                         <div class="panel-body">
-                            {$fsc->servicio->descripcion}
-                      </div></div>
+                            {$fsc->servicio->juez}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Secretaria</div>
+                        <div class="panel-body">
+                            {$fsc->servicio->secretaria}
+                        </div>
+                      </div>
                     </div>
                   {/if}
+                        <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Oficio N°</div>
+                        <div class="panel-body">
+                            {$fsc->servicio->oficion}
+                        </div>
+                      </div>
+                    </div>
+               
+                  {if="$fsc->servicios_setup['servicios_mostrar_descripcion']"}
+                
+                  {/if}
                   {if="$fsc->servicios_setup['servicios_mostrar_solucion']"}
-                  <div class="col-sm-4">
+                  <div class="col-sm-6">
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Expediente</div>
@@ -343,9 +411,17 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                         </div>
                       </div>
                   </div>
+                  <div class="col-sm-6">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Misión</div>
+                        <div class="panel-body">
+                            {$fsc->servicio->mision}
+                        </div>
+                      </div>
+                    </div>
                   {/if}
                   {if="$fsc->servicios_setup['servicios_mostrar_solucion']"}
-                  <div class="col-sm-4">
+                  <div class="col-sm-4" style="display:none">
                       <div class="form-group">
                           <div class="panel panel-default">
                             <div class="panel-heading text-center" >Pvo N°</div>
@@ -358,7 +434,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                  
                   {/if}   
                   
-                  <div class="col-sm-4">
+                  <div class="col-sm-6">
                       <div class="form-group">
                           <div class="panel panel-default">
                             <div class="panel-heading text-center" >Hipotesis</div>
@@ -368,44 +444,40 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                             </div>
                           </div>
                       </div>
+                      <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Tipo de brecha</div>
+                        <div class="panel-body">
+                            {$fsc->servicio->brecha}
+                        </div>
+                      </div>
+                    </div>
+                    <div class="col-sm-3">
+                    <div class="panel panel-default">
+                      <div class="panel-heading text-center" style="">Numero de brecha</div>
+                        <div class="panel-body">
+                            <a href="index.php?page=ventas_servicio&id={$fsc->servicio->braux}" target="blank">Ir a brecha </a>
+                        </div>
+                      </div>
+                    </div>
                   
-                  <div class="col-sm-3">
+                  <div class="col-sm-6">
                       <div class="form-group">
                           <div class="panel panel-default">
-                            <div class="panel-heading text-center" >N° personas neutralizadas</div> <div class="panel-body">
-                              {$fsc->servicio->mecanica}
+                            <div class="panel-heading text-center" >Moviles empleados</div> <div class="panel-body">
+                              {$fsc->servicio->balistica}
                            </div>
                             </div>
                           </div>
                       </div>
-                  
-                  <div class="col-sm-3">
+                  <div class="col-sm-6">
                       <div class="form-group">
                           <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Mayores masculinos</div><div class="panel-body">
-                              {$fsc->servicio->balistica}
-                                </div>
-                              </div>
-                          </div>
-                      </div>  
-                  <div class="col-sm-3">
-                      <div class="form-group">
-                          <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Mayores femeninos</div>
-                              <div class="panel-body">
-                              {$fsc->servicio->explosiva}
-                                </div>
+                            <div class="panel-heading text-center" >Tiempo de despeje y control del PI</div> <div class="panel-body">
+                              {$fsc->servicio->tiempodd}
+                           </div>
                             </div>
                           </div>
-                      </div>
-                  <div class="col-sm-3">
-                      <div class="form-group">
-                          <div class="panel panel-default">
-                            <div class="panel-heading text-center" >Menores</div><div class="panel-body">
-                              {$fsc->servicio->especial}
-                                </div>
-                            </div>
-                          </div></div>
                       </div>
                   <div class="col-sm-6">
                       <div class="form-group">
@@ -432,7 +504,8 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                           </div>
 
                       
-                  </div>
+                  </div></div>
+                 
                <div class="row">
                <script type="text/javascript">
                 $(function () {
@@ -703,7 +776,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                   <thead>
                      <tr>
                         <th class="text-left">Usuario</th>
-                        <th class="text-left">Detalle</th>
+                        <th class="text-left">Autocrítica</th>
                         <th class="text-right">Fecha | Hora &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
                         <th></th>
                      </tr>
@@ -726,11 +799,87 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                      <td colspan="4">
                         <a href='#' class="btn btn-info btn-block btn-sm" data-toggle="modal" data-target="#modal_nuevo_detalle">
                            <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>
-                           &nbsp; Nuevo detalle
+                           &nbsp; Nueva Autocrítica
                         </a>
                      </td>
                   </tr>
                </table>
+            </div>
+          </div>     
+          <div role="tabpanel" class="tab-pane" id="t_persona">
+            <div class="table-responsive">
+               <table class="table table-hover" >
+                  <thead>
+                     <tr>
+                        <th class="text-left">Nombre y apellido</th>
+                        <th class="text-left">Edad</th>
+                        <th class="text-left">Domicilio</th>
+                        <th class="text-left">Dni</th>
+                        <th class="text-left">Usuario</th>
+                        <th class="text-right">Fecha | Hora &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
+                        <th></th>
+                     </tr>
+                  </thead>
+                  {loop="fsc->listar_servicio_persona()"}
+                  <tr>
+                     <td>{$value->nombreyap}</td>
+                     <td>{$value->edad}</td>
+                     <td>{$value->domici}</td>
+                     <td>{$value->dni}</td>
+                     <td>{$value->nick}</td>
+                     <td class="text-right">{$value->fecha} | {$value->show_hora_detalle()}</td>
+                     <td>
+                        {if="$fsc->allow_delete"}
+                        <a href="{$fsc->servicio->url()}&delete_persona={$value->id}#detalles"onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                           <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                        </a>
+                        {/if}
+                     </td>
+                  </tr>
+                  {/loop}
+                  
+               </table>
+               <a href='#' class="btn btn-info btn-block btn-sm" data-toggle="modal" data-target="#modal_nuevo_persona">
+                           <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>
+                           &nbsp; Nueva persona neutralizada
+                        </a>
+            </div>
+          </div>
+          <div role="tabpanel" class="tab-pane" id="t_operador">
+            <div class="table-responsive">
+               <table class="table table-hover" >
+                  <thead>
+                     <tr>
+                        <th class="text-left">Nombre y apellido</th>
+                        <th class="text-left">Jerarquía</th>
+                        <th class="text-left">Funcion</th>
+                        <th class="text-left">Usuario</th>
+                        <th class="text-right">Fecha | Hora &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</th>
+                        <th></th>
+                     </tr>
+                  </thead>
+                  {loop="fsc->listar_servicio_opera()"}
+                  <tr>
+                     <td>{$value->name}</td>
+                     <td>{$value->cargo}</td>
+                     <td>{$value->funcion}</td>
+                     <td>{$value->nick}</td>
+                     <td class="text-right">{$value->fecha} | {$value->show_hora_detalle()}</td>
+                     <td>
+                        {if="$fsc->allow_delete"}
+                        <a href="{$fsc->servicio->url()}&delete_operador={$value->id}#operador"onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                           <span class="glyphicon glyphicon-trash" aria-hidden="true"></span>
+                        </a>
+                        {/if}
+                     </td>
+                  </tr>
+                  {/loop}
+                  
+               </table>
+               <a href='#' class="btn btn-info btn-block btn-sm" data-toggle="modal" data-target="#modal_nuevo_operador">
+                           <span class="glyphicon glyphicon-pencil" aria-hidden="true"></span>
+                           &nbsp; Cargar operador
+                        </a>
             </div>
           </div>     
          <div role="tabpanel" class="tab-pane" id="opciones">
@@ -926,7 +1075,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                            <a href="{$fsc->impuesto->url()}">{#FS_IVA#}</a>:
                            <select name="codimpuesto" class="form-control">
                               {loop="$fsc->impuesto->all()"}
-                              <option value="{$value->codimpuesto}"{if="$value->is_default()"} selected="selected"{/if}>{$value->descripcion}</option>
+                              <option value="{$value->codimpuesto}"{if="$value->is_default()"} selected="selected"{/if}>{$value->Descripcióncion}</option>
                               {/loop}
                            </select>
                         </div>
@@ -952,28 +1101,6 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
    </div>
 </div>
 
-<div class="modal fade" id="modal_imprimir_servicio">
-   <div class="modal-dialog">
-      <div class="modal-content">
-         <div class="modal-header">
-            <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-            <h4 class="modal-title">Imprimir {#FS_SERVICIO#}</h4>
-         </div>
-         <div class="modal-body">
-         {loop="$fsc->extensions"}
-            {if="$value->type=='pdf'"}
-            <a href="index.php?page={$value->from}{$value->params}&id={$fsc->servicio->idservicioi}" target="_blank" class="btn btn-block btn-default">
-               <span class="glyphicon glyphicon-print"></span> &nbsp; {$value->text}
-            </a>
-            {/if}
-         {/loop}
-         </div>
-         <div class="modal-footer">
-            <a href="index.php?page=admin_empresa#impresion" target="_blank">Opciones de impresión</a>
-         </div>
-      </div>
-   </div>
-</div>
 
 <form class="form" role="form" name="f_enviar_email" action="{$fsc->url()}" method="post" enctype="multipart/form-data">
    <input type="hidden" name="codcliente" value="{$fsc->servicio->codcliente}"/>
@@ -1011,7 +1138,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                   <div class="input-group">
                      <span class="input-group-addon">Para</span>
                      <input id="ac_email" class="form-control" type="text" name="email" value="{$fsc->cliente_s->email}" autocomplete="off"/>
-                     <span class="input-group-addon" title="Asignar email al cliente">
+                     <span class="input-group-addon" title="Asignar email a este objetivo">
                         <input type="checkbox" name="guardar" value="TRUE"/>
                         <span class="glyphicon glyphicon-floppy-disk"></span>
                      </span>
@@ -1040,7 +1167,7 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
                    <input name="adjunto1" type="file"/>
                    <input name="adjunto2" type="file"/>
 <br>
-              <a href="index.php?page=imprimir_inter_horizontal&id={$fsc->servicio->idservicioi}" target="_blank" class="btn btn-block btn-default">
+              <a href="index.php?page=imprimir_intervencion&id={$fsc->servicio->idservicioi}" target="_blank" class="btn btn-block btn-default">
                <span class="glyphicon glyphicon-print"></span> Imprimir Intervención</a>
                </div>
                {loop="$fsc->extensions"}
@@ -1080,6 +1207,36 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
       </div>
    </div>
 </form>
+<div class="modal fade" id="modal_nuevo_persona">
+   <div class="modal-dialog">
+      <div class="modal-content">
+         <form name="f_nueva_persona" action="{$fsc->servicio->url()}#persona" method="post" class="form">
+            <div class="modal-header">
+               <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+               <h4 class="modal-title">Nueva persona neutralizada</h4>
+            </div>
+            <div class="modal-body">
+            Nombre y apellido
+               <input class="form-control" name="nombreyap" autofocus>
+               Edad
+               <input class="form-control" name="edad" autofocus>
+               Domicilio
+               <input class="form-control" name="domici" autofocus>
+               Dni
+               <input class="form-control" name="dni" autofocus>
+               
+            </div>
+            <div class="modal-footer">
+               <button class="btn btn-sm btn-primary" type="submit" onclick="this.disabled = true; this.form.submit();">
+                  <span class="glyphicon glyphicon-floppy-disk"></span> &nbsp; Guardar
+               </button>
+            </div>
+         </form>
+      </div>
+   </div>
+</div>
+
+
 
 <div class="modal fade" id="modal_nuevo_detalle">
    <div class="modal-dialog">
@@ -1091,6 +1248,57 @@ filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#ffffff', end
             </div>
             <div class="modal-body">
                <textarea class="form-control" name="detalle" rows="5" autofocus></textarea>
+            </div>
+            <div class="modal-footer">
+               <button class="btn btn-sm btn-primary" type="submit" onclick="this.disabled = true; this.form.submit();">
+                  <span class="glyphicon glyphicon-floppy-disk"></span> &nbsp; Guardar
+               </button>
+            </div>
+         </form>
+      </div>
+   </div>
+</div>
+
+<div class="modal fade" id="modal_nuevo_operador">
+   <div class="modal-dialog">
+      <div class="modal-content">
+         <form name="f_nueva_operador" action="{$fsc->servicio->url()}#operador" method="post" class="form">
+            <div class="modal-header">
+               <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+               <h4 class="modal-title">Nuevo operador</h4>
+            </div>
+            <div class="modal-body">
+               Nombre y apellido
+             <select name="name" class="form-control">
+                           {if="$fsc->user->admin"}
+                              <option value="{$fsc->agente->codagente}">-----</option>
+                              {loop="$fsc->agente->all()"}
+                              <option value="{$value->get_fullname()}">{$value->get_fullname()}</option>
+                              {/loop}
+                           {/if}
+                        </select>
+               Jerarquia
+               <input type="text" class="form-control" name="cargo" list="listid">
+                              <datalist id="listid">
+                              <option value="Agente"> Agente
+                              <option value="Cabo"> Cabo
+                              <option value="Cabo 1°"> Cabo 1°
+                              <option value="Sargento"> Sargento
+                              <option value="Sargento 1°"> Sargento 1°
+                              <option value="Sub Oficial Escribiente"> Sub Oficial Escribiente
+                              <option value="Sub Oficial Auxiliar"> Sub Oficial Auxiliar
+                              <option value="Sub Oficial Mayor"> Sub Oficial Mayor
+                              <option value="Oficial Ayudante"> Oficial Ayudante
+                              <option value="Oficial Sub Inspector"> Oficial Sub Inspector
+                              <option value="Oficial Principal"> OFicial Principal
+                              <option value="Sub Comisario"> Sub Comisario
+                              <option value="Comisario"> Comisario
+                              <option value="Comisario Inspector"> Comisario Inspector
+                              
+                              </datalist>s
+               Funcion
+               <input class="form-control" name="funcion" >
+               
             </div>
             <div class="modal-footer">
                <button class="btn btn-sm btn-primary" type="submit" onclick="this.disabled = true; this.form.submit();">

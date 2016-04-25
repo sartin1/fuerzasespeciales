@@ -110,6 +110,8 @@ class imprimir_servicio extends fs_controller
    private function share_extensions()
   {
       $extensiones = array(
+       
+
 
           array(
               'name' => 'email_servicio',
@@ -174,7 +176,6 @@ class imprimir_servicio extends fs_controller
                $pdf_doc->pdf->ezText($this->fix_html($direccion), 9, array('justification' => 'center'));
             }
             
-      
       
       
       /*

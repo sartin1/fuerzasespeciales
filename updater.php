@@ -190,6 +190,8 @@ class fs_updater
                
                /// eliminamos archivos antiguos
 
+               
+               
                $this->recurse_copy('fuerzasespeciales-master/', '.');
                $this->delTree('fuerzasespeciales-master/');
                

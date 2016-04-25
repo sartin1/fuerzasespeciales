@@ -1,11 +1,29 @@
 <?php
-
+/*
+ * This file is part of FacturaSctipts
+ * Copyright (C) 2014-2015  Carlos Garcia Gomez  neorazorx@gmail.com
+ * Copyright (C) 2015  Luis Miguel Pérez Romero  luismipr@gmail.com
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ * 
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 require_once 'plugins/facturacion_base/extras/fs_pdf.php';
 require_once 'extras/phpmailer/class.phpmailer.php';
 require_once 'extras/phpmailer/class.smtp.php';
 require_model('cliente.php');
 require_model('impuesto.php');
 require_model('servicio_clientei.php');
+require_model('personas_servicioi');
 /**
  * Esta clase agrupa los procedimientos de imprimir/enviar presupuestos y servicios.
  */
@@ -110,13 +128,20 @@ class imprimir_servicioi extends fs_controller
    private function share_extensions()
   {
       $extensiones = array(
-
+        array(
+              'name' => '',
+              'page_from' => __CLASS__,
+              'page_to' => '',
+              'type' => 'pdf',
+              'text' => ucfirst(FS_SERVICIO).' simple',
+              'params' => ''
+          ),
           array(
               'name' => 'email_servicio',
               'page_from' => __CLASS__,
               'page_to' => 'ventas_intervencion',
               'type' => 'email',
-              'text' => 'Enviar',
+              'text' => 'Envia',
               'params' => ''
           ),    
      );
@@ -148,7 +173,12 @@ class imprimir_servicioi extends fs_controller
             {
                if( function_exists('imagecreatefromstring') )
                {
-                  $pdf_doc->pdf->ezImage('tmp/'.FS_TMP_NAME.'logo.png', 0, 200, 'none');
+
+                  $pdf_doc->pdf->ezImage('tmp/'.FS_TMP_NAME.'logo.png', 0, 520, 'none', 'left');
+
+                  $pdf_doc->pdf->ezText("<b>Policía de la Provincia de Santa Cruz </b>", 8, array('justification' => 'center'));
+               $pdf_doc->pdf->ezText("<b>Sección Fuerzas Especiales\n</b>", 8, array('justification' => 'center'));
+
                   //$lppag -= 2; /// si metemos el logo, caben menos líneas
                }
                else
@@ -159,10 +189,10 @@ class imprimir_servicioi extends fs_controller
             }
             else
             {
-               $pdf_doc->pdf->ezText("<b>".$this->empresa->nombre."</b>", 16, array('justification' => 'center'));
-               $pdf_doc->pdf->ezText(FS_CIFNIF.": ".$this->empresa->cifnif, 8, array('justification' => 'center'));
                
-               $direccion = $this->empresa->direccion;
+               
+              
+               
                if($this->empresa->codpostal)
                   $direccion .= ' - ' . $this->empresa->codpostal;
                if($this->empresa->ciudad)
@@ -173,91 +203,124 @@ class imprimir_servicioi extends fs_controller
                   $direccion .= ' - Teléfono: ' . $this->empresa->telefono;
                $pdf_doc->pdf->ezText($this->fix_html($direccion), 9, array('justification' => 'center'));
             }
+          
             
-      
-      
-      
-      /*
-             * Esta es la tabla con los datos del cliente:
-             * Servicio:             Fecha:
-             * Cliente:             CIF/NIF:
-             * Dirección:           Teléfonos:
-             */
+            /*Esta es la tabla de los datos del servicio y trabajos a realizar*/   
+            $pdf_doc->pdf->ezText("<b>Nro.:         </b>" . $this->servicio->idservicioi . "-II-'S'-FF.EE/" . $this->servicio->idservicioi."                          ", 10, array('justification' => 'right'));   
+            $pdf_doc->pdf->ezText("<b>INFORME DE INTERVENCIÓN</b>", 14,array('justification' => 'center'));
+            /*Columna sr y del*/
+          
             $pdf_doc->new_table();
             $pdf_doc->add_table_row(
                array(
-                   'campo1' => "<b>".$this->st['st_servicio'].":</b>",
-                   'dato1' => $this->servicio->codigo,
-                   'campo2' => "<b>Fecha:</b>",
-                   'dato2' => $this->servicio->fecha
+                   'campo1' => "<b><u>Al Sr:</u> </b>",
+                   'dato1' => "",
+                   'campo2' => "",
+                   'dato2' =>  ""
                )
             );
             $pdf_doc->add_table_row(
                array(
-                   'campo1' => "<b>Cliente:</b>",
-                   'dato1' => $this->fix_html($this->servicio->nombrecliente),
-                   'campo2' => "<b>".FS_CIFNIF.":</b>",
-                   'dato2' => $this->servicio->cifnif
+                   'campo1' => "<b><u>Del:</u> </b>",
+                   'dato1' => "",
+                   'campo2' => "",
+                   'dato2' =>  ""
                )
             );
             $pdf_doc->add_table_row(
                array(
-                   'campo1' => "<b>Dirección:</b>",
-                   'dato1' => $this->fix_html($this->servicio->direccion.' CP: '.$this->servicio->codpostal.
-                           ' - '.$this->servicio->ciudad.' ('.$this->servicio->provincia.')'),
-                   'campo2' => "<b>Teléfonos:</b>",
-                   'dato2' => $this->cliente->telefono1.'  '.$this->cliente->telefono2
-               )
-            );
-            $pdf_doc->save_table(
-               array(
-                   'cols' => array(
-                       'campo1' => array('justification' => 'right'),
-                       'dato1' => array('justification' => 'left'),
-                       'campo2' => array('justification' => 'right'),
-                       'dato2' => array('justification' => 'left')
-                   ),
-                   'showLines' => 0,
-                   'width' => 520,
-                   'shaded' => 0
-               )
-            );
-            $pdf_doc->pdf->ezText("\n", 10);
-            
-            
-            /*Esta es la tabla de los datos del servicio y trabajos a realizar*/    
-            $pdf_doc->pdf->ezText("\n<b>".$this->st['st_servicio']."</b>", 14);
-            $pdf_doc->new_table();
-            $pdf_doc->add_table_row(
-               array(
-                   'campo1' => "<b>".$this->st['st_material'].":</b>",
-                   'dato1' => $this->fix_html($this->servicio->material),
-                   'campo2' => "<b>".$this->st['st_material_estado'].":</b>",
-                   'dato2' => $this->servicio->material_estado
+                   'campo1' => "<b><u>Fecha de Intervención:</u> </b>",
+                   'dato1' => $this->fix_html($this->servicio->fecha),
+                   'campo2' => "<b><u>Hora:</u>   </b>".$this->servicio->hora." Hs.",
+                   'dato2' =>  ""
                )
             );
             $pdf_doc->add_table_row(
                array(
-                   'campo1' => "<b>".$this->st['st_accesorios'].":</b>",
-                   'dato1' => $this->fix_html($this->servicio->accesorios),
+                   'campo1' => "<b><u>Dependencia Solicitante:</u></b>",
+                   'dato1' => $this->servicio->material_estado,
                    'campo2' => "",
                    'dato2' => ""
                )
             ); 
             $pdf_doc->add_table_row(
                array(
-                   'campo1' => "<b>".$this->st['st_descripcion'].":</b>",
-                   'dato1' => $this->fix_html($this->servicio->descripcion),
-                   'campo2' => "<b>".$this->st['st_solucion'].": </b>",
-                   'dato2' => $this->servicio->solucion
+                   'campo1' => "<b><u>Caratula:</u></b>",
+                   'dato1' => $this->servicio->descripcion,
+                   'campo2' => "",
+                   'dato2' => ""
                )
             );
              $pdf_doc->add_table_row(
                array(
-                   'campo1' => "<b>Fecha prevista de inicio:</b>",
-                   'dato1' => $this->fix_html($this->servicio->fechainicio),
-                   'campo2' => "<b>Fecha prevista de finalización:</b>",
-                   'dato2' => $this->fix_html($this->servicio->fechafin)
+                   'campo1' => "<b><u>Jefe:</u></b>",
+                   'dato1' => "",
+                   'campo2' => "",
+                   'dato2' => ""
+               )
+            );
+             $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Juzgado interviniente:</u></b>",
+                   'dato1' => $this->servicio->accesorios,
+                   'campo2' => "",
+                   'dato2' => ""
+               )
+            );
+             $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Juez:</u></b>",
+                   'dato1' => "",
+                   'campo2' => "",
+                   'dato2' => ""
+               )
+            );
+             $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Secretaria:</u></b>",
+                   'dato1' => "",
+                   'campo2' => "",
+                   'dato2' => ""
+               )
+            );
+             $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Localidad:</u></b>",
+                   'dato1' => $this->servicio->ciudad,
+                   'campo2' => "<b><u>Ubicación:</u></b>",
+                   'dato2' => $this->servicio->direccion,
+               )
+            );
+             $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Oficio: N°</u></b>",
+                   'dato1' => "",
+                   'campo2' => "",
+                   'dato2' => ""
+               )
+            );
+             $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Expte.:</u></b>",
+                   'dato1' => $this->servicio->brprincipal,
+                   'campo2' => "",
+                   'dato2' => ""
+               )
+            );
+             $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Misión:</u></b>",
+                   'dato1' => "",
+                   'campo2' => "",
+                   'dato2' => ""
+               )
+            );
+             $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Hipótesis:</u></b>",
+                   'dato1' => $this->servicio->manual,
+                   'campo2' => "",
+                   'dato2' => ""
                )
             );
             $pdf_doc->save_table(
@@ -269,12 +332,197 @@ class imprimir_servicioi extends fs_controller
                        'dato2' => array('justification' => 'left')
                    ),
                    'showLines' => 0,
-                   'width' => 520,
+                   'width' => 550,
                    'shaded' => 0
                )
             );
-            $pdf_doc->pdf->ezText("\n", 10);
+
+            $pdf_doc->new_table();         
+            $pdf_doc->add_table_row(
+                  array(
+                     'espacio' => '<b><u> </u></b>',
+                     'cantidad' => '<b><u>Total</u></b>',
+                     'funciones' => '<b>Funciones y Rol operatívos</b>',
+
+                  )
+
+               );
+
+            $pdf_doc->add_table_row(
+              array(
+                     'espacio' => '<b><u>Cant. Operadores</u></b>',
+                     'cantidad' => '<b>8</b>',
+                     'funciones' => '<b>Cantidad</b>',
+                  )
+              ); 
+          
+
+            $pdf_doc->save_table(
+               array(
+                   'cols' => array(
+                       'epsacio' => array('justification' => 'left'),
+                       'cantidad' => array('justification' => 'left'),
+                       'funciones' => array('justification' => 'left'),
+                   ),
+                   'showLines' => 0,
+                   'width' => 550,
+                   'shaded' => 2
+               )
+            );
+            $pdf_doc->new_table();
+            $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Brecha</u> </b>",
+                   'dato1' => "",
+                   'campo2' => "",
+                   'dato2' =>  ""
+               )
+            );
+            $pdf_doc->add_table_row(
+               array(
+                   'campo1' => "<b><u>Móviles empleados:</u> </b>",
+                   'dato1' => "",
+                   'campo2' => "",
+                   'dato2' =>  ""
+               )
+            );
+            $pdf_doc->save_table(
+               array(
+                   'cols' => array(
+                       'campo1' => array('justification' => 'left'),
+                       'dato1' => array('justification' => 'left'),
+                       'campo2' => array('justification' => 'left'),
+                       'dato2' => array('justification' => 'left'),
+                   ),
+                   'showLines' => 0,
+                   'width' => 550,
+                   'shaded' => 0
+
+               )
+            );
+    
       
+
+            $pdf_doc->new_table();         
+            $pdf_doc->add_table_row(
+                  array(
+                     'espacio' => '<b><u> </u></b>',
+                     'cantidad' => '<b><u>Total</u></b>',
+                     'funciones' => '<b>Funciones y Rol operatívos</b>',
+
+                  )
+
+               );
+
+            $pdf_doc->add_table_row(
+              array(
+                     'espacio' => '<b><u>Neutralizadas  </u></b>',
+                     'cantidad' => '<b>8</b>',
+                     'funciones' => '<b>Cantidad</b>',
+
+                  )
+              ); 
+            $pdf_doc->add_table_row(
+              array(
+                     'espacio' => '<b><u>Personas</u></b>',
+                     'cantidad' => '',
+                     'funciones' => '',
+
+                  )
+              ); 
+         
+
+            $pdf_doc->save_table(
+               array(
+                
+                   'cols' => array(
+                       'espacio' => array('justification' => 'left'),
+                       'cantidad' => array('justification' => 'left'),
+                       'funciones' => array('justification' => 'left'),
+                   ),
+                   'showLines' => 0,
+                   'width' => 550,
+                   'shaded' => 2
+
+               )
+            
+              ); 
+
+            $pdf_doc->new_table();         
+            $pdf_doc->add_table_row(
+                  array(
+                     'espacio' => '<b><u>Tiempo de despeje y control de PI: </u></b>',
+                     'funciones' => '<b></b>',
+
+                  )
+
+               );
+            $pdf_doc->add_table_row(
+                  array(
+                     'espacio' => '<b><u>observaciones:   </u></b>'.$this->servicio->observaciones,
+                     'funciones' => ''
+
+                  )
+
+               );
+
+            $pdf_doc->save_table(
+               array(
+                
+                   'cols' => array(
+                       'espacio' => array('justification' => 'left'),
+                       'cantidad' => array('justification' => 'left'),
+                       'funciones' => array('justification' => 'left'),
+                   ),
+
+                   'showLines' => 0,
+                   'width' => 550,
+                   'shaded' => 0
+
+               )
+            
+              ); 
+          $pdf_doc->pdf->ezNewPage();
+          $pdf_doc->pdf->ezImage('tmp/'.FS_TMP_NAME.'logo.png', 0, 520, 'none', 'left');
+
+                  $pdf_doc->pdf->ezText("<b>Policía de la Provincia de Santa Cruz </b>", 8, array('justification' => 'center'));
+               $pdf_doc->pdf->ezText("<b>Sección Fuerzas Especiales\n\n\n</b>", 8, array('justification' => 'center'));
+          $pdf_doc->new_table();      
+          $pdf_doc->add_table_header(
+                  array(
+                    'jerarquia' => 'jerarquia',
+                    'nombre' => 'nombre',
+                    'funcion' => 'funcion'
+
+                  )
+
+               );   
+            $pdf_doc->add_table_row(
+                  array(
+                    'jerarquia' => 'asd',
+                    'nombre' => 'asd',
+                    'funcion' => 'asd'
+
+                  )
+
+               );
+
+            $pdf_doc->save_table(
+               array(
+                
+                   'cols' => array(
+                       'jerarquia' => array('justification' => 'left'),
+                       'nombre' => array('justification' => 'left'),
+                       'funcion' => array('justification' => 'left'),
+                   ),
+                   'showLines' => 1,
+                   'width' => 550,
+                   'shaded' => 3
+
+               )
+            
+              ); 
+           
       
       $lineas = $this->servicio->get_lineas();
       $lineas_iva = $this->get_lineas_iva($lineas);
@@ -450,9 +698,9 @@ class imprimir_servicioi extends fs_controller
             $this->cliente->save();
          }
          
-         $filename = 'servicio_' . $this->servicio->codigo . '.pdf';
-         $this->generar_pdf_servicio($filename);
-         if (file_exists('tmp/' . FS_TMP_NAME.'enviar/'.$filename) )
+        
+       
+         if (file_exists('tmp/' . FS_TMP_NAME.'enviar/') )
          {
             $mail = new PHPMailer();
             $mail->CharSet = 'UTF-8';
@@ -494,15 +742,16 @@ class imprimir_servicioi extends fs_controller
             $mail->AltBody = $_POST['mensaje'];
             $mail->msgHTML(nl2br($_POST['mensaje']));
             $mail->isHTML(TRUE);
+            $mail->addAttachment('tmp/' . FS_TMP_NAME . 'enviar/');
             if (is_uploaded_file($_FILES['adjunto']['tmp_name']))
             {
                $mail->addAttachment($_FILES['adjunto']['tmp_name'], $_FILES['adjunto']['name']);
             }
-            if (is_uploaded_file($_FILES['adjunto1']['tmp_name']))
+             if (is_uploaded_file($_FILES['adjunto1']['tmp_name']))
             {
                $mail->addAttachment($_FILES['adjunto1']['tmp_name'], $_FILES['adjunto1']['name']);
             }
-            if (is_uploaded_file($_FILES['adjunto2']['tmp_name']))
+             if (is_uploaded_file($_FILES['adjunto2']['tmp_name']))
             {
                $mail->addAttachment($_FILES['adjunto2']['tmp_name'], $_FILES['adjunto2']['name']);
             }
@@ -533,7 +782,7 @@ class imprimir_servicioi extends fs_controller
             else
                $this->new_error_msg("Error al enviar el email: " . $mail->ErrorInfo);
             
-            unlink('tmp/'.FS_TMP_NAME.'enviar/'.$filename);
+            unlink();
          }
          else
             $this->new_error_msg('Imposible generar el PDF.');
@@ -548,7 +797,7 @@ class imprimir_servicioi extends fs_controller
       $newt = str_replace('&#39;', "'", $newt);
       return $newt;
    }
-   
+  
    private function get_lineas_iva($lineas)
    {
       $retorno = array();

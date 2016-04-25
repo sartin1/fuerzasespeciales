@@ -18,6 +18,7 @@ require_model('tarifa.php');
 require_model('estado_servicioi.php');
 require_model('fabricante.php');
 
+
 class nuevo_intervencion extends fs_controller
 {
    public $agente;
@@ -34,6 +35,14 @@ class nuevo_intervencion extends fs_controller
    public $results;
    public $serie;
    public $descripcion;
+   public $alsr;
+   public $delint;
+   public $jefe;
+   public $juez;
+   public $secretaria;
+   public $oficion;
+   public $brecha;
+   public $tiempodd;
    public $solucion;
    public $material;
    public $material_estado;
@@ -50,6 +59,8 @@ class nuevo_intervencion extends fs_controller
    public $fabricante;
    public $brprincipal;
    public $braux;
+   public $nomyape;
+   public $funcions;
    public $manual;
    public $mecanica;
    public $balistica;
@@ -162,6 +173,8 @@ class nuevo_intervencion extends fs_controller
       $this->descripcion = NULL;
       $this->brprincipal = NULL;
       $this->braux = NULL;
+      $this->nomyape = NULL;
+      $this->funcions = NULL;
       $this->manual = NULL;
       $this->mecanica = NULL;
       $this->balistica = NULL;
@@ -174,6 +187,15 @@ class nuevo_intervencion extends fs_controller
       $this->balisiticascant = NULL;
       $this->tipocart = NULL;
       $this->solucion = NULL;
+      $this->alsr = NULL;
+      $this->delint = NULL;
+      $this->jefe = NULL;
+      $this->juez = NULL;
+      $this->secretaria = NULL;
+      $this->oficion = NULL;
+      $this->mision = NULL;
+      $this->brecha = NULL;
+      $this->tiempodd = NULL;
       $this->prioridad = 3;
       $this->material = NULL;
       $this->material_estado = NULL;
@@ -453,6 +475,7 @@ class nuevo_intervencion extends fs_controller
          }
       }
       
+      
       /// buscamos el grupo de clientes y la tarifa
       if( isset($_REQUEST['codcliente']) )
       {
@@ -619,6 +642,43 @@ class nuevo_intervencion extends fs_controller
          {
             $servicio->solucion = $_POST['solucion'];
          }
+         if( isset($_POST['alsr']) )
+         {
+            $servicio->alsr = $_POST['alsr'];
+         }
+         if( isset($_POST['delint']) )
+         {
+            $servicio->delint = $_POST['delint'];
+         }
+         if( isset($_POST['jefe']) )
+         {
+            $servicio->jefe = $_POST['jefe'];
+         }
+         if( isset($_POST['juez']) )
+         {
+            $servicio->juez = $_POST['juez'];
+         }
+         if( isset($_POST['secretaria']) )
+         {
+            $servicio->secretaria = $_POST['secretaria'];
+         }
+         if( isset($_POST['oficion']) )
+         {
+            $servicio->oficion = $_POST['oficion'];
+         }
+         if( isset($_POST['mision']) )
+         {
+            $servicio->mision = $_POST['mision'];
+         }
+         if( isset($_POST['brecha']) )
+         {
+            $servicio->brecha = $_POST['brecha'];
+         }
+         if( isset($_POST['tiempodd']) )
+         {
+            $servicio->tiempodd = $_POST['tiempodd'];
+         }
+         
          if( isset($_POST['brprincipal']) )
          {
             $servicio->brprincipal = $_POST['brprincipal'];
@@ -626,6 +686,14 @@ class nuevo_intervencion extends fs_controller
          if( isset($_POST['braux']) )
          {
             $servicio->braux = $_POST['braux'];
+         }
+         if( isset($_POST['nomyape']) )
+         {
+            $servicio->nomyape = $_POST['nomyape'];
+         }
+         if( isset($_POST['funcions']) )
+         {
+            $servicio->funcions = $_POST['funcions'];
          }
          if( isset($_POST['repconf']) )
          {

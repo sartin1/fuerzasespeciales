@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Document   : agentes.xml
+    Description:
+        Estructura de la tabla agentes.
+-->
+<tabla>
+   <columna>
+      <nombre>apellidos</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>NO</nulo>
+   </columna>
+   <columna>
+      <nombre>ciudad</nombre>
+      <tipo>character varying(50)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>codagente</nombre>
+      <tipo>character varying(10)</tipo>
+      <nulo>NO</nulo>
+   </columna>
+   <columna>
+      <nombre>coddepartamento</nombre>
+      <tipo>character varying(6)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>codpais</nombre>
+      <tipo>character varying(20)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>codpostal</nombre>
+      <tipo>character varying(10)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>direccion</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>dnicif</nombre>
+      <tipo>character varying(15)</tipo>
+      <nulo>NO</nulo>
+   </columna>
+   <columna>
+      <nombre>email</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>fax</nombre>
+      <tipo>character varying(15)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>idprovincia</nombre>
+      <tipo>integer</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>idusuario</nombre>
+      <tipo>character varying(30)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>irpf</nombre>
+      <tipo>double precision</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>nombre</nombre>
+      <tipo>character varying(50)</tipo>
+      <nulo>NO</nulo>
+   </columna>
+   <columna>
+      <nombre>nombreap</nombre>
+      <tipo>character varying(150)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>porcomision</nombre>
+      <tipo>double precision</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>provincia</nombre>
+      <tipo>character varying(50)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>telefono</nombre>
+      <tipo>character varying(15)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>seg_social</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>tipodocumento</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>cedulaid</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>exppor</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>prontuario</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>estatura</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>contextfis</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>cutis</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>cabellotipo</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>cabellocolor</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>ojostipo</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>ojoscolor</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>    
+   <columna>
+      <nombre>pasaporte</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>estadocivil</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>fcasamiento</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>serviciomilitar</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>lugarcumplimiento</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>estudios</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>  
+   <columna>
+      <nombre>oficios</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna> 
+   <columna>
+      <nombre>fecha</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna> 
+   <columna>
+      <nombre>decreto</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna> 
+   <columna>
+      <nombre>nagente</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna> 
+   <columna>
+      <nombre>credencial</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna> 
+   <columna>
+      <nombre>armpr</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>otrasarmas</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna> 
+   <columna>
+      <nombre>obs</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>obs1</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>fechagoe</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>motivogoe</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>   
+   <columna>
+      <nombre>practicaart</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>   
+   <columna>
+      <nombre>antpgoe</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>   
+   <columna>
+      <nombre>claustr</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>   
+   <columna>
+      <nombre>sufrvert</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>   
+   <columna>
+      <nombre>sabna</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>   
+   <columna>
+      <nombre>sabcon</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>   
+   <columna>
+      <nombre>conpa</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>   
+   <columna>
+      <nombre>carasalt</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>   
+   <columna>
+      <nombre>cargo</nombre>
+      <tipo>character varying(100)</tipo>
+      <nulo>YES</nulo>
+   </columna>       
+   <columna>
+      <nombre>banco</nombre>
+      <tipo>character varying(34)</tipo>
+   </columna>
+   <columna>
+      <nombre>f_alta</nombre>
+      <tipo>date</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>f_baja</nombre>
+      <tipo>date</tipo>
+      <nulo>YES</nulo>
+   </columna>
+   <columna>
+      <nombre>f_nacimiento</nombre>
+      <tipo>date</tipo>
+      <nulo>YES</nulo>
+   </columna>          
+   <restriccion>
+      <nombre>agentes_pkey</nombre>
+      <consulta>PRIMARY KEY (codagente)</consulta>
+   </restriccion>
+</tabla>

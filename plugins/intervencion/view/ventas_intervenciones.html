@@ -100,11 +100,7 @@
                <span class="glyphicon glyphicon-plus"></span>
                <span class="hidden-xs">&nbsp; Nuevo</span>
             </a>
-            {loop="$fsc->extensions"}
-               {if="$value->type=='button'"}
-               <a href="index.php?page={$value->from}{$value->params}" class="btn btn-sm btn-default">{$value->text}</a>
-               {/if}
-            {/loop}<a class="btn btn-sm btn-default" href="index.php?page=ventas_intervencionimprimir">
+    <a class="btn btn-sm btn-default" href="index.php?page=ventas_intervencionimprimir">
                <span class="glyphicon glyphicon-print"></span>
                <span class="hidden-xs">&nbsp; Imprimir lista personalizada</span>
             </a>
@@ -355,22 +351,17 @@
       </tr>
       {else}
       <tr class="warning">
-         <td></td>
          <td colspan="9">Ningún {#FS_SERVICIO#} encontrado. Pulsa el botón <b>Nuevo</b> para crear uno.</td>
       </tr>
       {/loop}
       {if="$fsc->total_resultados!==''"}
       <tr>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
-         <td></td>
+
          {if="$fsc->servicios_setup['servicios_mostrar_material']"}
-         <td></td>
+
          {/if}
 
-         <td></td>
+
          {if="$fsc->servicios_setup['servicios_mostrar_fechainicio']"}
          <td></td>
          {/if}

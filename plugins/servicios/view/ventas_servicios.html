@@ -100,11 +100,7 @@
                <span class="glyphicon glyphicon-plus"></span>
                <span class="hidden-xs">&nbsp; Nuevo</span>
             </a>
-            {loop="$fsc->extensions"}
-               {if="$value->type=='button'"}
-               <a href="index.php?page={$value->from}{$value->params}" class="btn btn-sm btn-default">{$value->text}</a>
-               {/if}
-            {/loop}<a class="btn btn-sm btn-default" href="index.php?page=ventas_serviciosimprimir">
+           <a class="btn btn-sm btn-default" href="index.php?page=ventas_serviciosimprimir">
                <span class="glyphicon glyphicon-print"></span>
                <span class="hidden-xs">&nbsp; Imprimir lista personalizada</span>
             </a>

@@ -288,23 +288,25 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Lado Blanco</div>
+                           <div class="panel-body">
                                {$fsc->servicio->material}
-                        </div>
+                        </div></div>
                       </div>
                   </div>
                   <div class="col-sm-3">
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Lado Negro</div>
+                           <div class="panel-body">
                            {$fsc->servicio->material_estado}
-                        </div>
+                        </div></div>
                       </div>
                   </div>
                   <div class="col-sm-3">
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Lado Rojo</div>
-                           {$fsc->servicio->accesorios}
+                           <div class="panel-body"> {$fsc->servicio->accesorios}</div>
                         </div>
                       </div>
                   </div>
@@ -312,7 +314,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Lado Verde</div>
-                           {$fsc->servicio->descripcion}
+                           <div class="panel-body"> {$fsc->servicio->descripcion}</div>
                         </div>
                       </div>
                   </div>
@@ -321,7 +323,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Brechero principal</div>
-                           {$fsc->servicio->brprincipal}
+                           <div class="panel-body"> {$fsc->servicio->brprincipal}</div>
                         </div>
                       </div>
                   </div>
@@ -329,7 +331,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Brechero Auxiliar</div>
-                           {$fsc->servicio->braux}
+                           <div class="panel-body"> {$fsc->servicio->braux}</div>
                         </div>
                       </div>
                   </div>
@@ -341,7 +343,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Manual</div>
-                           {$fsc->servicio->manual}
+                            <div class="panel-body">{$fsc->servicio->manual}</div>
                         </div>
                       </div>
                   </div>
@@ -350,7 +352,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Mecánica</div>
-                           {$fsc->servicio->mecanica}
+                            <div class="panel-body">{$fsc->servicio->mecanica}</div>
                         </div>
                       </div>
                   </div>
@@ -359,7 +361,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Balística</div>
-                           {$fsc->servicio->balistica}
+                           <div class="panel-body"> {$fsc->servicio->balistica}</div>
                         </div>
                       </div>
                   </div>
@@ -369,7 +371,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Explosiva</div>
-                           {$fsc->servicio->explosiva}
+                            <div class="panel-body">{$fsc->servicio->explosiva}</div>
                         </div>
                       </div>
                   </div>
@@ -377,7 +379,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Especial</div>
-                           {$fsc->servicio->especial}
+                           <div class="panel-body"> {$fsc->servicio->especial}</div>
                         </div>
                       </div>
                   </div>
@@ -385,8 +387,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">Combinada</div>
-
-                           {$fsc->servicio->combinada}
+                            <div class="panel-body">{$fsc->servicio->combinada}</div>
                         </div>
                       </div>
                   </div>
@@ -398,7 +399,7 @@
                      <div class="form-group">
                         <div class="panel panel-default">
                           <div class="panel-heading text-center">¿Funcionó conforme a lo acordado?</div>
-                         <div class="row" style="margin-left: 20px;margin-top: 20px;margin-bottom: 20px">
+                          <div class="panel-body">
                            {$fsc->servicio->repconf}
                         </div></div>
                       </div>
@@ -409,16 +410,18 @@
                           <div class="panel-heading text-center">Reporte de apertura</div>
                            <div class="row" style="margin-left: 20px">
                            <div class="form-group" ><strong><h4>observaciones</h4></strong>
-                              {$fsc->servicio->obsapertura}
+                              <div class="panel-body"> {$fsc->servicio->obsapertura}</div>
                             </div><hr style="width: 700px;color: #000;"></div> 
                             <div class="row">
-                            <div class="col-sm-3" style="margin-left:20px;">
+                            <div class="col-sm-3" >
+                            <div class="panel-body"> 
                               <strong>Cantidad de arietasos:</strong> {$fsc->servicio->arietasoscant}
-                              </div>
+                              </div></div>
                             
-                            <div class="col-sm-3" style="margin-left:20px;">
+                            <div class="col-sm-3" >
+                            <div class="panel-body"> 
                               <strong>Cantidad balísticas:</strong> {$fsc->servicio->balisiticascant}
-                              </div>
+                              </div></div>
                            </div>   
                         </div>
                       </div>

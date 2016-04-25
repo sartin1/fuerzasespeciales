@@ -1,6 +1,5 @@
 <?php
 
-
 require_model('agente.php');
 
 class admin_agentes extends fs_controller

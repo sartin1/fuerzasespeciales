@@ -11,6 +11,7 @@ require_model('cliente.php');
 require_model('linea_servicio_clientei.php');
 require_model('secuencia.php');
 require_model('estado_servicioi.php');
+require_model('personas_servicioi.php');
 
 /**
  * Servicio de cliente
@@ -189,6 +190,16 @@ class servicio_clientei extends fs_model
    public $descripcion;
    
    public $solucion;
+
+   public $alsr;
+   public $delint;
+   public $jefe;
+   public $juez;
+   public $secretaria;
+   public $oficion;
+   public $mision;
+   public $brecha;
+   public $tiempodd;
    
    public $material;
    
@@ -282,7 +293,17 @@ class servicio_clientei extends fs_model
          $this->totalrecargo = floatval($s['totalrecargo']);
          $this->observaciones = $s['observaciones'];
          $this->descripcion = $s['descripcion'];
+         $this->alsr = $s['alsr'];
+         $this->delint = $s['delint'];
+         $this->jefe = $s['jefe'];
+         $this->juez = $s['juez'];
+         $this->secretaria = $s['secretaria'];
+         $this->oficion = $s['oficion'];
+         $this->mision = $s['mision'];
+         $this->brecha = $s['brecha'];
+         $this->tiempodd = $s['tiempodd'];
          $this->solucion = $s['solucion'];
+         
          $this->braux = $s['braux'];
          $this->repconf = $s['repconf'];
          $this->obsapertura = $s['obsapertura'];
@@ -361,6 +382,15 @@ class servicio_clientei extends fs_model
          $this->observaciones = NULL;
          $this->descripcion = NULL;
          $this->solucion = NULL;
+         $this->alsr = NULL;
+         $this->delint = NULL;
+         $this->jefe = NULL;
+         $this->juez = NULL;
+         $this->secretaria = NULL;
+         $this->oficion = NULL;
+         $this->mision = NULL;
+         $this->brecha = NULL;
+         $this->tiempodd = NULL;
          $this->brprincipal = NULL;
          $this->braux= NULL;
          $this->obsapertura= NULL;
@@ -631,6 +661,15 @@ class servicio_clientei extends fs_model
                     .", prioridad = " . $this->var2str($this->prioridad)
                     .", descripcion = " . $this->var2str($this->descripcion)
                     .", solucion = " . $this->var2str($this->solucion)
+                    .", alsr = " . $this->var2str($this->alsr)
+                    .", delint = " . $this->var2str($this->delint)
+                    .", jefe = " . $this->var2str($this->jefe)
+                    .", secretaria = " . $this->var2str($this->secretaria)
+                    .", oficion = " . $this->var2str($this->oficion)
+                    .", brecha = " . $this->var2str($this->brecha)
+                    .", mision = " . $this->var2str($this->mision)
+                    .", tiempodd = " . $this->var2str($this->tiempodd)
+                    .", solucion = " . $this->var2str($this->solucion)
                     .", brprincipal = " . $this->var2str($this->brprincipal)
                     .", braux= " . $this->var2str($this->braux)
                     .", repconf= " . $this->var2str($this->repconf)
@@ -668,7 +707,7 @@ class servicio_clientei extends fs_model
                direccion,fecha,hora,idalbaran,irpf,neto,nombrecliente,numero,observaciones,
                porcomision,fechafin,fechainicio,garantia,provincia,recfinanciero,tasaconv,
                total,totaleuros,totalirpf,totaliva,totalrecargo,descripcion,solucion,material,
-               material_estado,accesorios,prioridad,numero2,idestado,editable,horainicio,horafin,femail,braux,brprincipal,manual,mecanica,balistica,especial,explosiva,combinada,repconf,obsapertura,arietasoscant,balisiticascant,tipocart) VALUES (" . $this->var2str($this->apartado)
+               material_estado,accesorios,prioridad,numero2,idestado,horainicio,horafin,femail,braux,brprincipal,manual,mecanica,balistica,especial,explosiva,combinada,repconf,obsapertura,arietasoscant,balisiticascant,tipocart,alsr,delint,jefe,juez,secretaria,oficion,mision,brecha,editable,tiempodd) VALUES (" . $this->var2str($this->apartado)
                     . "," . $this->var2str($this->cifnif)
                     . "," . $this->var2str($this->ciudad)
                     . "," . $this->var2str($this->codagente)
@@ -705,6 +744,16 @@ class servicio_clientei extends fs_model
                     . "," . $this->var2str($this->totalrecargo)
                     . "," . $this->var2str($this->descripcion)
                     . "," . $this->var2str($this->solucion)
+                    . "," . $this->var2str($this->material)
+                    . "," . $this->var2str($this->material_estado)
+                    . "," . $this->var2str($this->accesorios)
+                    . "," . $this->var2str($this->prioridad)
+                    . "," . $this->var2str($this->numero2)
+                    . "," . $this->var2str($this->idestado)
+                    . "," . $this->var2str($this->editable)
+                    . "," . $this->var2str($horaini)
+                    . "," . $this->var2str($horafin)
+                    . "," . $this->var2str($this->femail)
                     . "," . $this->var2str($this->braux)
                     . "," . $this->var2str($this->repconf)
                     . "," . $this->var2str($this->obsapertura)
@@ -718,16 +767,17 @@ class servicio_clientei extends fs_model
                     . "," . $this->var2str($this->explosiva)
                     . "," . $this->var2str($this->combinada)
                     . "," . $this->var2str($this->brprincipal)
-                    . "," . $this->var2str($this->material)
-                    . "," . $this->var2str($this->material_estado)
-                    . "," . $this->var2str($this->accesorios)
-                    . "," . $this->var2str($this->prioridad)
-                    . "," . $this->var2str($this->numero2)
-                    . "," . $this->var2str($this->idestado)
-                    . "," . $this->var2str($this->editable)
-                    . "," . $this->var2str($horaini)
-                    . "," . $this->var2str($horafin)
-                    . "," . $this->var2str($this->femail).");";
+                    . "," . $this->var2str($this->alsr)
+                    . "," . $this->var2str($this->delint)
+                    . "," . $this->var2str($this->jefe)
+                    . "," . $this->var2str($this->juez)
+                    . "," . $this->var2str($this->secretaria)
+                    . "," . $this->var2str($this->oficion)
+                    . "," . $this->var2str($this->mision)
+                    . "," . $this->var2str($this->brecha)
+                    . "," . $this->var2str($this->tiempodd)
+                    
+                    .");";
             
             if( $this->db->exec($sql) )
             {
@@ -905,6 +955,45 @@ class servicio_clientei extends fs_model
               . "WHERE idservicioi = ".$this->var2str($this->idservicioi).";";
       
       if( $this->db->table_exists('detalles_serviciosi') )
+      {
+         $result = $this->db->select($sql);
+         if($result)
+         {
+            $num = intval($result[0]['num']);
+         }
+      }
+      
+      return $num;
+   }
+   public function listar_servicio_persona()
+   {
+      $persona = new personas_servicioi();
+      return $persona->all_from_servicio($this->servicio->idservicioi);
+   }
+   public function num_personas()
+   {
+      $num = 0;
+      $sql = "SELECT count(*) as num FROM personas_servicioi "
+              . "WHERE idservicioi = ".$this->var2str($this->idservicioi).";";
+      
+      if( $this->db->table_exists('personas_servicioi') )
+      {
+         $result = $this->db->select($sql);
+         if($result)
+         {
+            $num = intval($result[0]['num']);
+         }
+      }
+      
+      return $num;
+   }
+    public function num_operadores()
+   {
+      $num = 0;
+      $sql = "SELECT count(*) as num FROM operadores_servicioi "
+              . "WHERE idservicioi = ".$this->var2str($this->idservicioi).";";
+      
+      if( $this->db->table_exists('operadores_servicioi') )
       {
          $result = $this->db->select($sql);
          if($result)

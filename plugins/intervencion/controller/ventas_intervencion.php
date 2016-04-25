@@ -16,6 +16,9 @@ require_model('serie.php');
 require_model('estado_servicioi.php');
 require_model('detalle_servicioi.php');
 require_model('fabricante.php');
+require_model('personas_servicioi.php');
+require_model('operadores_servicioi.php');
+
 
 class ventas_intervencion extends fs_controller
 {
@@ -49,6 +52,7 @@ class ventas_intervencion extends fs_controller
       $this->ppage = $this->page->get('ventas_intervenciones');
       $this->agente = FALSE;
       $this->estado = new estado_servicioi();
+
       $servicio = new servicio_clientei();
       $this->servicio = FALSE;
       $this->cliente = new cliente();
@@ -93,7 +97,23 @@ class ventas_intervencion extends fs_controller
          ),
          FALSE
       );
-      
+      if( isset($_POST['codope']) ) /// añadir/modificar domicilios anteriores
+      {
+         $dir = new agente_opera();
+         if($_POST['codope'] != '')
+         {
+            $dir = $dir->get($_POST['codope']);
+         }
+         $dir->nomyape = $_POST['nomyape'];
+         $dir->idservicio = $this->servicio->idservicio;
+         $dir->funcion = $_POST['funcion'];
+         if( $dir->save() )
+         {
+            $this->new_message("Datos guardados correctamente.");
+         }
+         else
+            $this->new_message("¡Imposible guardar!");
+      } 
       /*Cargamos traduccion*/
       $this->st = $fsvar->array_get(
          array(
@@ -115,6 +135,38 @@ class ventas_intervencion extends fs_controller
        * Comprobamos si el usuario tiene acceso a nueva_venta,
        * necesario para poder añadir líneas.
        */
+      if( isset($_GET['delete_operador']) )
+      {
+         $det0 = new operadores_servicioi();
+         $detalle = $det0->get($_GET['delete_operador']);
+         if($detalle)
+         {
+            if( $detalle->delete() )
+            {
+               $this->new_message('Detalle eliminado correctamente.');
+            }
+            else
+               $this->new_error_msg('Error al eliminar el detalle.');
+         }
+         else
+            $this->new_error_msg('Detalle no encontrado.');
+      }
+       if( isset($_GET['delete_persona']) )
+      {
+         $det0 = new personas_servicioi();
+         $detalle = $det0->get($_GET['delete_persona']);
+         if($detalle)
+         {
+            if( $detalle->delete() )
+            {
+               $this->new_message('Detalle eliminado correctamente.');
+            }
+            else
+               $this->new_error_msg('Error al eliminar el detalle.');
+         }
+         else
+            $this->new_error_msg('Detalle no encontrado.');
+      }
       if( isset($_GET['delete_detalle']) )
       {
          $det0 = new detalle_servicioi();
@@ -156,6 +208,14 @@ class ventas_intervencion extends fs_controller
          if( isset($_POST['detalle']) )
          {
             $this->agrega_detalle();
+         }
+         if( isset($_POST['nombreyap']) )
+         {
+            $this->agrega_persona();
+         }
+         if( isset($_POST['name']) )
+         {
+            $this->agrega_operador();
          }
 
          /// cargamos el agente
@@ -217,6 +277,42 @@ class ventas_intervencion extends fs_controller
       {
          $this->servicio->solucion = $_POST['solucion'];
       }
+     if( isset($_POST['alsr']) )
+         {
+            $servicio->alsr = $_POST['alsr'];
+         }
+         if( isset($_POST['delint']) )
+         {
+            $servicio->delint = $_POST['delint'];
+         }
+         if( isset($_POST['jefe']) )
+         {
+            $servicio->jefe = $_POST['jefe'];
+         }
+         if( isset($_POST['juez']) )
+         {
+            $servicio->juez = $_POST['juez'];
+         }
+         if( isset($_POST['secretaria']) )
+         {
+            $servicio->secretaria = $_POST['secretaria'];
+         }
+         if( isset($_POST['oficion']) )
+         {
+            $servicio->oficion = $_POST['oficion'];
+         }
+         if( isset($_POST['mision']) )
+         {
+            $servicio->mision = $_POST['mision'];
+         }
+         if( isset($_POST['brecha']) )
+         {
+            $servicio->brecha = $_POST['brecha'];
+         }
+         if( isset($_POST['tiempodd']) )
+         {
+            $servicio->tiempodd = $_POST['tiempodd'];
+         }
       if( isset($_POST['brprincipal']) )
       {
          $this->servicio->brprincipal = $_POST['brprincipal'];
@@ -657,12 +753,61 @@ class ventas_intervencion extends fs_controller
       $detalle = new detalle_servicioi();
       return $detalle->all_from_servicio($this->servicio->idservicioi);
    }
+   public function listar_servicio_persona()
+   {
+      $detalle = new personas_servicioi();
+      return $detalle->all_from_servicio($this->servicio->idservicioi);
+   }
+   public function listar_servicio_opera()
+   {
+      $detalle = new operadores_servicioi();
+      return $detalle->all_from_servicio($this->servicio->idservicioi);
+   }
    
    private function agrega_detalle()
    {
       $detalle = new detalle_servicioi
       ();
       $detalle->descripcion = $_POST['detalle'];
+      $detalle->idservicioi = $this->servicio->idservicioi;
+      $detalle->nick = $this->user->nick;
+      
+      if( $detalle->save() )
+      {
+         $this->new_message('Detalle guardados correctamente.');
+      }
+      else
+      {
+         $this->new_error_msg('Imposible guardar el detalle.');
+      }
+   }
+   private function agrega_persona()
+   {
+      $detalle = new personas_servicioi
+      ();
+      $detalle->nombreyap = $_POST['nombreyap'];
+      $detalle->edad = $_POST['edad'];
+      $detalle->domici = $_POST['domici'];
+      $detalle->dni = $_POST['dni'];
+      $detalle->idservicioi = $this->servicio->idservicioi;
+      $detalle->nick = $this->user->nick;
+      
+      if( $detalle->save() )
+      {
+         $this->new_message('Detalle guardados correctamente.');
+      }
+      else
+      {
+         $this->new_error_msg('Imposible guardar el detalle.');
+      }
+   }
+   private function agrega_operador()
+   {
+      $detalle = new operadores_servicioi
+      ();
+      $detalle->name = $_POST['name'];
+      $detalle->funcion = $_POST['funcion'];
+      $detalle->cargo = $_POST['cargo'];
       $detalle->idservicioi = $this->servicio->idservicioi;
       $detalle->nick = $this->user->nick;
       

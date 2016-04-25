@@ -18,7 +18,7 @@
  */
 
 require_once 'plugins/facturacion_base/extras/ezpdf/Cezpdf.php';
-
+require_once 'plugins/facturacion_base/extras/ezpdf/Cpdf.php';
 /**
  * Permite la generación de PDFs algo más sencilla.
  */

@@ -12,8 +12,76 @@
          }
       });
    });
+
 </script>
 
+<script>
+function allowDrop(ev) {
+    ev.preventDefault();
+}
+
+function drag(ev) {
+    ev.dataTransfer.setData("text", ev.target.id);
+}
+
+function drop(ev) {
+    ev.preventDefault();
+    var data = ev.dataTransfer.getData("text");
+    ev.target.appendChild(document.getElementById(data));
+}
+
+      $(document).ready(function() {
+      
+      if(window.location.hash.substring(1) == 'paginas')
+      {
+         $('#tab_panel_control a[href="#t_paginas"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'curr')
+      {
+         $('#tab_panel_control a[href="#t_curr"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'seminarios')
+      {
+         $('#tab_panel_control a[href="#t_seminarios"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'disertaciones')
+      {
+         $('#tab_panel_control a[href="#t_disertaciones"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'jornadas')
+      {
+         $('#tab_panel_control a[href="#t_jornadas"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'conferencia')
+      {
+         $('#tab_panel_control a[href="#t_conferencia"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'domicilios')
+      {
+         $('#tab_panel_control a[href="#t_domicilios"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'familiares')
+      {
+         $('#tab_panel_control a[href="#t_familiares"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'academias')
+      {
+         $('#tab_panel_control a[href="#t_academias"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'ingreso')
+      {
+         $('#tab_panel_control a[href="#t_ingreso"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'ingresogoe')
+      {
+         $('#tab_panel_control a[href="#t_ingresogoe"]').tab('show');
+      }
+      else if(window.location.hash.substring(1) == 'armas')
+      {
+         $('#tab_panel_control a[href="#t_armas"]').tab('show');
+      }
+   });
+</script>
 <div class="container-fluid">
    <div class="row" style="margin-top: 10px; margin-bottom: 10px;">
       <div class="col-sm-4 col-xs-3">
@@ -24,9 +92,82 @@
             <span class="glyphicon glyphicon-arrow-left"></span>
             <span class="hidden-xs">&nbsp; Empleados</span>
          </a>
+         
+         <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+         <span class="glyphicon glyphicon-print"></span>
+             &nbsp; Imprimir <span class="caret"></span>
+                  </button>
+                  <ul class="dropdown-menu" style="margin-left: 170px;">
+                  <li>
+                     <a href="index.php?page=imprimir_agente&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                        &nbsp; Imprimir Ficha individual
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agentefam&cod={$fsc->agente->codagente}" target="_blank">
+                     <span class="glyphicon glyphicon-print"></span>
+                    &nbsp; Anexo 01 - Familiares y amistades
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agentedom&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                        &nbsp; Anexo 02 - Domicilios Anteriores
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agentecur&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                        &nbsp; Anexo 04 - Cursos Realizados
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agentesem&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                       &nbsp; Anexo 04 - Seminarios a los que asístió
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agentecon&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                      &nbsp; Anexo 04 - Conferencias a las que asistio
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agentejor&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                      &nbsp; Anexo 04 - Jornadas a las que asistio
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agentedis&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                      &nbsp; Anexo 04 - Disertaciones dictadas
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agenteaca&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                      &nbsp; Anexo 04 - Cursos y academias dictadas
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agenteing&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                      &nbsp; Ingreso a la institución
+                     </a>
+                  </li>
+                  <li>
+                     <a href="index.php?page=imprimir_agenteinggoe&cod={$fsc->agente->codagente}" target="_blank">
+                        <span class="glyphicon glyphicon-print"></span>
+                      &nbsp; Ingreso al G.O.E
+                     </a>
+                  </li>
+                  </ul>
       </div>
       <div class="col-sm-4 col-xs-6 text-center">
-         <h2 style="margin-top: 0px;">Editar empleado</h2>
+         <h2 style="margin-top: 0px;">Editar Efectivo Policial</h2>
       </div>
       <div class="col-sm-4 col-xs-3 text-right">
          <a class="btn btn-sm btn-success" href="index.php?page=admin_agentes#nuevo" title="Nuevo empleado">
@@ -41,6 +182,95 @@
       </div>
    </div>
    <div class="row">
+      
+   </div>
+</div>
+
+<!--ACA EMPIEZAN LAS ETIQUETAS DE PESTAÑAS-->  
+
+   <div id="tab_panel_control" role="tabpanel">
+   <ul class="nav nav-tabs" role="tablist">
+      <li role="presentation" class="active">
+         <a href="#usuarios" aria-controls="usuarios" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-user" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp;Datos Generales</span>
+         </a>
+      </li>
+            <li role="presentation">
+         <a href="#t_ingreso" aria-controls="t_ingreso" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp;Ingreso a la institución</span>
+         </a>
+      </li>
+      <li role="presentation">
+         <a href="#t_ingresogoe" aria-controls="t_ingresogoe" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp;Ingreso al G.O.E</span>
+         </a>
+      </li>
+      <li role="presentation">
+         <a href="#t_armas" aria-controls="t_armas" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            Armas
+         </a>
+      </li>
+      <li role="presentation" > 
+         <a href="#t_familiares"  aria-controls="t_familiares" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp;Familiares y amistades</span>
+         </a>
+      </li>
+      <li role="presentation">
+         <a href="#t_domicilios" aria-controls="historial" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp; Domicilios anteriores</span>
+         </a>
+      </li>
+       <li role="presentation">
+         <a href="#t_curr" aria-controls="curr" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp; Cursos realizados</span>
+         </a>
+      </li>
+       <li role="presentation">
+         <a href="#t_seminarios" aria-controls="t_seminarios" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp;Seminarios asistidos</span>
+         </a>
+      </li>
+      <li role="presentation">
+         <a href="#t_conferencia" aria-controls="t_conferencia" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp;Conferencias asistidas</span>
+         </a>
+      </li>
+      <li role="presentation">
+         <a href="#t_jornadas" aria-controls="t_jornadas" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp;Jornadas asistidas</span>
+         </a>
+      </li>
+      <li role="presentation">
+         <a href="#t_disertaciones" aria-controls="t_disertaciones" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp;Disertaciones asistidas</span>
+         </a>
+      </li>
+      <li role="presentation">
+         <a href="#t_academias" aria-controls="t_academias" role="tab" data-toggle="tab">
+            <span class="glyphicon glyphicon-book" aria-hidden="true"></span>
+            <span class="hidden-xs">&nbsp;Cursos y Academias dictadas</span>
+         </a>
+      </li>
+      
+   </ul>
+
+<!--ACA TERMINAN LAS ETIQUETAS DE PESTAÑAS--> 
+
+<!--ACA EMPIEZA DATOS GENERALES-->  
+   
+   <div class="tab-content">
+      <div role="tabpanel" class="tab-pane active" id="usuarios">
       <div class="col-lg-2 col-md-3 col-sm-3">
          <div class="list-group">
             <a id="b_generales" href="{$fsc->url()}" class="list-group-item active">
@@ -54,12 +284,27 @@
                {/if}
             {/loop}
          </div>
+
+         <div class="list-group">
+            <a id="b_generales" href="{$fsc->url()}" class="list-group-item active">
+               <span class="glyphicon glyphicon-picture"></span> &nbsp; Fotos
+            </a>
+            {loop="$fsc->extensions"}
+            {if="$value->type=='tab'"}
+            <div role="tabpanel" class="tab-pane" id="ext_{$value->name}">
+               <iframe src="index.php?page={$value->from}{$value->params}&id={$fsc->agente->codagente}" width="100%" height="600" frameborder="0"></iframe>
+            </div>
+            {/if}
+         {/loop}
+         </div>
+     
       </div>
+
       <div class="col-lg-10 col-md-9 col-sm-9">
-         <form class="form" role="form" action="{$fsc->url()}" method="post">
-            <div class='panel {if="$fsc->agente->f_baja"}panel-danger{else}panel-primary{/if}' id='panel_generales'>
-               <div class="panel-heading">
-                  <h3 class="panel-title">
+         <form class="form" role="form" method="post">
+            <div class='panel {if="$fsc->agente->f_baja"}panel-danger{else}panel-primary{/if}' id='panel_generales' >
+               <div class="panel-heading" >
+                  <h3 class="panel-title" ondrop="drop(event)" ondragover="allowDrop(event)">
                      {$fsc->agente->get_fullname()}
                      {if="$fsc->agente->f_baja"}
                      &nbsp; <span class="label label-default" title="El empleado ha sido dado de baja">Baja</span>
@@ -67,22 +312,141 @@
                   </h3>
                </div>
                <div class="panel-body">
-                  <div class="col-sm-3">
+                  <div class="col-sm-4">
                      <div class="form-group">
                         Nombre:
                         <input class="form-control" type="text" name="nombre" value="{$fsc->agente->nombre}" autocomplete="off"/>
                      </div>
                   </div>
-                  <div class="col-sm-6">
+                  <div class="col-sm-4">
                      <div class="form-group">
-                        Apellidos:
+                        Apellido:
                         <input class="form-control" type="text" name="apellidos" value="{$fsc->agente->apellidos}" autocomplete="off"/>
                      </div>
                   </div>
-                  <div class="col-sm-3">
+                    <div class="col-sm-4">
+                     <div class="form-group">
+                        Apellido Materno:
+                        <input class="form-control" type="text" name="email" value="{$fsc->agente->email}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-2">
+                     <div class="form-group">
+                        Tipo documento:
+                        <input class="form-control" type="text" name="tipodocumento" value="{$fsc->agente->tipodocumento}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-2">
                      <div class="form-group">
                         {#FS_CIFNIF#}:
                         <input class="form-control" type="text" name="dnicif" value="{$fsc->agente->dnicif}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Cedula de identidad N°:
+                        <input class="form-control" type="text" name="cedulaid" value="{$fsc->agente->cedulaid}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Expedida por:
+                        <input class="form-control" type="text" name="exppor" value="{$fsc->agente->exppor}" autocomplete="off"/>
+                     </div>
+                  </div>
+                   <div class="col-sm-4">
+                     <div class="form-group">
+                        Prontuario N°:
+                        <input class="form-control" type="text" name="prontuario" value="{$fsc->agente->prontuario}" autocomplete="off"/>
+                     </div>
+                  </div>
+                   <div class="col-sm-4">
+                     <div class="form-group">
+                        Pasaporte N°:
+                        <input class="form-control" type="text" name="pasaporte" value="{$fsc->agente->pasaporte}" autocomplete="off"/>
+                     </div>
+                  </div>
+                   <div class="col-sm-4">
+                     <div class="form-group">
+                        Estado Civil:
+                        <input class="form-control" type="text" name="estadocivil" value="{$fsc->agente->estadocivil}" autocomplete="off"/>
+                     </div>
+                  </div>
+                    <div class="col-sm-4">
+                     <div class="form-group">
+                        Fecha casamiento:
+                        <div class="input-group">
+                           <span class="input-group-addon">
+                              <span class="glyphicon glyphicon-calendar"></span>
+                           </span>
+                           <input class="form-control datepicker" type="text" name="fcasamiento" value="{$fsc->agente->fcasamiento}" autocomplete="off"/>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Servicio Militar:
+                        <input class="form-control" type="text" name="serviciomilitar" value="{$fsc->agente->serviciomilitar}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Lugar de cumplimiento:
+                        <input class="form-control" type="text" name="lugarcumplimiento" value="{$fsc->agente->lugarcumplimiento}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Estudios:
+                        <input class="form-control" type="text" name="estudios" value="{$fsc->agente->estudios}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Oficios:
+                        <input class="form-control" type="text" name="oficios" value="{$fsc->agente->oficios}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Estatura:
+                        <input class="form-control" type="text" name="estatura" value="{$fsc->agente->estatura}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Contextura Física:
+                        <input class="form-control" type="text" name="contextfis" value="{$fsc->agente->contextfis}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Cutis:
+                        <input class="form-control" type="text" name="cutis" value="{$fsc->agente->cutis}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Cabello Tipo:
+                        <input class="form-control" type="text" name="cabellotipo" value="{$fsc->agente->cabellotipo}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Cabello Color:
+                        <input class="form-control" type="text" name="cabellocolor" value="{$fsc->agente->cabellocolor}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Ojos tipo:
+                        <input class="form-control" type="text" name="ojostipo" value="{$fsc->agente->ojostipo}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Ojos Color:
+                        <input class="form-control" type="text" name="ojoscolor" value="{$fsc->agente->ojoscolor}" autocomplete="off"/>
                      </div>
                   </div>
                   <div class="col-sm-4">
@@ -91,31 +455,26 @@
                         <input class="form-control" type="text" name="telefono" value="{$fsc->agente->telefono}" autocomplete="off"/>
                      </div>
                   </div>
-                  <div class="col-sm-4">
-                     <div class="form-group">
-                        Email:
-                        <input class="form-control" type="text" name="email" value="{$fsc->agente->email}" autocomplete="off"/>
-                     </div>
-                  </div>
+                
                   <div class="col-sm-4">
                      <div class="form-group">
                         Cargo ocupado:
                         <input class="form-control" type="text" name="cargo" value="{$fsc->agente->cargo}" autocomplete="off"/>
                      </div>
                   </div>
-                  <div class="col-sm-3">
+                  <div class="col-sm-4">
                      <div class="form-group">
                         Provincia:
                         <input id="ac_provincia" class="form-control" type="text" name="provincia" value="{$fsc->agente->provincia}" autocomplete="off"/>
                      </div>
                   </div>
-                  <div class="col-sm-3">
+                  <div class="col-sm-4">
                      <div class="form-group">
                         Ciudad:
                         <input class="form-control" type="text" name="ciudad" value="{$fsc->agente->ciudad}"/>
                      </div>
                   </div>
-                  <div class="col-sm-6">
+                  <div class="col-sm-12">
                      <div class="form-group">
                         Dirección:
                         <input class="form-control" type="text" name="direccion" value="{$fsc->agente->direccion}" autocomplete="off"/>
@@ -130,6 +489,12 @@
                            </span>
                            <input class="form-control datepicker" type="text" name="f_nacimiento" value="{$fsc->agente->f_nacimiento}" autocomplete="off"/>
                         </div>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Lugar de nacimiento:
+                        <input class="form-control" type="text" name="banco" value="{$fsc->agente->banco}" autocomplete="off"/>
                      </div>
                   </div>
                   <div class="col-sm-4">
@@ -160,12 +525,7 @@
                         <input class="form-control" type="text" name="seg_social" value="{$fsc->agente->seg_social}" autocomplete="off"/>
                      </div>
                   </div>
-                  <div class="col-sm-5">
-                     <div class="form-group">
-                        Cuenta Bancaria:
-                        <input class="form-control" type="text" name="banco" value="{$fsc->agente->banco}" autocomplete="off"/>
-                     </div>
-                  </div>
+                  
                   <div class="col-sm-2">
                      <div class="form-group">
                         Comisión:
@@ -177,15 +537,881 @@
                   </div>
                </div>
                <div class="panel-footer" style="text-align: right;">
-                  <button class="btn btn-sm btn-primary" type="submit" onclick="this.disabled = true; this.form.submit();">
+                  <button class="btn btn-sm btn-primary" type="submit" onclick="this.disabled = true;location='{$fsc->url()}#ingreso';  this.form.submit();">
                      <span class="glyphicon glyphicon-floppy-disk"></span> &nbsp; Guardar
                   </button>
                </div>
             </div>
-         </form>
+      </div>
+      </div>
+
+
+   <div role="tabpanel" class="tab-pane" id="t_ingresogoe">
+      <div class="col-sm-12">
+            <div class='panel {if="$fsc->agente->f_baja"}panel-danger{else}panel-primary{/if}' id='panel_generales' >
+               <div class="panel-heading" >
+                  <h3 class="panel-title" ondrop="drop(event)" ondragover="allowDrop(event)">
+                     Ingreso al G.O.E
+                     {if="$fsc->agente->f_baja"}
+                     &nbsp; <span class="label label-default" title="El empleado ha sido dado de baja">Baja</span>
+                     {/if}
+                  </h3>
+               </div>
+               <div class="panel-body">
+
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Fecha:
+                        <div class="input-group">
+                           <span class="input-group-addon">
+                              <span class="glyphicon glyphicon-calendar"></span>
+                           </span>
+                        <input class="form-control datepicker" type="text" name="fechagoe" value="{$fsc->agente->fechagoe}" autocomplete="off"/>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Motivo:
+                        <textarea class="form-control" type="text" name="motivogoe" autocomplete="off">{$fsc->agente->motivogoe}</textarea>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                       Práctica de artes marciales:
+                        <input class="form-control" type="text" name="practicaart" value="{$fsc->agente->practicaart}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-6">
+                     <div class="form-group">
+                        Antecedentes familiares de problemas psicológicos o psiquicos:
+                        <input class="form-control" type="text" name="antpgoe" value="{$fsc->agente->antpgoe}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-3">
+                     <div class="form-group">
+                        Claustrofóbico:
+                        <input class="form-control" type="text" name="claustr" value="{$fsc->agente->claustr}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-3">
+                     <div class="form-group">
+                        Sufre vértigo:
+                        <input class="form-control" type="text" name="sufrvert" value="{$fsc->agente->sufrvert}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-3">
+                     <div class="form-group">
+                       Sabe nadar:
+                        <input class="form-control" type="text" name="sabna" value="{$fsc->agente->sabna}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-3">
+                     <div class="form-group">
+                        Sabe conducir:
+                        <input class="form-control" type="text" name="sabcon" value="{$fsc->agente->sabcon}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-3">
+                     <div class="form-group">
+                        Conocimientos de primeros auxilios:
+                        <input class="form-control" type="text" name="conpa" value="{$fsc->agente->conpa}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-3">
+                     <div class="form-group">
+                        Características requeridas para los asaltantes:
+                        <input class="form-control" type="text" name="carasalt" value="{$fsc->agente->carasalt}" autocomplete="off"/>
+                     </div>
+                  </div>
+
+      </div>
+               
+                  
+                   <div class="panel-footer" style="text-align: right;">
+                 
+                   <button class="btn btn-sm btn-primary" type="submit" onclick="this.disabled = true;location='{$fsc->url()}#armas'; this.form.submit();">
+                     <span class="glyphicon glyphicon-floppy-disk"></span> &nbsp; Guardar
+                  </button>
+                  </div>
+
+
+                  </div></div></div> 
+
+   <div role="tabpanel" class="tab-pane" id="t_ingreso">
+      <div class="col-sm-12">
+            <div class='panel {if="$fsc->agente->f_baja"}panel-danger{else}panel-primary{/if}' id='panel_generales' >
+               <div class="panel-heading" >
+                  <h3 class="panel-title" ondrop="drop(event)" ondragover="allowDrop(event)">
+                     Ingreso a la institución
+                     {if="$fsc->agente->f_baja"}
+                     &nbsp; <span class="label label-default" title="El empleado ha sido dado de baja">Baja</span>
+                     {/if}
+                  </h3>
+               </div>
+               <div class="panel-body">
+
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Fecha:
+                        <div class="input-group">
+                           <span class="input-group-addon">
+                              <span class="glyphicon glyphicon-calendar"></span>
+                           </span>
+                        <input class="form-control datepicker" type="text" name="fecha" value="{$fsc->agente->fecha}" autocomplete="off"/>
+                        </div>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Decreto N°:
+                        <input class="form-control" type="text" name="decreto" value="{$fsc->agente->decreto}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        N° de agente:
+                        <input class="form-control" type="text" name="nagente" value="{$fsc->agente->nagente}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Credencial N°:
+                        <input class="form-control" type="text" name="credencial" value="{$fsc->agente->credencial}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Arma provista:
+                        <input class="form-control" type="text" name="armpr" value="{$fsc->agente->armpr}" autocomplete="off"/>
+                     </div>
+                  </div>
+                  <div class="col-sm-4">
+                     <div class="form-group">
+                        Otras armas:
+                        <input class="form-control" type="text" name="otrasarmas" value="{$fsc->agente->otrasarmas}" autocomplete="off"/>
+                     </div>
+                  </div>
+
+               </div>
+               <div class="col-sm-12">
+                     <div class="form-group">
+                        Observaciones Ascensos:
+                        <textarea class="form-control" type="text" name="obs" rows="2" autocomplete="off">{$fsc->agente->obs}</textarea>
+                     </div>
+                  </div>
+                  <div class="col-sm-12">
+                     <div class="form-group">
+                        Observaciones Destinos:
+                        <textarea class="form-control" type="text" name="obs1" rows="2" autocomplete="off">{$fsc->agente->obs1}</textarea>
+                     </div>
+                  </div>
+                   <div class="panel-footer" style="text-align: right;">
+                 
+                   <button class="btn btn-sm btn-primary" type="submit" onclick="this.disabled = true; location='{$fsc->url()}#ingresogoe'; this.form.submit();">
+                     <span class="glyphicon glyphicon-floppy-disk"></span> &nbsp; Guardar
+                  </button>
+                  </div></form>
+      <h1><span class="glyphicon glyphicon-arrow-up"></span> &nbsp; Ascensos</h1>
+      <div class="col-sm-12">
+         <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Jerarquía</th>
+                  <th class="text-left">Decreto</th>
+                  <th class="text-left"></th> 
+               </tr>
+               </thead>
+                {loop="$fsc->agente->get_ascenso()"}  
+               <tr>
+               <td>{$value->fecha1}</td>
+               <td>{$value->jerarquia}</td>
+               <td>{$value->decreto1}</td>
+                <td style="float:right"><a href="{$fsc->url()}&delete_dir9={$value->id}#ingreso" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>
+               </tr> 
+               {/loop}
+            </table>
+         </div>
+      </div>
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Jerarquía</th>
+                  <th class="text-left">Decreto</th>
+                  <th></th>
+               </tr>
+               </thead>
+               <tr>
+                <form class="form" action="{$fsc->url()}#ingreso" method="post">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="codasc1" value=""/>
+                            <td>
+
+                            <input type="text" name="fecha1" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="jerarquia" value="" class="form-control" autocomplete="off"/></td>
+                            <td><input class="form-control" name="decreto1"></td>
+                           
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            </td>
+                        </tr>
+                   </form>
+               </tr>
+            </table>    
+<hr>
+             <h1>  &nbsp;<span class="glyphicon glyphicon-road"></span>  Destinos</h1>
+      <div class="col-sm-12">
+         <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Destino</th>
+                  <th class="text-left"></th>
+               </tr>
+               </thead>
+                {loop="$fsc->agente->get_ascensoa()"}  
+               <tr>
+               <td>{$value->fecha}</td>
+               <td>{$value->destino}</td>
+               <td style="float:right"><a href="{$fsc->url()}&delete_dir10={$value->id}#ingreso" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>
+               </tr> 
+               {/loop}
+            </table>
+         </div>
+      </div>
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Destino</th>
+               </tr>
+               </thead>
+               <tr>
+                <form class="form" action="{$fsc->url()}#ingreso" method="post">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="codasc" value=""/>
+                            <td>
+                            <input type="text" name="fecha" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="destino" value="" class="form-control" autocomplete="off"/></td>
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            </td>
+                        </tr>
+                   </form>
+               </tr>
+            </table>    
+         </div>
       </div>
    </div>
-</div>
+
+
+   <div role="tabpanel" class="tab-pane" id="t_armas">
+   <div class="col-sm-12">
+        <h1>Conocimientos sobre armas</h1> 
+         <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Arma</th>
+                  <th class="text-left">Observaciones</th>
+                  <th class="text-left"></th> 
+               </tr>
+               </thead>
+                {loop="$fsc->agente->get_ingresogoe()"}  
+               <tr>
+               <td>{$value->arma}</td>
+               <td>{$value->observaciones}</td>
+                <td style="float:right"><a href="{$fsc->url()}&delete_dir8={$value->id}#armas" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>
+               </tr> 
+               {/loop}
+            </table>
+         </div>
+      </div> 
+      <div class="col-sm-12">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Arma</th>
+                  <th class="text-left">Observaciones</th>
+                  <th class="text-left"></th> 
+               </tr>
+               </thead>
+                <form class="form" action="{$fsc->url()}#armas" method="post">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="conarm" value=""/>
+                            <td><input type="text" name="arma" value="" class="form-control" autocomplete="off"/></td>
+                            
+                            <td><input class="form-control" name="observaciones"></td>
+                           
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button></form>
+                                
+                            </td>
+                           
+                        </tr>
+                  
+           
+            </table> </div>
+      </div>
+               
+ 
+<!--ACA TERMINA DATOS GENERALES-->
+
+<!--ACA EMPIEZA ANEXO 01 FAMILIARES Y AMISTADES-->  
+
+      <div role="tabpanel" class="tab-pane" id="t_familiares">
+         <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Apellido y nombres</th>
+                  <th class="text-left">Fecha de nacimiento</th>
+                  <th class="text-left">Vínculo</th>
+                  <th class="text-left">Telefono</th>
+                  <th class="text-left">Domicilio</th>
+                  <th></th>
+               </tr>
+               </thead>
+             
+                {loop="$fsc->agente->get_direcciones()"}  
+               <tr>
+               <td>{$value->provincia}</td>
+               <td>{$value->ciudad}</td>
+               <td>{$value->direccion}</td>
+               <td>{$value->descripcion}</td>
+               <td>{$value->apartado}</td>{if="$fsc->allow_delete"}
+               <td style="float:right"><a href="{$fsc->url()}&delete_dir={$value->id}#familiares" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>{/if}
+
+
+               </tr> 
+
+               {/loop}
+            </table>
+
+            </div>
+
+            <table class="table table-hover"><thead>
+               <tr>
+                  <th class="text-left">Apellido y nombres</th>
+                  <th class="text-left">Fecha de nacimiento</th>
+                  <th class="text-left">Vínculo</th>
+                  <th class="text-left">Telefono</th>
+                  <th class="text-left">Domicilio</th>
+               </tr></thead>
+               <tr>
+                  <form action="{$fsc->url()}#domicilios" method="post" class="form">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="coddir" value=""/>
+                            <td><input type="text" name="provincia" class="form-control" autocomplete="off"/></td>
+                            <td><input type="text" name="ciudad" value="" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="direccion"  class="form-control" autocomplete="off"/></td>
+                            <td><input type="text" name="descripcion" class="form-control" autocomplete="off"/></td>
+                            <td><input type="text" name="apartado" class="form-control" autocomplete="off"/></td>
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </form>
+               </tr>
+            </table>
+      </div>
+
+<!--ACA TERMINA ANEXO 01 FAMILIARES Y AMISTADES-->  
+
+<!--ACA EMPIEZA ANEXO 02 DOMICILIOS ANTERIORES-->  
+
+   <div role="tabpanel" class="tab-pane" id="t_domicilios">
+            <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Dirección</th>
+                  <th class="text-left">Ciudad</th>
+                  <th class="text-left">Teléfono</th>
+                  <th></th>
+               </tr>
+               </thead>
+             
+                {loop="$fsc->agente->get_domiciliosant()"}  
+               <tr>
+               <td>{$value->fecha}</td>
+               <td>{$value->direccion}</td>
+               <td>{$value->ciudad}</td>
+               <td>{$value->telefono}</td>{if="$fsc->allow_delete"}
+               <td style="float:right"><a href="{$fsc->url()}&delete_dir1={$value->id}#domicilios" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>{/if}
+
+
+               </tr> 
+
+               {/loop}
+            </table>
+
+            </div>
+
+            <table class="table table-hover"><thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Dirección</th>
+                  <th class="text-left">Ciudad</th>
+                  <th class="text-left">Teléfono</th>
+                  <th></th>
+               </tr></thead>
+               <tr>
+                  <form action="{$fsc->url()}#domicilios" method="post" class="form">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="coddant" value=""/>
+                            <td><input type="text" name="fecha" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="direccion" value="" class="form-control" autocomplete="off"/></td>
+                            <td><input type="text" name="ciudad"  class="form-control" autocomplete="off"/></td>
+                            <td><input type="text" name="telefono" class="form-control" autocomplete="off"/></td>
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            </td>
+                        </tr>
+                    </form>
+               </tr>
+            </table>
+   </div>
+
+<!--ACA TERMINA ANEXO 02 DOMICILIOS ANTERIORES--> 
+
+<!--ACA EMPIEZA ANEXO 04 CURSOS REALIZADOS-->
+
+
+   <div role="tabpanel" class="tab-pane" id="t_curr">
+            <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Curso</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr>
+               </thead>
+             
+                {loop="$fsc->agente->get_cursosagente()"}  
+               <tr>
+               <td>{$value->fecha}</td>
+               <td>{$value->cursos}</td>
+               <td>{$value->observaciones}</td>{if="$fsc->allow_delete"}
+               <td style="float:right"><a href="{$fsc->url()}&delete_dir2={$value->id}#curr" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>{/if}
+
+
+               </tr> 
+
+               {/loop}
+            </table>
+
+            </div>
+
+            <table class="table table-hover"><thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Curso</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr></thead>
+               <tr>
+                  <form action="{$fsc->url()}#curr" method="post" class="form">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="codcur" value=""/>
+                            <td><input type="text" name="fecha" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="cursos" value="" class="form-control" autocomplete="off"/></td>
+                            <td><textarea class="form-control" name="observaciones" rows="2"></textarea></td>
+                           
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            </td>
+                        </tr>
+                    </form>
+               </tr>
+            </table>
+   </div>
+
+<!--ACA TERMINA ANEXO 04 CURSOS REALIZADOS-->
+
+
+<!--ACA EMPIEZA ANEXO 04-1 SEMINARIOS REALIZADOS-->
+
+
+   <div role="tabpanel" class="tab-pane" id="t_seminarios">
+            <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Seminario</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr>
+               </thead>
+             
+                {loop="$fsc->agente->get_seminariosagente()"}  
+               <tr>
+               <td>{$value->fecha}</td>
+               <td>{$value->seminario}</td>
+               <td>{$value->observaciones}</td>{if="$fsc->allow_delete"}
+               <td style="float:right"><a href="{$fsc->url()}&delete_dir3={$value->id}#seminarios" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>{/if}
+
+
+               </tr> 
+
+               {/loop}
+            </table>
+
+            </div>
+
+            <table class="table table-hover"><thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Seminario</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr></thead>
+               <tr>
+                  <form action="{$fsc->url()}#seminarios" method="post" class="form">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="codsem" value=""/>
+                            <td><input type="text" name="fecha" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="seminario" value="" class="form-control" autocomplete="off"/></td>
+                            <td><textarea class="form-control" name="observaciones" rows="2"></textarea></td>
+                           
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            </td>
+                        </tr>
+                    </form>
+               </tr>
+            </table>
+   </div>
+
+<!--ACA TERMINA ANEXO 04-1 SEMINARIOS REALIZADOS-->
+
+<!--ACA EMPIEZA ANEXO 04-1 conferencia REALIZADOS-->
+
+
+   <div role="tabpanel" class="tab-pane" id="t_conferencia">
+            <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Conferencia</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr>
+               </thead>
+             
+                {loop="$fsc->agente->get_conferenciaagente()"}  
+               <tr>
+               <td>{$value->fecha}</td>
+               <td>{$value->conferencia}</td>
+               <td>{$value->observaciones}</td>{if="$fsc->allow_delete"}
+               <td style="float:right"><a href="{$fsc->url()}&delete_dir4={$value->id}#conferencia" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>{/if}
+
+
+               </tr> 
+
+               {/loop}
+            </table>
+
+            </div>
+
+            <table class="table table-hover"><thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Conferencia</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr></thead>
+               <tr>
+                  <form action="{$fsc->url()}#conferencia" method="post" class="form">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="codconf" value=""/>
+                            <td><input type="text" name="fecha" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="conferencia" value="" class="form-control" autocomplete="off"/></td>
+                            <td><textarea class="form-control" name="observaciones" rows="2"></textarea></td>
+                           
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            </td>
+                        </tr>
+                    </form>
+               </tr>
+            </table>
+   </div>
+
+<!--ACA TERMINA ANEXO 04-1 conferencia REALIZADOS-->
+
+<!--ACA EMPIEZA ANEXO 04-1 jornadas REALIZADOS-->
+
+
+   <div role="tabpanel" class="tab-pane" id="t_jornadas">
+            <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Seminario</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr>
+               </thead>
+             
+                {loop="$fsc->agente->get_jornadasagente()"}  
+               <tr>
+               <td>{$value->fecha}</td>
+               <td>{$value->jornadas}</td>
+               <td>{$value->observaciones}</td>{if="$fsc->allow_delete"}
+               <td style="float:right"><a href="{$fsc->url()}&delete_dir5={$value->id}#jornadas" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>{/if}
+
+
+               </tr> 
+
+               {/loop}
+            </table>
+
+            </div>
+
+            <table class="table table-hover"><thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Seminario</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr></thead>
+               <tr>
+                  <form action="{$fsc->url()}#jornadas" method="post" class="form">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="codjor" value=""/>
+                            <td><input type="text" name="fecha" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="jornadas" value="" class="form-control" autocomplete="off"/></td>
+                            <td><textarea class="form-control" name="observaciones" rows="2"></textarea></td>
+                           
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            </td>
+                        </tr>
+                    </form>
+               </tr>
+            </table>
+   </div>
+
+<!--ACA TERMINA ANEXO 04-1 jornadas REALIZADOS-->
+
+
+<!--ACA EMPIEZA ANEXO 04-1 disertaciones REALIZADOS-->
+
+
+   <div role="tabpanel" class="tab-pane" id="t_disertaciones">
+            <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Seminario</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr>
+               </thead>
+             
+                {loop="$fsc->agente->get_diser()"}  
+               <tr>
+               <td>{$value->fecha}</td>
+               <td>{$value->disertaciones}</td>
+               <td>{$value->observaciones}</td>{if="$fsc->allow_delete"}
+               <td style="float:right"><a href="{$fsc->url()}&delete_dir6={$value->id}#disertaciones" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>{/if}
+
+
+               </tr> 
+
+               {/loop}
+            </table>
+
+            </div>
+
+            <table class="table table-hover"><thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Seminario</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr></thead>
+               <tr>
+                  <form action="{$fsc->url()}#disertaciones" method="post" class="form">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="coddis" value=""/>
+                            <td><input type="text" name="fecha" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="disertaciones" value="" class="form-control" autocomplete="off"/></td>
+                            <td><textarea class="form-control" name="observaciones" rows="2"></textarea></td>
+                           
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            </td>
+                        </tr>
+                    </form>
+               </tr>
+            </table>
+   </div>
+
+<!--ACA EMPIEZA ANEXO 04-1 disertaciones REALIZADOS-->
+
+   <div role="tabpanel" class="tab-pane" id="t_academias">
+            <div class="table-responsive">
+            <table class="table table-hover">
+               <thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Seminario</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr>
+               </thead>
+             
+                {loop="$fsc->agente->get_academias()"}  
+               <tr>
+               <td>{$value->fecha}</td>
+               <td>{$value->academias}</td>
+               <td>{$value->observaciones}</td>{if="$fsc->allow_delete"}   
+               <td style="float:right"><a href="{$fsc->url()}&delete_dir7={$value->id}#academias" onClick="return confirm('¿Seguro que quieres eliminar este detalle?')">
+                        <span class="glyphicon glyphicon-trash"></span>
+                     </a></td>{/if}
+
+
+               </tr> 
+
+               {/loop}
+            </table>
+
+            </div>
+
+            <table class="table table-hover"><thead>
+               <tr>
+                  <th class="text-left">Fecha</th>
+                  <th class="text-left">Seminario</th>
+                  <th class="text-left">Observaciones</th>
+                  <th></th>
+               </tr></thead>
+               <tr>
+                  <form action="{$fsc->url()}#academias" method="post" class="form">
+                        <tr class="bg-info">
+                        <input type="hidden" name="codagente" value="{$fsc->agente->codagente}"/>
+                        <input type="hidden" name="codaca" value=""/>
+                            <td><input type="text" name="fecha" class="form-control datepicker" autocomplete="off"/></td>
+                            <td><input type="text" name="academias" value="" class="form-control" autocomplete="off"/></td>
+                            <td><textarea class="form-control" name="observaciones" rows="2"></textarea></td>
+                           
+                            <td class="text-right">
+                                <div class="btn-group">
+                                    <button type="submit" class="btn btn-sm btn-primary" onclick="this.disabled = true;this.form.submit();" title="Guardar">
+                                        <span class="glyphicon glyphicon-floppy-disk"></span>
+                                    </button>
+                                </div>
+                            </td>
+                            </td>
+                        </tr>
+                    </form>
+               </tr>
+            </table>
+   </div>
+
+<!--ACA TERMINA ANEXO 04-1 academias REALIZADOS-->
+
+
+            {loop="$fsc->extensions"}
+            {if="$value->type=='tab'"}
+            <div role="tabpanel" class="tab-pane" id="ext_{$value->name}">
+               <iframe src="index.php?page={$value->from}{$value->params}&id={$fsc->agente->codagente}" width="100%" height="600" frameborder="0"></iframe>
+            </div>
+            {/if}
+         {/loop}
+<!--ACA TERMINA EL SISTEMA DE PESTAÑA SIEMPRE METER EL CODIGO DETRAS DE ESTO-->
+      </div>
+      </div>
+
 {else}
 <div class="thumbnail">
    <img src="view/img/fuuu_face.png" alt="fuuuuu"/>
