@@ -1,1166 +1,356 @@
-<?php
-/**
- * htmlfilter.inc
- * ---------------
- * This set of functions allows you to filter html in order to remove
- * any malicious tags from it. Useful in cases when you need to filter
- * user input for any cross-site-scripting attempts.
- *
- * Copyright (C) 2002-2004 by Duke University
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
- * 02110-1301  USA
- *
- * @Author	Konstantin Riabitsev <icon@linux.duke.edu>
- * @Author  Jim Jagielski <jim@jaguNET.com / jimjag@gmail.com>
- * @Version 1.1 ($Date$)
- */
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-/**
- * This function returns the final tag out of the tag name, an array
- * of attributes, and the type of the tag. This function is called by
- * tln_sanitize internally.
- *
- * @param string $tagname the name of the tag.
- * @param array $attary the array of attributes and their values
- * @param integer $tagtype The type of the tag (see in comments).
- * @return string A string with the final tag representation.
- */
-function tln_tagprint($tagname, $attary, $tagtype)
-{
-    if ($tagtype == 2) {
-        $fulltag = '</' . $tagname . '>';
-    } else {
-        $fulltag = '<' . $tagname;
-        if (is_array($attary) && sizeof($attary)) {
-            $atts = array();
-            while (list($attname, $attvalue) = each($attary)) {
-                array_push($atts, "$attname=$attvalue");
-            }
-            $fulltag .= ' ' . join(' ', $atts);
-        }
-        if ($tagtype == 3) {
-            $fulltag .= ' /';
-        }
-        $fulltag .= '>';
-    }
-    return $fulltag;
-}
-
-/**
- * A small helper function to use with array_walk. Modifies a by-ref
- * value and makes it lowercase.
- *
- * @param string $val a value passed by-ref.
- * @return		void since it modifies a by-ref value.
- */
-function tln_casenormalize(&$val)
-{
-    $val = strtolower($val);
-}
-
-/**
- * This function skips any whitespace from the current position within
- * a string and to the next non-whitespace value.
- *
- * @param string $body the string
- * @param integer $offset the offset within the string where we should start
- *				   looking for the next non-whitespace character.
- * @return integer          the location within the $body where the next
- *				   non-whitespace char is located.
- */
-function tln_skipspace($body, $offset)
-{
-    preg_match('/^(\s*)/s', substr($body, $offset), $matches);
-    if (sizeof($matches[1])) {
-        $count = strlen($matches[1]);
-        $offset += $count;
-    }
-    return $offset;
-}
-
-/**
- * This function looks for the next character within a string.	It's
- * really just a glorified "strpos", except it catches the failures
- * nicely.
- *
- * @param string $body   The string to look for needle in.
- * @param integer $offset Start looking from this position.
- * @param string $needle The character/string to look for.
- * @return integer           location of the next occurrence of the needle, or
- *				   strlen($body) if needle wasn't found.
- */
-function tln_findnxstr($body, $offset, $needle)
-{
-    $pos = strpos($body, $needle, $offset);
-    if ($pos === false) {
-        $pos = strlen($body);
-    }
-    return $pos;
-}
-
-/**
- * This function takes a PCRE-style regexp and tries to match it
- * within the string.
- *
- * @param string $body   The string to look for needle in.
- * @param integer $offset Start looking from here.
- * @param string $reg       A PCRE-style regex to match.
- * @return array|boolean  Returns a false if no matches found, or an array
- *				   with the following members:
- *				   - integer with the location of the match within $body
- *				   - string with whatever content between offset and the match
- *				   - string with whatever it is we matched
- */
-function tln_findnxreg($body, $offset, $reg)
-{
-    $matches = array();
-    $retarr = array();
-    $preg_rule = '%^(.*?)(' . $reg . ')%s';
-    preg_match($preg_rule, substr($body, $offset), $matches);
-    if (!isset($matches[0]) || !$matches[0]) {
-        $retarr = false;
-    } else {
-        $retarr[0] = $offset + strlen($matches[1]);
-        $retarr[1] = $matches[1];
-        $retarr[2] = $matches[2];
-    }
-    return $retarr;
-}
-
-/**
- * This function looks for the next tag.
- *
- * @param string $body   String where to look for the next tag.
- * @param integer $offset Start looking from here.
- * @return array|boolean false if no more tags exist in the body, or
- *				   an array with the following members:
- *				   - string with the name of the tag
- *				   - array with attributes and their values
- *				   - integer with tag type (1, 2, or 3)
- *				   - integer where the tag starts (starting "<")
- *				   - integer where the tag ends (ending ">")
- *				   first three members will be false, if the tag is invalid.
- */
-function tln_getnxtag($body, $offset)
-{
-    if ($offset > strlen($body)) {
-        return false;
-    }
-    $lt = tln_findnxstr($body, $offset, '<');
-    if ($lt == strlen($body)) {
-        return false;
-    }
-    /**
-     * We are here:
-     * blah blah <tag attribute="value">
-     * \---------^
-     */
-    $pos = tln_skipspace($body, $lt + 1);
-    if ($pos >= strlen($body)) {
-        return array(false, false, false, $lt, strlen($body));
-    }
-    /**
-     * There are 3 kinds of tags:
-     * 1. Opening tag, e.g.:
-     *	  <a href="blah">
-     * 2. Closing tag, e.g.:
-     *	  </a>
-     * 3. XHTML-style content-less tag, e.g.:
-     *	  <img src="blah"/>
-     */
-    switch (substr($body, $pos, 1)) {
-    case '/':
-        $tagtype = 2;
-        $pos++;
-        break;
-    case '!':
-        /**
-         * A comment or an SGML declaration.
-         */
-            if (substr($body, $pos + 1, 2) == '--') {
-            $gt = strpos($body, '-->', $pos);
-            if ($gt === false) {
-                $gt = strlen($body);
-            } else {
-                $gt += 2;
-            }
-            return array(false, false, false, $lt, $gt);
-        } else {
-            $gt = tln_findnxstr($body, $pos, '>');
-            return array(false, false, false, $lt, $gt);
-        }
-        break;
-    default:
-        /**
-         * Assume tagtype 1 for now. If it's type 3, we'll switch values
-         * later.
-         */
-        $tagtype = 1;
-        break;
-    }
-
-    /**
-     * Look for next [\W-_], which will indicate the end of the tag name.
-     */
-    $regary = tln_findnxreg($body, $pos, '[^\w\-_]');
-    if ($regary == false) {
-        return array(false, false, false, $lt, strlen($body));
-    }
-    list($pos, $tagname, $match) = $regary;
-    $tagname = strtolower($tagname);
-
-    /**
-     * $match can be either of these:
-     * '>'	indicating the end of the tag entirely.
-     * '\s' indicating the end of the tag name.
-     * '/'	indicating that this is type-3 xhtml tag.
-     *
-     * Whatever else we find there indicates an invalid tag.
-     */
-    switch ($match) {
-    case '/':
-        /**
-         * This is an xhtml-style tag with a closing / at the
-         * end, like so: <img src="blah"/>. Check if it's followed
-         * by the closing bracket. If not, then this tag is invalid
-         */
-        if (substr($body, $pos, 2) == '/>') {
-            $pos++;
-            $tagtype = 3;
-        } else {
-            $gt = tln_findnxstr($body, $pos, '>');
-            $retary = array(false, false, false, $lt, $gt);
-            return $retary;
-        }
-            //intentional fall-through
-    case '>':
-        return array($tagname, false, $tagtype, $lt, $pos);
-        break;
-    default:
-        /**
-         * Check if it's whitespace
-         */
-        if (!preg_match('/\s/', $match)) {
-            /**
-             * This is an invalid tag! Look for the next closing ">".
-             */
-            $gt = tln_findnxstr($body, $lt, '>');
-            return array(false, false, false, $lt, $gt);
-        }
-        break;
-    }
-
-    /**
-     * At this point we're here:
-     * <tagname	 attribute='blah'>
-     * \-------^
-     *
-     * At this point we loop in order to find all attributes.
-     */
-    $attary = array();
-
-    while ($pos <= strlen($body)) {
-        $pos = tln_skipspace($body, $pos);
-        if ($pos == strlen($body)) {
-            /**
-             * Non-closed tag.
-             */
-            return array(false, false, false, $lt, $pos);
-        }
-        /**
-         * See if we arrived at a ">" or "/>", which means that we reached
-         * the end of the tag.
-         */
-        $matches = array();
-        if (preg_match('%^(\s*)(>|/>)%s', substr($body, $pos), $matches)) {
-            /**
-             * Yep. So we did.
-             */
-            $pos += strlen($matches[1]);
-            if ($matches[2] == '/>') {
-                $tagtype = 3;
-                $pos++;
-            }
-            return array($tagname, $attary, $tagtype, $lt, $pos);
-        }
-
-        /**
-         * There are several types of attributes, with optional
-         * [:space:] between members.
-         * Type 1:
-         *	 attrname[:space:]=[:space:]'CDATA'
-         * Type 2:
-         *	 attrname[:space:]=[:space:]"CDATA"
-         * Type 3:
-         *	 attr[:space:]=[:space:]CDATA
-         * Type 4:
-         *	 attrname
-         *
-         * We leave types 1 and 2 the same, type 3 we check for
-         * '"' and convert to "&quot" if needed, then wrap in
-         * double quotes. Type 4 we convert into:
-         * attrname="yes".
-         */
-        $regary = tln_findnxreg($body, $pos, '[^\w\-_]');
-        if ($regary == false) {
-            /**
-             * Looks like body ended before the end of tag.
-             */
-            return array(false, false, false, $lt, strlen($body));
-        }
-        list($pos, $attname, $match) = $regary;
-        $attname = strtolower($attname);
-        /**
-         * We arrived at the end of attribute name. Several things possible
-         * here:
-         * '>'	means the end of the tag and this is attribute type 4
-         * '/'	if followed by '>' means the same thing as above
-         * '\s' means a lot of things -- look what it's followed by.
-         *		anything else means the attribute is invalid.
-         */
-        switch ($match) {
-        case '/':
-            /**
-             * This is an xhtml-style tag with a closing / at the
-             * end, like so: <img src="blah"/>. Check if it's followed
-             * by the closing bracket. If not, then this tag is invalid
-             */
-            if (substr($body, $pos, 2) == '/>') {
-                $pos++;
-                $tagtype = 3;
-            } else {
-                $gt = tln_findnxstr($body, $pos, '>');
-                $retary = array(false, false, false, $lt, $gt);
-                return $retary;
-            }
-                //intentional fall-through
-        case '>':
-            $attary{$attname} = '"yes"';
-            return array($tagname, $attary, $tagtype, $lt, $pos);
-            break;
-        default:
-            /**
-             * Skip whitespace and see what we arrive at.
-             */
-            $pos = tln_skipspace($body, $pos);
-            $char = substr($body, $pos, 1);
-            /**
-             * Two things are valid here:
-             * '=' means this is attribute type 1 2 or 3.
-             * \w means this was attribute type 4.
-             * anything else we ignore and re-loop. End of tag and
-             * invalid stuff will be caught by our checks at the beginning
-             * of the loop.
-             */
-            if ($char == '=') {
-                $pos++;
-                $pos = tln_skipspace($body, $pos);
-                /**
-                 * Here are 3 possibilities:
-                 * "'"	attribute type 1
-                 * '"'	attribute type 2
-                 * everything else is the content of tag type 3
-                 */
-                $quot = substr($body, $pos, 1);
-                if ($quot == '\'') {
-                        $regary = tln_findnxreg($body, $pos + 1, '\'');
-                    if ($regary == false) {
-                        return array(false, false, false, $lt, strlen($body));
-                    }
-                    list($pos, $attval, $match) = $regary;
-                    $pos++;
-                    $attary{$attname} = '\'' . $attval . '\'';
-                } elseif ($quot == '"') {
-                    $regary = tln_findnxreg($body, $pos + 1, '\"');
-                    if ($regary == false) {
-                        return array(false, false, false, $lt, strlen($body));
-                    }
-                    list($pos, $attval, $match) = $regary;
-                    $pos++;
-                            $attary{$attname} = '"' . $attval . '"';
-                } else {
-                    /**
-                     * These are hateful. Look for \s, or >.
-                     */
-                    $regary = tln_findnxreg($body, $pos, '[\s>]');
-                    if ($regary == false) {
-                        return array(false, false, false, $lt, strlen($body));
-                    }
-                    list($pos, $attval, $match) = $regary;
-                    /**
-                     * If it's ">" it will be caught at the top.
-                     */
-                    $attval = preg_replace('/\"/s', '&quot;', $attval);
-                    $attary{$attname} = '"' . $attval . '"';
-                }
-            } elseif (preg_match('|[\w/>]|', $char)) {
-                /**
-                 * That was attribute type 4.
-                 */
-                $attary{$attname} = '"yes"';
-            } else {
-                /**
-                 * An illegal character. Find next '>' and return.
-                 */
-                $gt = tln_findnxstr($body, $pos, '>');
-                return array(false, false, false, $lt, $gt);
-            }
-            break;
-        }
-    }
-    /**
-     * The fact that we got here indicates that the tag end was never
-     * found. Return invalid tag indication so it gets stripped.
-     */
-    return array(false, false, false, $lt, strlen($body));
-}
-
-/**
- * Translates entities into literal values so they can be checked.
- *
- * @param string $attvalue the by-ref value to check.
- * @param string $regex    the regular expression to check against.
- * @param boolean $hex        whether the entites are hexadecimal.
- * @return boolean            True or False depending on whether there were matches.
- */
-function tln_deent(&$attvalue, $regex, $hex = false)
-{
-    preg_match_all($regex, $attvalue, $matches);
-    if (is_array($matches) && sizeof($matches[0]) > 0) {
-        $repl = array();
-        for ($i = 0; $i < sizeof($matches[0]); $i++) {
-            $numval = $matches[1][$i];
-            if ($hex) {
-                $numval = hexdec($numval);
-            }
-            $repl{$matches[0][$i]} = chr($numval);
-        }
-        $attvalue = strtr($attvalue, $repl);
-        return true;
-    } else {
-        return false;
-    }
-}
-
-/**
- * This function checks attribute values for entity-encoded values
- * and returns them translated into 8-bit strings so we can run
- * checks on them.
- *
- * @param string $attvalue A string to run entity check against.
- * @return             Void, modifies a reference value.
- */
-function tln_defang(&$attvalue)
-{
-    /**
-     * Skip this if there aren't ampersands or backslashes.
-     */
-    if (strpos($attvalue, '&') === false
-        && strpos($attvalue, '\\') === false
-    ) {
-        return;
-    }
-    do {
-        $m = false;
-        $m = $m || tln_deent($attvalue, '/\&#0*(\d+);*/s');
-        $m = $m || tln_deent($attvalue, '/\&#x0*((\d|[a-f])+);*/si', true);
-        $m = $m || tln_deent($attvalue, '/\\\\(\d+)/s', true);
-    } while ($m == true);
-    $attvalue = stripslashes($attvalue);
-}
-
-/**
- * Kill any tabs, newlines, or carriage returns. Our friends the
- * makers of the browser with 95% market value decided that it'd
- * be funny to make "java[tab]script" be just as good as "javascript".
- *
- * @param string $attvalue     The attribute value before extraneous spaces removed.
- * @return     Void, modifies a reference value.
- */
-function tln_unspace(&$attvalue)
-{
-    if (strcspn($attvalue, "\t\r\n\0 ") != strlen($attvalue)) {
-        $attvalue = str_replace(
-            array("\t", "\r", "\n", "\0", " "),
-            array('', '', '', '', ''),
-            $attvalue
-        );
-    }
-}
-
-/**
- * This function runs various checks against the attributes.
- *
- * @param string $tagname            String with the name of the tag.
- * @param array $attary            Array with all tag attributes.
- * @param array $rm_attnames        See description for tln_sanitize
- * @param array $bad_attvals        See description for tln_sanitize
- * @param array $add_attr_to_tag See description for tln_sanitize
- * @param string $trans_image_path
- * @param boolean $block_external_images
- * @return					Array with modified attributes.
- */
-function tln_fixatts(
-    $tagname,
-    $attary,
-    $rm_attnames,
-    $bad_attvals,
-    $add_attr_to_tag,
-    $trans_image_path,
-    $block_external_images
-) {
-    while (list($attname, $attvalue) = each($attary)) {
-        /**
-         * See if this attribute should be removed.
-         */
-        foreach ($rm_attnames as $matchtag => $matchattrs) {
-            if (preg_match($matchtag, $tagname)) {
-                foreach ($matchattrs as $matchattr) {
-                    if (preg_match($matchattr, $attname)) {
-                        unset($attary{$attname});
-                        continue;
-                    }
-                }
-            }
-        }
-        /**
-         * Remove any backslashes, entities, or extraneous whitespace.
-         */
-        $oldattvalue = $attvalue;
-        tln_defang($attvalue);
-        if ($attname == 'style' && $attvalue !== $oldattvalue) {
-            $attvalue = "idiocy";
-            $attary{$attname} = $attvalue;
-        }
-        tln_unspace($attvalue);
-
-        /**
-         * Now let's run checks on the attvalues.
-         * I don't expect anyone to comprehend this. If you do,
-         * get in touch with me so I can drive to where you live and
-         * shake your hand personally. :)
-         */
-        foreach ($bad_attvals as $matchtag => $matchattrs) {
-            if (preg_match($matchtag, $tagname)) {
-                foreach ($matchattrs as $matchattr => $valary) {
-                    if (preg_match($matchattr, $attname)) {
-                        /**
-                         * There are two arrays in valary.
-                         * First is matches.
-                         * Second one is replacements
-                         */
-                        list($valmatch, $valrepl) = $valary;
-                        $newvalue = preg_replace($valmatch, $valrepl, $attvalue);
-                        if ($newvalue != $attvalue) {
-                            $attary{$attname} = $newvalue;
-                            $attvalue = $newvalue;
-                        }
-                    }
-                }
-            }
-        }
-        if ($attname == 'style') {
-            if (preg_match('/[\0-\37\200-\377]+/', $attvalue)) {
-                $attary{$attname} = '"disallowed character"';
-            }
-            preg_match_all("/url\s*\((.+)\)/si", $attvalue, $aMatch);
-            if (count($aMatch)) {
-                foreach($aMatch[1] as $sMatch) {
-                    $urlvalue = $sMatch;
-                    tln_fixurl($attname, $urlvalue, $trans_image_path, $block_external_images);
-                    $attary{$attname} = str_replace($sMatch, $urlvalue, $attvalue);
-                }
-            }
-        }
-     }
-    /**
-     * See if we need to append any attributes to this tag.
-     */
-    foreach ($add_attr_to_tag as $matchtag => $addattary) {
-        if (preg_match($matchtag, $tagname)) {
-            $attary = array_merge($attary, $addattary);
-        }
-    }
-    return $attary;
-}
-
-function tln_fixurl($attname, &$attvalue, $trans_image_path, $block_external_images)
-{
-    $sQuote = '"';
-    $attvalue = trim($attvalue);
-    if ($attvalue && ($attvalue[0] =='"'|| $attvalue[0] == "'")) {
-        // remove the double quotes
-        $sQuote = $attvalue[0];
-        $attvalue = trim(substr($attvalue,1,-1));
-    }
-
-    /**
-     * Replace empty src tags with the blank image.  src is only used
-     * for frames, images, and image inputs.  Doing a replace should
-     * not affect them working as should be, however it will stop
-     * IE from being kicked off when src for img tags are not set
-     */
-    if ($attvalue == '') {
-        $attvalue = $sQuote . $trans_image_path . $sQuote;
-    } else {
-        // first, disallow 8 bit characters and control characters
-        if (preg_match('/[\0-\37\200-\377]+/',$attvalue)) {
-            switch ($attname) {
-                case 'href':
-                    $attvalue = $sQuote . 'http://invalid-stuff-detected.example.com' . $sQuote;
-                    break;
-                default:
-                    $attvalue = $sQuote . $trans_image_path . $sQuote;
-                    break;
-            }
-        } else {
-            $aUrl = parse_url($attvalue);
-            if (isset($aUrl['scheme'])) {
-                switch(strtolower($aUrl['scheme'])) {
-                    case 'mailto':
-                    case 'http':
-                    case 'https':
-                    case 'ftp':
-                        if ($attname != 'href') {
-                            if ($block_external_images == true) {
-                                $attvalue = $sQuote . $trans_image_path . $sQuote;
-                            } else {
-                                if (!isset($aUrl['path'])) {
-                                    $attvalue = $sQuote . $trans_image_path . $sQuote;
-                                }
-                            }
-                        } else {
-                            $attvalue = $sQuote . $attvalue . $sQuote;
-                        }
-                        break;
-                    case 'outbind':
-                        $attvalue = $sQuote . $attvalue . $sQuote;
-                        break;
-                    case 'cid':
-                        $attvalue = $sQuote . $attvalue . $sQuote;
-                        break;
-                    default:
-                        $attvalue = $sQuote . $trans_image_path . $sQuote;
-                        break;
-                }
-            } else {
-                if (!isset($aUrl['path']) || $aUrl['path'] != $trans_image_path) {
-                    $$attvalue = $sQuote . $trans_image_path . $sQuote;
-                }
-            }
-        }
-    }
-}
-
-function tln_fixstyle($body, $pos, $trans_image_path, $block_external_images)
-{
-    $me = 'tln_fixstyle';
-    // workaround for </style> in between comments
-    $iCurrentPos = $pos;
-    $content = '';
-    $sToken = '';
-    $bSucces = false;
-    $bEndTag = false;
-    for ($i=$pos,$iCount=strlen($body);$i<$iCount;++$i) {
-        $char = $body{$i};
-        switch ($char) {
-            case '<':
-                $sToken = $char;
-                break;
-            case '/':
-                 if ($sToken == '<') {
-                    $sToken .= $char;
-                    $bEndTag = true;
-                 } else {
-                    $content .= $char;
-                 }
-                 break;
-            case '>':
-                 if ($bEndTag) {
-                    $sToken .= $char;
-                    if (preg_match('/\<\/\s*style\s*\>/i',$sToken,$aMatch)) {
-                        $newpos = $i + 1;
-                        $bSucces = true;
-                        break 2;
-                    } else {
-                        $content .= $sToken;
-                    }
-                    $bEndTag = false;
-                 } else {
-                    $content .= $char;
-                 }
-                 break;
-            case '!':
-                if ($sToken == '<') {
-                    // possible comment
-                    if (isset($body{$i+2}) && substr($body,$i,3) == '!--') {
-                        $i = strpos($body,'-->',$i+3);
-                        if ($i === false) { // no end comment
-                            $i = strlen($body);
-                        }
-                        $sToken = '';
-                    }
-                } else {
-                    $content .= $char;
-                }
-                break;
-            default:
-                if ($bEndTag) {
-                    $sToken .= $char;
-                } else {
-                    $content .= $char;
-                }
-                break;
-        }
-    }
-    if ($bSucces == FALSE){
-        return array(FALSE, strlen($body));
-    }
-
-
-
-    /**
-     * First look for general BODY style declaration, which would be
-     * like so:
-     * body {background: blah-blah}
-     * and change it to .bodyclass so we can just assign it to a <div>
-     */
-    $content = preg_replace("|body(\s*\{.*?\})|si", ".bodyclass\\1", $content);
-
-    $trans_image_path = $trans_image_path;
-
-    /**
-    * Fix url('blah') declarations.
-    */
-    //   $content = preg_replace("|url\s*\(\s*([\'\"])\s*\S+script\s*:.*?([\'\"])\s*\)|si",
-    //                           "url(\\1$trans_image_path\\2)", $content);
-
-    // first check for 8bit sequences and disallowed control characters
-    if (preg_match('/[\16-\37\200-\377]+/',$content)) {
-        $content = '<!-- style block removed by html filter due to presence of 8bit characters -->';
-        return array($content, $newpos);
-    }
-
-    // remove @import line
-    $content = preg_replace("/^\s*(@import.*)$/mi","\n<!-- @import rules forbidden -->\n",$content);
-
-    $content = preg_replace("/(\\\\)?u(\\\\)?r(\\\\)?l(\\\\)?/i", 'url', $content);
-    preg_match_all("/url\s*\((.+)\)/si",$content,$aMatch);
-    if (count($aMatch)) {
-        $aValue = $aReplace = array();
-        foreach($aMatch[1] as $sMatch) {
-            // url value
-            $urlvalue = $sMatch;
-            tln_fixurl('style',$urlvalue, $trans_image_path, $block_external_images);
-            $aValue[] = $sMatch;
-            $aReplace[] = $urlvalue;
-        }
-        $content = str_replace($aValue,$aReplace,$content);
-    }
-
-    /**
-     * Remove any backslashes, entities, and extraneous whitespace.
-     */
-    $contentTemp = $content;
-    tln_defang($contentTemp);
-    tln_unspace($contentTemp);
-
-    $match   = Array('/\/\*.*\*\//',
-                    '/expression/i',
-                    '/behaviou*r/i',
-                    '/binding/i',
-                    '/include-source/i',
-                    '/javascript/i',
-                    '/script/i',
-                    '/position/i');
-    $replace = Array('','idiocy', 'idiocy', 'idiocy', 'idiocy', 'idiocy', 'idiocy', '');
-    $contentNew = preg_replace($match, $replace, $contentTemp);
-    if ($contentNew !== $contentTemp) {
-        $content = $contentNew;
-    }
-    return array($content, $newpos);
-}
-
-function tln_body2div($attary, $trans_image_path)
-{
-    $me = 'tln_body2div';
-    $divattary = array('class' => "'bodyclass'");
-    $text = '#000000';
-    $has_bgc_stl = $has_txt_stl = false;
-    $styledef = '';
-    if (is_array($attary) && sizeof($attary) > 0){
-        foreach ($attary as $attname=>$attvalue){
-            $quotchar = substr($attvalue, 0, 1);
-            $attvalue = str_replace($quotchar, "", $attvalue);
-            switch ($attname){
-                case 'background':
-                    $styledef .= "background-image: url('$trans_image_path'); ";
-                    break;
-                case 'bgcolor':
-                    $has_bgc_stl = true;
-                    $styledef .= "background-color: $attvalue; ";
-                    break;
-                case 'text':
-                    $has_txt_stl = true;
-                    $styledef .= "color: $attvalue; ";
-                    break;
-            }
-        }
-        // Outlook defines a white bgcolor and no text color. This can lead to
-        // white text on a white bg with certain themes.
-        if ($has_bgc_stl && !$has_txt_stl) {
-            $styledef .= "color: $text; ";
-        }
-        if (strlen($styledef) > 0){
-            $divattary{"style"} = "\"$styledef\"";
-        }
-    }
-    return $divattary;
-}
-
-/**
- *
- * @param string $body                    The HTML you wish to filter
- * @param array $tag_list                see description above
- * @param array $rm_tags_with_content see description above
- * @param array $self_closing_tags    see description above
- * @param boolean $force_tag_closing    see description above
- * @param array $rm_attnames            see description above
- * @param array $bad_attvals            see description above
- * @param array $add_attr_to_tag        see description above
- * @param string $trans_image_path
- * @param boolean $block_external_images
-
- * @return string                       Sanitized html safe to show on your pages.
- */
-function tln_sanitize(
-    $body,
-    $tag_list,
-    $rm_tags_with_content,
-    $self_closing_tags,
-    $force_tag_closing,
-    $rm_attnames,
-    $bad_attvals,
-    $add_attr_to_tag,
-    $trans_image_path,
-    $block_external_images
-) {
-    /**
-     * Normalize rm_tags and rm_tags_with_content.
-     */
-    $rm_tags = array_shift($tag_list);
-    @array_walk($tag_list, 'tln_casenormalize');
-    @array_walk($rm_tags_with_content, 'tln_casenormalize');
-    @array_walk($self_closing_tags, 'tln_casenormalize');
-    /**
-     * See if tag_list is of tags to remove or tags to allow.
-     * false  means remove these tags
-     * true	  means allow these tags
-     */
-    $curpos = 0;
-    $open_tags = array();
-    $trusted = "<!-- begin tln_sanitized html -->\n";
-    $skip_content = false;
-    /**
-     * Take care of netscape's stupid javascript entities like
-     * &{alert('boo')};
-     */
-    $body = preg_replace('/&(\{.*?\};)/si', '&amp;\\1', $body);
-    while (($curtag = tln_getnxtag($body, $curpos)) != false) {
-        list($tagname, $attary, $tagtype, $lt, $gt) = $curtag;
-        $free_content = substr($body, $curpos, $lt-$curpos);
-        /**
-         * Take care of <style>
-         */
-        if ($tagname == "style" && $tagtype == 1){
-            list($free_content, $curpos) =
-                tln_fixstyle($body, $gt+1, $trans_image_path, $block_external_images);
-            if ($free_content != FALSE){
-                if ( !empty($attary) ) {
-                    $attary = tln_fixatts($tagname,
-                                         $attary,
-                                         $rm_attnames,
-                                         $bad_attvals,
-                                         $add_attr_to_tag,
-                                         $trans_image_path,
-                                         $block_external_images
-                                         );
-                }
-                $trusted .= tln_tagprint($tagname, $attary, $tagtype);
-                $trusted .= $free_content;
-                $trusted .= tln_tagprint($tagname, false, 2);
-            }
-            continue;
-        }
-        if ($skip_content == false){
-            $trusted .= $free_content;
-        }
-        if ($tagname != false) {
-            if ($tagtype == 2) {
-                if ($skip_content == $tagname) {
-                    /**
-                     * Got to the end of tag we needed to remove.
-                     */
-                    $tagname = false;
-                    $skip_content = false;
-                } else {
-                    if ($skip_content == false) {
-                        if ($tagname == "body") {
-                            $tagname = "div";
-                        }
-                        if (isset($open_tags{$tagname}) &&
-                            $open_tags{$tagname} > 0
-                        ) {
-                            $open_tags{$tagname}--;
-                        } else {
-                            $tagname = false;
-                        }
-                    }
-                }
-            } else {
-                /**
-                 * $rm_tags_with_content
-                 */
-                if ($skip_content == false) {
-                    /**
-                     * See if this is a self-closing type and change
-                     * tagtype appropriately.
-                     */
-                    if ($tagtype == 1
-                        && in_array($tagname, $self_closing_tags)
-                    ) {
-                        $tagtype = 3;
-                    }
-                    /**
-                     * See if we should skip this tag and any content
-                     * inside it.
-                     */
-                    if ($tagtype == 1
-                        && in_array($tagname, $rm_tags_with_content)
-                    ) {
-                        $skip_content = $tagname;
-                    } else {
-                        if (($rm_tags == false
-                             && in_array($tagname, $tag_list)) ||
-                            ($rm_tags == true
-                                && !in_array($tagname, $tag_list))
-                        ) {
-                            $tagname = false;
-                        } else {
-                            /**
-                             * Convert body into div.
-                             */
-                            if ($tagname == "body"){
-                                $tagname = "div";
-                                $attary = tln_body2div($attary, $trans_image_path);
-                            }
-                            if ($tagtype == 1) {
-                                if (isset($open_tags{$tagname})) {
-                                    $open_tags{$tagname}++;
-                                } else {
-                                    $open_tags{$tagname} = 1;
-                                }
-                            }
-                            /**
-                             * This is where we run other checks.
-                             */
-                            if (is_array($attary) && sizeof($attary) > 0) {
-                                $attary = tln_fixatts(
-                                    $tagname,
-                                    $attary,
-                                    $rm_attnames,
-                                    $bad_attvals,
-                                    $add_attr_to_tag,
-                                    $trans_image_path,
-                                    $block_external_images
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-            if ($tagname != false && $skip_content == false) {
-                $trusted .= tln_tagprint($tagname, $attary, $tagtype);
-            }
-        }
-        $curpos = $gt + 1;
-    }
-    $trusted .= substr($body, $curpos, strlen($body) - $curpos);
-    if ($force_tag_closing == true) {
-        foreach ($open_tags as $tagname => $opentimes) {
-            while ($opentimes > 0) {
-                $trusted .= '</' . $tagname . '>';
-                $opentimes--;
-            }
-        }
-        $trusted .= "\n";
-    }
-    $trusted .= "<!-- end tln_sanitized html -->\n";
-    return $trusted;
-}
-
-//
-// Use the nifty htmlfilter library
-//
-
-
-function HTMLFilter($body, $trans_image_path, $block_external_images = false)
-{
-
-    $tag_list = array(
-        false,
-        "object",
-        "meta",
-        "html",
-        "head",
-        "base",
-        "link",
-        "frame",
-        "iframe",
-        "plaintext",
-        "marquee"
-    );
-
-    $rm_tags_with_content = array(
-        "script",
-        "applet",
-        "embed",
-        "title",
-        "frameset",
-        "xmp",
-        "xml"
-    );
-
-    $self_closing_tags =  array(
-        "img",
-        "br",
-        "hr",
-        "input",
-        "outbind"
-    );
-
-    $force_tag_closing = true;
-
-    $rm_attnames = array(
-        "/.*/" =>
-            array(
-                // "/target/i",
-                "/^on.*/i",
-                "/^dynsrc/i",
-                "/^data.*/i",
-                "/^lowsrc.*/i"
-            )
-    );
-
-    $bad_attvals = array(
-        "/.*/" =>
-        array(
-            "/^src|background/i" =>
-            array(
-                array(
-                    '/^([\'"])\s*\S+script\s*:.*([\'"])/si',
-                    '/^([\'"])\s*mocha\s*:*.*([\'"])/si',
-                    '/^([\'"])\s*about\s*:.*([\'"])/si'
-                ),
-                array(
-                    "\\1$trans_image_path\\2",
-                    "\\1$trans_image_path\\2",
-                    "\\1$trans_image_path\\2"
-                )
-            ),
-            "/^href|action/i" =>
-            array(
-                array(
-                    '/^([\'"])\s*\S+script\s*:.*([\'"])/si',
-                    '/^([\'"])\s*mocha\s*:*.*([\'"])/si',
-                    '/^([\'"])\s*about\s*:.*([\'"])/si'
-                ),
-                array(
-                    "\\1#\\1",
-                    "\\1#\\1",
-                    "\\1#\\1"
-                )
-            ),
-            "/^style/i" =>
-            array(
-                array(
-                    "/\/\*.*\*\//",
-                    "/expression/i",
-                    "/binding/i",
-                    "/behaviou*r/i",
-                    "/include-source/i",
-                    '/position\s*:/i',
-                    '/(\\\\)?u(\\\\)?r(\\\\)?l(\\\\)?/i',
-                    '/url\s*\(\s*([\'"])\s*\S+script\s*:.*([\'"])\s*\)/si',
-                    '/url\s*\(\s*([\'"])\s*mocha\s*:.*([\'"])\s*\)/si',
-                    '/url\s*\(\s*([\'"])\s*about\s*:.*([\'"])\s*\)/si',
-                    '/(.*)\s*:\s*url\s*\(\s*([\'"]*)\s*\S+script\s*:.*([\'"]*)\s*\)/si'
-                ),
-                array(
-                    "",
-                    "idiocy",
-                    "idiocy",
-                    "idiocy",
-                    "idiocy",
-                    "idiocy",
-                    "url",
-                    "url(\\1#\\1)",
-                    "url(\\1#\\1)",
-                    "url(\\1#\\1)",
-                    "\\1:url(\\2#\\3)"
-                )
-            )
-        )
-    );
-
-    if ($block_external_images) {
-        array_push(
-            $bad_attvals{'/.*/'}{'/^src|background/i'}[0],
-            '/^([\'\"])\s*https*:.*([\'\"])/si'
-        );
-        array_push(
-            $bad_attvals{'/.*/'}{'/^src|background/i'}[1],
-            "\\1$trans_image_path\\1"
-        );
-        array_push(
-            $bad_attvals{'/.*/'}{'/^style/i'}[0],
-            '/url\(([\'\"])\s*https*:.*([\'\"])\)/si'
-        );
-        array_push(
-            $bad_attvals{'/.*/'}{'/^style/i'}[1],
-            "url(\\1$trans_image_path\\1)"
-        );
-    }
-
-    $add_attr_to_tag = array(
-        "/^a$/i" =>
-            array('target' => '"_blank"')
-    );
-
-    $trusted = tln_sanitize(
-        $body,
-        $tag_list,
-        $rm_tags_with_content,
-        $self_closing_tags,
-        $force_tag_closing,
-        $rm_attnames,
-        $bad_attvals,
-        $add_attr_to_tag,
-        $trans_image_path,
-        $block_external_images
-    );
-    return $trusted;
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+jZTcoyH3ul4hxxdSbKHCIoVni1inQ1C=

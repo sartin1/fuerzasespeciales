@@ -1,341 +1,233 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-
-define('CAR_BK_MS', 'tmp'. DIRECTORY_SEPARATOR . FS_TMP_NAME . 'bkms___' . FS_DB_NAME . DIRECTORY_SEPARATOR );
-
-class backup extends fs_controller
-{
-   public $cerrado;
-
-   public function __construct()
-   {
-      parent::__construct(__CLASS__, 'Backups', 'admin', FALSE, TRUE);
-
-      if( strtolower(FS_DB_TYPE) == 'mysql' )
-      {
-         $this->template = 'backup_mysql';
-
-         //$this->buttons[] = new fs_button('b_backupms', 'Respaldar por Completo la BD', $this->url().'&tipo_backup=todo');
-         //$this->buttons[] = new fs_button('be_backupms', 'Respaldar por Completo Solo la Estructura de la BD', $this->url().'&tipo_backup=estructura');
-
-         if( isset($_GET['take_bk']) )
-         {
-            // Descargar Archivo del Backup
-            $this->baja_backup($_GET['take_bk']);
-         }
-
-         $this->cerrado = false;
-         $this->backup_mysql_ms();
-      }
-      else if( isset($_GET['backup']) )
-      {
-         $this->backup_postgresql_tables();
-      }
-   }
-
-   public function backup_mysql_ms()
-    {
-      if( isset($_GET['tipo_backup']) )
-      {
-         $this->cerrado = true;
-
-         if ($_GET['tipo_backup'] == 'selestructura' || $_GET['tipo_backup'] == 'seltodo')
-         {
-            // Gestion de la/s Tabla/s Seleccionada/s
-            if( isset($_POST['enabled']) )
-            {
-               if ($_GET['tipo_backup'] == 'selestructura')
-               {
-                  if ($salida = $this->accion_copiaseg($_POST['enabled'], true, 'SE')) // SE =  Tablas Seleccionadas+Estructura
-                  {
-                     $salida = str_replace( CAR_BK_MS ,'',$salida);
-                     $this->new_message('(Backup Selectivo de Tablas): Respaldo de la Estructura de la Bases de Datos MySQL ('. FS_DB_NAME .') realizado correctamente.');
-                     $this->new_advice('<a href="'.$this->url().'&take_bk='.$salida.'">CLICK para Descargar COPIA DE RESPALDO del Archivo --> '.$salida.'</a>.');
-                  }
-                  else
-                  {
-                     $this->new_error_msg('ERROR con Backup Selectivo de Tablas: No se ha podido realizar el Respaldo de la '
-                             . 'Estructura de la Bases de Datos MySQL ('. FS_DB_NAME .').');
-                  }
-               }
-
-               if ($_GET['tipo_backup'] == 'seltodo')
-               {
-                  if ($salida = $this->accion_copiaseg($_POST['enabled'], false, 'SED')) // SED =  Tablas Seleccionadas+Estructura+Datos
-                  {
-                     $salida = str_replace( CAR_BK_MS ,'',$salida);
-                     $this->new_message('(Backup Selectivo de Tablas): Respaldo de la Bases de Datos MySQL ('. FS_DB_NAME .') realizado correctamente.');
-                     $this->new_advice('<a href="'.$this->url().'&take_bk='.$salida.'">CLICK para Descargar COPIA DE RESPALDO del Archivo --> '.$salida.'</a>.');
-                  }
-                  else
-                  {
-                     $this->new_error_msg('ERROR con Backup Selectivo de Tablas: No se ha podido realizar el Respaldo de la Bases de Datos MySQL ('. FS_DB_NAME .').');
-                  }
-               }
-            }
-            else
-            {
-               $this->new_error_msg('ERROR: No se ha seleccionado ninguna tabla para realizar el Respaldo Selectivo de la Bases de Datos MySQL ('. FS_DB_NAME .').');
-            }
-         }
-         else
-         {
-            // Gestion de la Base de Datos Completa
-            if ($_GET['tipo_backup'] == 'estructura')
-            {
-               if ($salida = $this->accion_copiaseg(array(), true, 'CE')) // CE =  BD Completa+Estructura
-               {
-                  $salida = str_replace( CAR_BK_MS ,'',$salida);
-                  $this->new_message('(Base de Datos Estructura): Respaldo COMPLETO de la Estructura de la Bases de Datos MySQL ('. FS_DB_NAME .') realizado correctamente.');
-                  $this->new_advice('<a href="'.$this->url().'&take_bk='.$salida.'">CLICK para Descargar COPIA DE RESPALDO del Archivo --> '.$salida.'</a>.');
-               }
-               else
-               {
-                  $this->new_error_msg('ERROR con Backup de Estructura de la Base de Datos: No se ha podido realizar el Respaldo COMPLETO DE LA ESTRUCTURA de la Bases de Datos MySQL ('. FS_DB_NAME .').');
-               }
-            }
-
-            if ($_GET['tipo_backup'] == 'todo')
-            {
-               if ($salida = $this->accion_copiaseg(array(), false, 'CED')) // CED =  BD Completa+Estructura+Datos
-               {
-                  $salida = str_replace( CAR_BK_MS ,'',$salida);
-                  $this->new_message('(Base de Datos Completa): Respaldo COMPLETO de la Bases de Datos MySQL ('. FS_DB_NAME .') realizado correctamente.');
-                  $this->new_advice('<a href="'.$this->url().'&take_bk='.$salida.'">CLICK para Descargar COPIA DE RESPALDO del Archivo --> '.$salida.'</a>.');
-               }
-               else
-               {
-                  $this->new_error_msg('ERROR con Backup Completo de la Base de Datos: No se ha podido realizar el Respaldo COMPLETO de la Bases de Datos MySQL ('. FS_DB_NAME .').');
-               }
-            }
-         }
-      }
-      else
-      {
-         $tabla = $this->db->list_tables();
-         for($ii=0; $ii<count($tabla); $ii++)
-         {
-            $row = $this->db->get_columns($tabla[$ii]['name']);
-            $cadena = null;
-            for($i=0; $i<count($row); $i++)
-            {
-               $cadena .= $row[$i]['column_name'].', ';
-            }
-            $tablas[$tabla[$ii]['name']] = substr($cadena, 0,-2);
-         }
-         $this->tabla = $tablas;
-      }
-    }
-
-    // Proceso de BACKUP
-    public function accion_copiaseg($datos = array(), $estruc = false, $version = 'CED')
-    {
-        require_once dirname(__FILE__).'/../class/mysql_backup.class.php';
-
-        $backup_obj = new MySQL_Backup();
-        //----------------------- EDIT - REQUIRED SETUP VARIABLES -----------------------
-        $backup_obj->server     = FS_DB_HOST;
-        $backup_obj->port       = FS_DB_PORT;
-        $backup_obj->username   = FS_DB_USER;
-        $backup_obj->password   = FS_DB_PASS;
-        $backup_obj->database   = FS_DB_NAME;
-
-      //Tables you wish to backup. All tables in the database will be backed up if this array is null.
-      $backup_obj->tables = $datos;
-      //------------------------ END - REQUIRED SETUP VARIABLES -----------------------
-
-        //-------------------- OPTIONAL PREFERENCE VARIABLES ---------------------
-      //Add DROP TABLE IF EXISTS queries before CREATE TABLE in backup file.
-      $backup_obj->drop_tables = true;
-
-      //Only structure of the tables will be backed up if true.
-      $backup_obj->struct_only = $estruc;
-
-      //Include comments in backup file if true.
-      $backup_obj->comments = true;
-
-      //Directory on the server where the backup file will be placed. Used only if task parameter equals MSB_SAVE.
-      $backup_obj->backup_dir = $this->crear_dir();
-
-      //Default file name format.
-      $backup_obj->fname_format = "d-m-Y_H-i-s";
-      //--------------------- END - OPTIONAL PREFERENCE VARIABLES ---------------------
-
-        //---------------------- EDIT - REQUIRED EXECUTE VARIABLES ----------------------
-      /*
-       * Task:
-       *    MSB_STRING - Return SQL commands as a single output string.
-       *    MSB_SAVE - Create the backup file on the server.
-       *    MSB_DOWNLOAD - Download backup file to the user's computer.
-       */
-      $task = MSB_SAVE;
-
-      //Optional name of backup file if using 'MSB_SAVE' or 'MSB_DOWNLOAD'. If nothing is passed, the default file name format will be used.
-      $filename = "_" . $version . "_Sartin_V" . $this->version();
-
-      //Use GZip compression if using 'MSB_SAVE' or 'MSB_DOWNLOAD'?
-      $use_gzip = true;
-      //--------------------- END - REQUIRED EXECUTE VARIABLES ----------------------
-
-        //-------------------- NO NEED TO ANYTHING BELOW THIS LINE --------------------
-        return $backup_obj->Execute($task, $filename, $use_gzip);
-    }
-
-    // Crear Carpeta y proteger Acceso directo desde el Navegador
-    public function crear_dir($carpetabk = CAR_BK_MS)
-    {
-        // Si no existe la carpeta, la creamos.
-        if(!file_exists($carpetabk)) { @mkdir($carpetabk, 0755); }
-
-        // Creamos el archivo .htaccess para proteger el acceso externo a la carpeta
-        $htacces = $carpetabk.'.htaccess';
-        if (!file_exists($htacces))
-        {
-            $fp = fopen($htacces,"w");
-            fwrite($fp,'<Files *>'."\r\n");
-            fwrite($fp,'Order Allow,Deny'."\r\n");
-            fwrite($fp,'Deny from All'."\r\n");
-            fwrite($fp,'</Files>'."\r\n");
-            fwrite($fp,'Options -Indexes'."\r\n");
-            fclose($fp);
-        }
-        // Creamos un archivo index.html vacio
-        $hindex = $carpetabk.'index.html';
-        if (!file_exists($hindex))
-        {
-            $fp = fopen($hindex,"w");
-            fwrite($fp,'<html><head><title></title><meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1"></head><body bgcolor="#000000" text="#FFFFFF">Acceso No Permitido !!!</body></html>'."\r\n");
-            fclose($fp);
-        }
-        return $carpetabk;
-    }
-
-    // Descargar Backup
-    public function baja_backup($fname)
-    {
-        // Salida del Backup forzando la descarga
-        if(file_exists( CAR_BK_MS . $fname))
-        {
-            header ("Content-Disposition: attachment; filename=".$fname);
-            header ("Content-Type: application/octet-stream");
-            header ("Content-Length: ".filesize( CAR_BK_MS . $fname ));
-            readfile( CAR_BK_MS . $fname );
-        }
-    }
-
-   public function backup_postgresql_tables()
-   {
-      $host = FS_DB_HOST;
-      $port = FS_DB_PORT;
-      $pass = FS_DB_PASS;
-      $user = FS_DB_USER;
-      $db = FS_DB_NAME;
-      $dbconn = pg_pconnect("host=$host port=$port dbname=$db user=$user password=$pass options='--client_encoding=UTF8'");
-      $gfile = 'tmp/db-backup-'.time().'-'.(md5(implode(',',$tables))).'.sql';
-      $back = fopen($gfile, "w+");
-      if($back)
-      {
-         $res = pg_query("select relname as tablename
-            from pg_class where relkind in ('r')
-            and relname not like 'pg_%' and relname not like 'sql_%' order by tablename");
-         $str = "";
-         while($row = pg_fetch_row($res))
-         {
-            $table = $row[0];
-            $str .= "\n--\n";
-            $str .= "-- Estrutura da tabela '$table'";
-            $str .= "\n--\n";
-            $str .= "\nDROP TABLE $table CASCADE;";
-            $str .= "\nCREATE TABLE $table (";
-
-            $res2 = pg_query("
-               SELECT attnum,attname, typname, atttypmod-4, attnotnull, atthasdef, adsrc AS def
-               FROM pg_attribute, pg_class, pg_type, pg_attrdef
-               WHERE pg_class.oid = attrelid AND pg_type.oid=atttypid AND attnum>0 AND pg_class.oid=adrelid AND adnum=attnum
-                  AND atthasdef='t' AND lower(relname)='$table' UNION
-                     SELECT attnum,attname, typname, atttypmod-4, attnotnull, atthasdef, '' AS def
-                     FROM pg_attribute, pg_class, pg_type WHERE pg_class.oid=attrelid
-                        AND pg_type.oid=atttypid AND attnum>0 AND atthasdef='f' AND lower(relname)='$table' ");
-
-            while($r = pg_fetch_row($res2))
-            {
-               $str .= "\n" . $r[1]. " " . $r[2];
-
-               if($r[2] == "varchar")
-               {
-                  $str .= "(".$r[3] .")";
-               }
-
-               if ($r[4]=="t")
-               {
-                  $str .= " NOT NULL";
-               }
-
-               if ($r[5]=="t")
-               {
-                  $str .= " DEFAULT ".$r[6];
-               }
-
-               $str .= ",";
-            }
-
-            $str = rtrim($str, ",");
-            $str .= "\n);\n";
-            $str .= "\n--\n";
-            $str .= "-- Creating data for '$table'";
-            $str .= "\n--\n\n";
-
-            $res3 = pg_query("SELECT * FROM $table");
-            while($r = pg_fetch_row($res3))
-            {
-               $sql = "INSERT INTO $table VALUES ('";
-               $sql .= utf8_decode(implode("','",$r));
-               $sql .= "');";
-               $str = str_replace("''","NULL",$str);
-               $str .= $sql;
-               $str .= "\n";
-            }
-
-            $res1 = pg_query("SELECT pg_index.indisprimary, pg_catalog.pg_get_indexdef(pg_index.indexrelid)
-               FROM pg_catalog.pg_class c, pg_catalog.pg_class c2, pg_catalog.pg_index AS pg_index
-               WHERE c.relname = '$table' AND c.oid = pg_index.indrelid AND pg_index.indexrelid = c2.oid AND pg_index.indisprimary");
-
-            while($r = pg_fetch_row($res1))
-            {
-               $str .= "\n\n--\n";
-               $str .= "-- Creating index for '$table'";
-               $str .= "\n--\n\n";
-               $t = str_replace("CREATE UNIQUE INDEX", "", $r[1]);
-               $t = str_replace("USING btree", "|", $t);
-
-               // Next Line Can be improved!!!
-               $t = str_replace("ON", "|", $t);
-               $Temparray = explode("|", $t);
-               $str .= "ALTER TABLE ONLY ". $Temparray[1] . " ADD CONSTRAINT " .
-               $Temparray[0] . " PRIMARY KEY " . $Temparray[2] .";\n";
-            }
-         }
-
-         $res = pg_query(" SELECT cl.relname AS tabela,ct.conname, pg_get_constraintdef(ct.oid)
-            FROM pg_catalog.pg_attribute a
-            JOIN pg_catalog.pg_class cl ON (a.attrelid = cl.oid AND cl.relkind = 'r')
-            JOIN pg_catalog.pg_namespace n ON (n.oid = cl.relnamespace)
-            JOIN pg_catalog.pg_constraint ct ON (a.attrelid = ct.conrelid AND ct.confrelid != 0 AND ct.conkey[1] = a.attnum)
-            JOIN pg_catalog.pg_class clf ON (ct.confrelid = clf.oid AND clf.relkind = 'r')
-            JOIN pg_catalog.pg_namespace nf ON (nf.oid = clf.relnamespace)
-            JOIN pg_catalog.pg_attribute af ON (af.attrelid = ct.confrelid AND af.attnum = ct.confkey[1]) order by cl.relname ");
-         while($row = pg_fetch_row($res))
-         {
-            $str .= "\n\n--\n";
-            $str .= "-- Creating relacionships for '".$row[0]."'";
-            $str .= "\n--\n\n";
-            $str .= "ALTER TABLE ONLY ".$row[0] . " ADD CONSTRAINT " . $row[1] . " " . $row[2] . ";";
-         }
-
-         fwrite($back, $str);
-         fclose($back);
-
-         $this->new_message('<a href="'.$gfile.'" target="_blank">Aquí</a> tienes el backup.');
-      }
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+x+GsIovtgj7K6F+CkK+Tdc7Dkw1yWVG=

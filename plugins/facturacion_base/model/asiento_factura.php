@@ -1,995 +1,434 @@
-<?php
-/*
- * This file is part of FacturaSctipts
- * Copyright (C) 2014-2016  Carlos Garcia Gomez  neorazorx@gmail.com
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-require_model('articulo.php');
-require_model('articulo_propiedad.php');
-require_model('cliente.php');
-require_model('cuenta_banco.php');
-require_model('divisa.php');
-require_model('empresa.php');
-require_model('forma_pago.php');
-require_model('impuesto.php');
-require_model('proveedor.php');
-
-/**
- * Esta clase permite genera un asiento a partir de una factura.
- *
- * @author Carlos García Gómez  neorazorx@gmail.com
- */
-class asiento_factura
-{
-   public $asiento;
-   private $cuenta_banco;
-   private $divisa;
-   private $ejercicio;
-   private $empresa;
-   private $forma_pago;
-   private $impuestos;
-   private $subcuenta;
-   
-   public $messages;
-   public $errors;
-   public $soloasiento;
-   
-   public function __construct()
-   {
-      $this->asiento = FALSE;
-      $this->cuenta_banco = new cuenta_banco();
-      $this->divisa = new divisa();
-      $this->ejercicio = new ejercicio();
-      $this->empresa = new empresa();
-      $this->forma_pago = new forma_pago();
-      $this->subcuenta = new subcuenta();
-      
-      $impuesto = new impuesto();
-      $this->impuestos = array();
-      foreach( $impuesto->all() as $imp )
-      {
-         $this->impuestos[$imp->codimpuesto] = $imp;
-      }
-      
-      $this->messages = array();
-      $this->errors = array();
-      $this->soloasiento = FALSE;
-   }
-   
-   private function new_message($msg)
-   {
-      $this->messages[] = $msg;
-   }
-   
-   private function new_error_msg($msg)
-   {
-      $this->errors[] = $msg;
-   }
-   
-   /**
-    * Genera el asiento contable para una factura de compra.
-    * Devuelve TRUE si el asiento se ha generado correctamente, False en caso contrario.
-    * Si genera el asiento, este es accesible desde $this->asiento.
-    * @param factura_proveedor $factura
-    */
-   public function generar_asiento_compra(&$factura)
-   {
-      $ok = FALSE;
-      $this->asiento = FALSE;
-      $proveedor0 = new proveedor();
-      $subcuenta_prov = FALSE;
-      
-      /// obtenemos las tasas de conversión, para las ocasiones en que la factura está en otra divisa
-      $tasaconv = 1;
-      $tasaconv2 = $factura->tasaconv;
-      if($factura->coddivisa != $this->empresa->coddivisa)
-      {
-         $divisa = $this->divisa->get($this->empresa->coddivisa);
-         if($divisa)
-         {
-            $tasaconv = $divisa->tasaconv_compra/$factura->tasaconv;
-            $tasaconv2 = $divisa->tasaconv_compra;
-         }
-      }
-      
-      /// obtenemos el proveedor de la factura y su subcuenta
-      $proveedor = $proveedor0->get($factura->codproveedor);
-      if($proveedor)
-      {
-         $subcuenta_prov = $proveedor->get_subcuenta($factura->codejercicio);
-      }
-      
-      if( !$subcuenta_prov )
-      {
-         $eje0 = $this->ejercicio->get( $factura->codejercicio );
-         $this->new_message("No se ha podido generar una subcuenta para el proveedor
-            <a href='".$eje0->url()."'>¿Has importado los datos del ejercicio?</a>");
-         
-         if(!$this->soloasiento)
-         {
-            $this->new_message("Aun así la <a href='".$factura->url()."'>factura</a> se ha generado correctamente,
-            pero sin asiento contable.");
-         }
-      }
-      else
-      {
-         $asiento = new asiento();
-         $asiento->codejercicio = $factura->codejercicio;
-         
-         if($factura->idfacturarect)
-         {
-            $asiento->concepto = ucfirst(FS_FACTURA_RECTIFICATIVA)." de ".$factura->codigorect." (compras) - ".$factura->nombre;
-         }
-         else
-         {
-            $asiento->concepto = "Factura de compra ".$factura->codigo." - ".$factura->nombre;
-         }
-         
-         $asiento->documento = $factura->codigo;
-         $asiento->editable = FALSE;
-         $asiento->fecha = $factura->fecha;
-         $asiento->importe = abs($factura->total*$tasaconv);
-         $asiento->tipodocumento = "Factura de proveedor";
-         if( $asiento->save() )
-         {
-            $asiento_correcto = TRUE;
-            $partida0 = new partida();
-            $partida0->idasiento = $asiento->idasiento;
-            $partida0->concepto = $asiento->concepto;
-            $partida0->idsubcuenta = $subcuenta_prov->idsubcuenta;
-            $partida0->codsubcuenta = $subcuenta_prov->codsubcuenta;
-            $partida0->haber = $factura->total*$tasaconv;
-            $partida0->coddivisa = $this->empresa->coddivisa;
-            $partida0->tasaconv = $tasaconv2;
-            $partida0->codserie = $factura->codserie;
-            if( !$partida0->save() )
-            {
-               $asiento_correcto = FALSE;
-               $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida0->codsubcuenta."!");
-            }
-            
-            /// generamos una partida por cada impuesto
-            foreach($factura->get_lineas_iva() as $li)
-            {
-               $subcuenta_iva = FALSE;
-               
-               /// ¿El impuesto tiene una subcuenta específica?
-               if( isset($this->impuestos[$li->codimpuesto]) )
-               {
-                  if($this->impuestos[$li->codimpuesto]->codsubcuentasop)
-                  {
-                     $subcuenta_iva = $this->subcuenta->get_by_codigo($this->impuestos[$li->codimpuesto]->codsubcuentasop, $asiento->codejercicio);
-                  }
-               }
-               
-               if(!$subcuenta_iva)
-               {
-                  $subcuenta_iva = $this->subcuenta->get_cuentaesp('IVASOP', $asiento->codejercicio);
-               }
-               
-               if($li->totaliva == 0 AND $li->totalrecargo == 0)
-               {
-                  /// no hacemos nada si no hay IVA ni RE
-               }
-               else if($subcuenta_iva AND $asiento_correcto)
-               {
-                  $partida1 = new partida();
-                  $partida1->idasiento = $asiento->idasiento;
-                  $partida1->concepto = $asiento->concepto;
-                  $partida1->idsubcuenta = $subcuenta_iva->idsubcuenta;
-                  $partida1->codsubcuenta = $subcuenta_iva->codsubcuenta;
-                  $partida1->debe = $li->totaliva*$tasaconv;
-                  $partida1->idcontrapartida = $subcuenta_prov->idsubcuenta;
-                  $partida1->codcontrapartida = $subcuenta_prov->codsubcuenta;
-                  $partida1->cifnif = $proveedor->cifnif;
-                  $partida1->documento = $asiento->documento;
-                  $partida1->tipodocumento = $asiento->tipodocumento;
-                  $partida1->codserie = $factura->codserie;
-                  $partida1->factura = $factura->numero;
-                  $partida1->baseimponible = $li->neto*$tasaconv;
-                  $partida1->iva = $li->iva;
-                  $partida1->coddivisa = $this->empresa->coddivisa;
-                  $partida1->tasaconv = $tasaconv2;
-                  if( !$partida1->save() )
-                  {
-                     $asiento_correcto = FALSE;
-                     $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida1->codsubcuenta."!");
-                  }
-                  
-                  if($li->recargo != 0)
-                  {
-                     $partida11 = new partida();
-                     $partida11->idasiento = $asiento->idasiento;
-                     $partida11->concepto = $asiento->concepto;
-                     $partida11->idsubcuenta = $subcuenta_iva->idsubcuenta;
-                     $partida11->codsubcuenta = $subcuenta_iva->codsubcuenta;
-                     $partida11->debe = $li->totalrecargo*$tasaconv;
-                     $partida11->idcontrapartida = $subcuenta_prov->idsubcuenta;
-                     $partida11->codcontrapartida = $subcuenta_prov->codsubcuenta;
-                     $partida11->cifnif = $proveedor->cifnif;
-                     $partida11->documento = $asiento->documento;
-                     $partida11->tipodocumento = $asiento->tipodocumento;
-                     $partida11->codserie = $factura->codserie;
-                     $partida11->factura = $factura->numero;
-                     $partida11->baseimponible = $li->neto*$tasaconv;
-                     $partida11->recargo = $li->recargo;
-                     $partida11->coddivisa = $this->empresa->coddivisa;
-                     $partida11->tasaconv = $tasaconv2;
-                     if( !$partida11->save() )
-                     {
-                        $asiento_correcto = FALSE;
-                        $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida11->codsubcuenta."!");
-                     }
-                  }
-               }
-               else if(!$subcuenta_iva)
-               {
-                  $asiento_correcto = FALSE;
-                  $this->new_error_msg('No se encuentra la subcuenta de '.FS_IVA);
-               }
-            }
-            
-            $subcuenta_compras = $this->subcuenta->get_cuentaesp('COMPRA', $asiento->codejercicio);
-            if($subcuenta_compras AND $asiento_correcto)
-            {
-               $partida2 = new partida();
-               $partida2->idasiento = $asiento->idasiento;
-               $partida2->concepto = $asiento->concepto;
-               $partida2->idsubcuenta = $subcuenta_compras->idsubcuenta;
-               $partida2->codsubcuenta = $subcuenta_compras->codsubcuenta;
-               $partida2->debe = $factura->neto*$tasaconv;
-               $partida2->coddivisa = $this->empresa->coddivisa;
-               $partida2->tasaconv = $tasaconv2;
-               $partida2->codserie = $factura->codserie;
-               if( !$partida2->save() )
-               {
-                  $asiento_correcto = FALSE;
-                  $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida2->codsubcuenta."!");
-               }
-            }
-            else if(!$subcuenta_compras)
-            {
-               $asiento_correcto = FALSE;
-               $this->new_error_msg('No se encuentra la subcuenta de compras.');
-            }
-            
-            /// ¿IRPF?
-            if($factura->totalirpf != 0 AND $asiento_correcto)
-            {
-               $subcuenta_irpf = $this->subcuenta->get_cuentaesp('IRPFPR', $asiento->codejercicio);
-               if($subcuenta_irpf)
-               {
-                  $partida3 = new partida();
-                  $partida3->idasiento = $asiento->idasiento;
-                  $partida3->concepto = $asiento->concepto;
-                  $partida3->idsubcuenta = $subcuenta_irpf->idsubcuenta;
-                  $partida3->codsubcuenta = $subcuenta_irpf->codsubcuenta;
-                  $partida3->haber = $factura->totalirpf*$tasaconv;
-                  $partida3->coddivisa = $this->empresa->coddivisa;
-                  $partida3->tasaconv = $tasaconv2;
-                  $partida3->codserie = $factura->codserie;
-                  if( !$partida3->save() )
-                  {
-                     $asiento_correcto = FALSE;
-                     $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida3->codsubcuenta."!");
-                  }
-               }
-               else if(!$subcuenta_irpf)
-               {
-                  $asiento_correcto = FALSE;
-                  $this->new_error_msg('No se encuentra la subcuenta de '.FS_IRPF);
-               }
-            }
-            
-            /// comprobamos si los artículos tienen subcuentas asociadas
-            if($asiento_correcto)
-            {
-               $partidaA = new partida();
-               $partidaA->idasiento = $asiento->idasiento;
-               $partidaA->concepto = $asiento->concepto;
-               $partidaA->coddivisa = $this->empresa->coddivisa;
-               $partidaA->tasaconv = $tasaconv2;
-               
-               /// importe a restar a la partida2
-               $restar = 0;
-               
-               /**
-                * Para cada artículo de la factura, buscamos su subcuenta de compra o compra con irpf
-                */
-               $art0 = new articulo();
-               foreach($factura->get_lineas() as $lin)
-               {
-                  $subcart = FALSE;
-                  $articulo = $art0->get($lin->referencia);
-                  if($articulo)
-                  {
-                     if($lin->irpf != 0)
-                     {
-                        $subcart = $this->subcuenta->get_by_codigo($articulo->codsubcuentairpfcom, $factura->codejercicio);
-                     }
-                     else if($articulo->codsubcuentacom)
-                     {
-                        $subcart = $this->subcuenta->get_by_codigo($articulo->codsubcuentacom, $factura->codejercicio);
-                     }
-                     
-                     if(!$subcart)
-                     {
-                        /// no hay / no se encuentra ninguna subcuenta asignada al artículo
-                     }
-                     else if($subcart->idsubcuenta != $subcuenta_compras->idsubcuenta)
-                     {
-                        if( is_null($partidaA->idsubcuenta) )
-                        {
-                           $partidaA->idsubcuenta = $subcart->idsubcuenta;
-                           $partidaA->codsubcuenta = $subcart->codsubcuenta;
-                           $partidaA->debe = $lin->pvptotal*$tasaconv;
-                        }
-                        else if($partidaA->idsubcuenta == $subcart->idsubcuenta)
-                        {
-                           $partidaA->debe += $lin->pvptotal*$tasaconv;
-                        }
-                        else
-                        {
-                           $partidaA->debe = round($partidaA->debe, FS_NF0);
-                           $restar += $partidaA->debe;
-                           if( !$partidaA->save() )
-                           {
-                              $asiento_correcto = FALSE;
-                              $this->new_error_msg("¡Imposible generar la partida para la subcuenta del artículo "
-                                      .$lin->referencia."!");
-                           }
-                           
-                           $partidaA = new partida();
-                           $partidaA->idasiento = $asiento->idasiento;
-                           $partidaA->concepto = $asiento->concepto;
-                           $partidaA->idsubcuenta = $subcart->idsubcuenta;
-                           $partidaA->codsubcuenta = $subcart->codsubcuenta;
-                           $partidaA->debe = $lin->pvptotal*$tasaconv;
-                           $partidaA->coddivisa = $this->empresa->coddivisa;
-                           $partidaA->tasaconv = $tasaconv2;
-                        }
-                     }
-                  }
-               }
-               
-               if($partidaA->idsubcuenta AND $partidaA->codsubcuenta)
-               {
-                  $partidaA->debe = round($partidaA->debe, FS_NF0);
-                  $restar += $partidaA->debe;
-                  if( $partidaA->save() )
-                  {
-                     $partida2->debe -= $restar;
-                     $partida2->save();
-                  }
-                  else
-                  {
-                     $asiento_correcto = FALSE;
-                     $this->new_error_msg("¡Imposible generar la partida para la subcuenta del artículo ".$lin->referencia."!");
-                  }
-               }
-            }
-            
-            if($asiento_correcto)
-            {
-               /// si es una factura rectificativa, invertimos los importes
-               if($factura->idfacturarect)
-               {
-                  $this->invertir_asiento($asiento);
-               }
-               
-               $factura->idasiento = $asiento->idasiento;
-               if($factura->pagada)
-               {
-                  $factura->idasientop = $this->generar_asiento_pago($asiento, $factura->codpago, $factura->fecha);
-               }
-               
-               if( $factura->save() )
-               {
-                  $ok = $this->check_asiento($asiento);
-                  if(!$ok)
-                  {
-                     $this->new_error_msg('El asiento está descuadrado.');
-                  }
-                  
-                  $this->asiento = $asiento;
-               }
-               else
-                  $this->new_error_msg("¡Imposible añadir el asiento a la factura!");
-            }
-            else
-            {
-               if( $asiento->delete() )
-               {
-                  $this->new_message("El asiento se ha borrado.");
-               }
-               else
-                  $this->new_error_msg("¡Imposible borrar el asiento!");
-            }
-         }
-      }
-      
-      return $ok;
-   }
-   
-   /**
-    * Genera el asiento contable para una factura de venta.
-    * Devuelve TRUE si el asiento se ha generado correctamente, False en caso contrario.
-    * Si genera el asiento, este es accesible desde $this->asiento.
-    * @param factura_cliente $factura
-    */
-   public function generar_asiento_venta(&$factura)
-   {
-      $ok = FALSE;
-      $this->asiento = FALSE;
-      $cliente0 = new cliente();
-      $subcuenta_cli = FALSE;
-      
-      /// obtenemos las tasas de conversión, para las ocasiones en que la factura está en otra divisa
-      $tasaconv = 1;
-      $tasaconv2 = $factura->tasaconv;
-      if($factura->coddivisa != $this->empresa->coddivisa)
-      {
-         $divisa = $this->divisa->get($this->empresa->coddivisa);
-         if($divisa)
-         {
-            $tasaconv = $divisa->tasaconv/$factura->tasaconv;
-            $tasaconv2 = $divisa->tasaconv_compra;
-         }
-      }
-      
-      /// obtenemos el clientes y su subcuenta
-      $cliente = $cliente0->get($factura->codcliente);
-      if($cliente)
-      {
-         $subcuenta_cli = $cliente->get_subcuenta($factura->codejercicio);
-      }
-      
-      if( !$subcuenta_cli )
-      {
-         $eje0 = $this->ejercicio->get($factura->codejercicio);
-         $this->new_message("No se ha podido generar una subcuenta para el cliente
-            <a href='".$eje0->url()."'>¿Has importado los datos del ejercicio?</a>");
-         
-         if(!$this->soloasiento)
-         {
-            $this->new_message("Aun así la <a href='".$factura->url()."'>factura</a> se ha generado correctamente,
-            pero sin asiento contable.");
-         }
-      }
-      else
-      {
-         $asiento = new asiento();
-         $asiento->codejercicio = $factura->codejercicio;
-         
-         if($factura->idfacturarect)
-         {
-            $asiento->concepto = ucfirst(FS_FACTURA_RECTIFICATIVA)." de ".$factura->codigo." (ventas) - ".$factura->nombrecliente;
-         }
-         else
-         {
-            $asiento->concepto = "Factura de venta ".$factura->codigo." - ".$factura->nombrecliente;
-         }
-         
-         $asiento->documento = $factura->codigo;
-         $asiento->editable = FALSE;
-         $asiento->fecha = $factura->fecha;
-         $asiento->importe = abs($factura->total*$tasaconv);
-         $asiento->tipodocumento = 'Factura de cliente';
-         if( $asiento->save() )
-         {
-            $asiento_correcto = TRUE;
-            $partida0 = new partida();
-            $partida0->idasiento = $asiento->idasiento;
-            $partida0->concepto = $asiento->concepto;
-            $partida0->idsubcuenta = $subcuenta_cli->idsubcuenta;
-            $partida0->codsubcuenta = $subcuenta_cli->codsubcuenta;
-            $partida0->debe = $factura->total*$tasaconv;
-            $partida0->coddivisa = $this->empresa->coddivisa;
-            $partida0->tasaconv = $tasaconv2;
-            $partida0->codserie = $factura->codserie;
-            if( !$partida0->save() )
-            {
-               $asiento_correcto = FALSE;
-               $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida0->codsubcuenta."!");
-            }
-            
-            /// generamos una partida por cada impuesto
-            foreach($factura->get_lineas_iva() as $li)
-            {
-               $subcuenta_iva = FALSE;
-               
-               /// ¿El impuesto tiene una subcuenta específica?
-               if( isset($this->impuestos[$li->codimpuesto]) )
-               {
-                  if($this->impuestos[$li->codimpuesto]->codsubcuentarep)
-                  {
-                     $subcuenta_iva = $this->subcuenta->get_by_codigo($this->impuestos[$li->codimpuesto]->codsubcuentarep, $asiento->codejercicio);
-                  }
-               }
-               
-               if(!$subcuenta_iva)
-               {
-                  $subcuenta_iva = $this->subcuenta->get_cuentaesp('IVAREP', $asiento->codejercicio);
-               }
-               
-               if($li->totaliva == 0 AND $li->totalrecargo == 0)
-               {
-                  /// no hacemos nada si no hay IVA ni RE
-               }
-               else if($subcuenta_iva AND $asiento_correcto)
-               {
-                  $partida1 = new partida();
-                  $partida1->idasiento = $asiento->idasiento;
-                  $partida1->concepto = $asiento->concepto;
-                  $partida1->idsubcuenta = $subcuenta_iva->idsubcuenta;
-                  $partida1->codsubcuenta = $subcuenta_iva->codsubcuenta;
-                  $partida1->haber = $li->totaliva*$tasaconv;
-                  $partida1->idcontrapartida = $subcuenta_cli->idsubcuenta;
-                  $partida1->codcontrapartida = $subcuenta_cli->codsubcuenta;
-                  $partida1->cifnif = $cliente->cifnif;
-                  $partida1->documento = $asiento->documento;
-                  $partida1->tipodocumento = $asiento->tipodocumento;
-                  $partida1->codserie = $factura->codserie;
-                  $partida1->factura = $factura->numero;
-                  $partida1->baseimponible = $li->neto*$tasaconv;
-                  $partida1->iva = $li->iva;
-                  $partida1->coddivisa = $this->empresa->coddivisa;
-                  $partida1->tasaconv = $tasaconv2;
-                  if( !$partida1->save() )
-                  {
-                     $asiento_correcto = FALSE;
-                     $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida1->codsubcuenta."!");
-                  }
-                  
-                  if($li->recargo != 0)
-                  {
-                     $partida11 = new partida();
-                     $partida11->idasiento = $asiento->idasiento;
-                     $partida11->concepto = $asiento->concepto;
-                     $partida11->idsubcuenta = $subcuenta_iva->idsubcuenta;
-                     $partida11->codsubcuenta = $subcuenta_iva->codsubcuenta;
-                     $partida11->haber = $li->totalrecargo*$tasaconv;
-                     $partida11->idcontrapartida = $subcuenta_cli->idsubcuenta;
-                     $partida11->codcontrapartida = $subcuenta_cli->codsubcuenta;
-                     $partida11->cifnif = $cliente->cifnif;
-                     $partida11->documento = $asiento->documento;
-                     $partida11->tipodocumento = $asiento->tipodocumento;
-                     $partida11->codserie = $factura->codserie;
-                     $partida11->factura = $factura->numero;
-                     $partida11->baseimponible = $li->neto*$tasaconv;
-                     $partida11->recargo = $li->recargo;
-                     $partida11->coddivisa = $this->empresa->coddivisa;
-                     $partida11->tasaconv = $tasaconv2;
-                     if( !$partida11->save() )
-                     {
-                        $asiento_correcto = FALSE;
-                        $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida11->codsubcuenta."!");
-                     }
-                  }
-               }
-               else if(!$subcuenta_iva)
-               {
-                  $asiento_correcto = FALSE;
-                  $this->new_error_msg('No se encuentra la subcuenta de '.FS_IVA);
-               }
-            }
-            
-            $subcuenta_ventas = $this->subcuenta->get_cuentaesp('VENTAS', $asiento->codejercicio);
-            if($subcuenta_ventas AND $asiento_correcto)
-            {
-               $partida2 = new partida();
-               $partida2->idasiento = $asiento->idasiento;
-               $partida2->concepto = $asiento->concepto;
-               $partida2->idsubcuenta = $subcuenta_ventas->idsubcuenta;
-               $partida2->codsubcuenta = $subcuenta_ventas->codsubcuenta;
-               $partida2->haber = $factura->neto*$tasaconv;
-               $partida2->coddivisa = $this->empresa->coddivisa;
-               $partida2->tasaconv = $tasaconv2;
-               $partida2->codserie = $factura->codserie;
-               if( !$partida2->save() )
-               {
-                  $asiento_correcto = FALSE;
-                  $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida2->codsubcuenta."!");
-               }
-            }
-            else if(!$subcuenta_ventas)
-            {
-               $asiento_correcto = FALSE;
-               $this->new_error_msg('No se encuentra la subcuenta de ventas');
-            }
-            
-            /// ¿IRPF?
-            if($factura->totalirpf != 0 AND $asiento_correcto)
-            {
-               $subcuenta_irpf = $this->subcuenta->get_cuentaesp('IRPF', $asiento->codejercicio);
-               
-               if(!$subcuenta_irpf)
-               {
-                  $subcuenta_irpf = $this->subcuenta->get_by_codigo('4730000000', $asiento->codejercicio);
-               }
-               
-               if($subcuenta_irpf)
-               {
-                  $partida3 = new partida();
-                  $partida3->idasiento = $asiento->idasiento;
-                  $partida3->concepto = $asiento->concepto;
-                  $partida3->idsubcuenta = $subcuenta_irpf->idsubcuenta;
-                  $partida3->codsubcuenta = $subcuenta_irpf->codsubcuenta;
-                  $partida3->debe = $factura->totalirpf*$tasaconv;
-                  $partida3->coddivisa = $this->empresa->coddivisa;
-                  $partida3->tasaconv = $tasaconv2;
-                  $partida3->codserie = $factura->codserie;
-                  if( !$partida3->save() )
-                  {
-                     $asiento_correcto = FALSE;
-                     $this->new_error_msg("¡Imposible generar la partida para la subcuenta ".$partida3->codsubcuenta."!");
-                  }
-               }
-               else if(!$subcuenta_irpf)
-               {
-                  $asiento_correcto = FALSE;
-                  $this->new_error_msg('No se encuentra la subcuenta de '.FS_IRPF);
-               }
-            }
-            
-            /// comprobamos si algún artículo tiene una subcuenta asociada
-            if($asiento_correcto)
-            {
-               $partidaA = new partida();
-               $partidaA->idasiento = $asiento->idasiento;
-               $partidaA->concepto = $asiento->concepto;
-               $partidaA->coddivisa = $this->empresa->coddivisa;
-               $partidaA->tasaconv = $tasaconv2;
-               
-               /// importe a restar a la partida2
-               $restar = 0;
-               
-               /**
-                * Para cada artículo de la factura, buscamos su subcuenta de compra o compra con irpf
-                */
-               $ap = new articulo_propiedad();
-               foreach($factura->get_lineas() as $lin)
-               {
-                  $subcart = FALSE;
-                  $aprops = $ap->array_get($lin->referencia);
-                  
-                  if( isset($aprops['codsubcuentaventa']) )
-                  {
-                     $subcart = $this->subcuenta->get_by_codigo($aprops['codsubcuentaventa'], $factura->codejercicio);
-                  }
-                  
-                  if(!$subcart)
-                  {
-                     /// no hay / no se encuentra ninguna subcuenta asignada al artículo
-                  }
-                  else if($subcart->idsubcuenta != $subcuenta_ventas->idsubcuenta)
-                  {
-                     if( is_null($partidaA->idsubcuenta) )
-                     {
-                        $partidaA->idsubcuenta = $subcart->idsubcuenta;
-                        $partidaA->codsubcuenta = $subcart->codsubcuenta;
-                        $partidaA->haber = $lin->pvptotal*$tasaconv;
-                     }
-                     else if($partidaA->idsubcuenta == $subcart->idsubcuenta)
-                     {
-                        $partidaA->haber += $lin->pvptotal*$tasaconv;
-                     }
-                     else
-                     {
-                        $partidaA->haber = round($partidaA->haber, FS_NF0);
-                        $restar += $partidaA->haber;
-                        if( !$partidaA->save() )
-                        {
-                           $asiento_correcto = FALSE;
-                           $this->new_error_msg("¡Imposible generar la partida para la subcuenta del artículo "
-                                   .$lin->referencia."!");
-                        }
-                        
-                        $partidaA = new partida();
-                        $partidaA->idasiento = $asiento->idasiento;
-                        $partidaA->concepto = $asiento->concepto;
-                        $partidaA->idsubcuenta = $subcart->idsubcuenta;
-                        $partidaA->codsubcuenta = $subcart->codsubcuenta;
-                        $partidaA->haber = $lin->pvptotal*$tasaconv;
-                        $partidaA->coddivisa = $this->empresa->coddivisa;
-                        $partidaA->tasaconv = $tasaconv2;
-                     }
-                  }
-               }
-               
-               if($partidaA->idsubcuenta AND $partidaA->codsubcuenta)
-               {
-                  $partidaA->haber = round($partidaA->haber, FS_NF0);
-                  $restar += $partidaA->haber;
-                  if( $partidaA->save() )
-                  {
-                     $partida2->haber -= $restar;
-                     $partida2->save();
-                  }
-                  else
-                  {
-                     $asiento_correcto = FALSE;
-                     $this->new_error_msg("¡Imposible generar la partida para la subcuenta del artículo "
-                             .$lin->referencia."!");
-                  }
-               }
-            }
-            
-            if($asiento_correcto)
-            {
-               /// si es una factura rectificativa, invertimos los importes
-               if($factura->idfacturarect)
-               {
-                  $this->invertir_asiento($asiento);
-               }
-               
-               $factura->idasiento = $asiento->idasiento;
-               if($factura->pagada)
-               {
-                  $factura->idasientop = $this->generar_asiento_pago($asiento, $factura->codpago, $factura->fecha);
-               }
-               
-               if( $factura->save() )
-               {
-                  $ok = $this->check_asiento($asiento);
-                  if(!$ok)
-                  {
-                     $this->new_error_msg('El asiento está descuadrado.');
-                  }
-                  
-                  $this->asiento = $asiento;
-               }
-               else
-                  $this->new_error_msg("¡Imposible añadir el asiento a la factura!");
-            }
-            else
-            {
-               if( $asiento->delete() )
-               {
-                  $this->new_message("El asiento se ha borrado.");
-               }
-               else
-                  $this->new_error_msg("¡Imposible borrar el asiento!");
-            }
-         }
-         else
-         {
-            $this->new_error_msg("¡Imposible guardar el asiento!");
-         }
-      }
-      
-      return $ok;
-   }
-   
-   /**
-    * Generamos un asiento de pago del asiento seleccionado.
-    * @param asiento $asiento
-    */
-   public function generar_asiento_pago(&$asiento, $codpago=FALSE, $fecha=FALSE, $subclipro=FALSE)
-   {
-      $nasientop = new asiento();
-      $nasientop->editable = FALSE;
-      $nasientop->importe = $asiento->importe;
-      $nasientop->tipodocumento = $asiento->tipodocumento;
-      $nasientop->documento = $asiento->documento;
-      
-      if($asiento->tipodocumento == 'Factura de cliente')
-      {
-         $nasientop->concepto = 'Cobro '.$asiento->concepto;
-      }
-      else
-      {
-         $nasientop->concepto = 'Pago '.$asiento->concepto;
-      }
-      
-      if($fecha)
-      {
-         $nasientop->fecha = $fecha;
-      }
-      
-      /// asignamos la mejor fecha
-      $eje = $this->ejercicio->get_by_fecha($nasientop->fecha);
-      if($eje)
-      {
-         $nasientop->codejercicio = $eje->codejercicio;
-         $nasientop->fecha = $eje->get_best_fecha($nasientop->fecha);
-      }
-      
-      /// necesitamos la subcuenta de caja
-      $subcaja = $this->subcuenta->get_cuentaesp('CAJA', $nasientop->codejercicio);
-      if($codpago)
-      {
-         /**
-          * Si nos han pasado una forma de pago, intentamos buscar la subcuenta
-          * asociada a la cuenta bancaria.
-          */
-         $formap = $this->forma_pago->get($codpago);
-         if($formap)
-         {
-            if($formap->codcuenta)
-            {
-               $cuentab = $this->cuenta_banco->get($formap->codcuenta);
-               if($cuentab)
-               {
-                  $subc = $this->subcuenta->get_by_codigo($cuentab->codsubcuenta, $nasientop->codejercicio);
-                  if($subc)
-                  {
-                     $subcaja = $subc;
-                  }
-               }
-            }
-         }
-      }
-      
-      if(!$eje)
-      {
-         $this->new_error_msg('Ningún ejercico encontrado.');
-      }
-      else if( !$eje->abierto() )
-      {
-         $this->new_error_msg('El ejercicio '.$eje->codejercicio.' está cerrado.');
-      }
-      else if(!$subcaja)
-      {
-         $this->new_error_msg('No se ha encontrado ninguna subcuenta de caja para el ejercicio '
-                 .$eje->codejercicio.'. <a href="'.$eje->url().'">¿Has importado los datos del ejercicio?</a>');
-      }
-      else if( $nasientop->save() )
-      {
-         /// buscamos la partida que coincida con el importe
-         $encontrada = FALSE;
-         foreach($asiento->get_partidas() as $par)
-         {
-            if( $nasientop->floatcmp( abs($par->debe), $nasientop->importe, FS_NF0) )
-            {
-               if(!$subclipro)
-               {
-                  $subclipro = $this->subcuenta->get_by_codigo($par->codsubcuenta, $nasientop->codejercicio);
-               }
-               
-               if($subclipro)
-               {
-                  $partida1 = new partida();
-                  $partida1->idasiento = $nasientop->idasiento;
-                  $partida1->concepto = $nasientop->concepto;
-                  $partida1->idsubcuenta = $subclipro->idsubcuenta;
-                  $partida1->codsubcuenta = $subclipro->codsubcuenta;
-                  $partida1->haber = $par->debe;
-                  $partida1->coddivisa = $par->coddivisa;
-                  $partida1->tasaconv = $par->tasaconv;
-                  $partida1->codserie = $par->codserie;
-                  $partida1->save();
-                  
-                  $partida2 = new partida();
-                  $partida2->idasiento = $nasientop->idasiento;
-                  $partida2->concepto = $nasientop->concepto;
-                  $partida2->idsubcuenta = $subcaja->idsubcuenta;
-                  $partida2->codsubcuenta = $subcaja->codsubcuenta;
-                  $partida2->debe = $par->debe;
-                  $partida2->coddivisa = $par->coddivisa;
-                  $partida2->tasaconv = $par->tasaconv;
-                  $partida2->codserie = $par->codserie;
-                  $partida2->save();
-                  $encontrada = TRUE;
-               }
-               else
-               {
-                  $this->new_error_msg('No se ha encontrado la subcuenta '.$par->codsubcuenta
-                          .' en el ejercicio '.$nasientop->codejercicio);
-                  $nasientop->delete();
-               }
-               break;
-            }
-            else if( $nasientop->floatcmp( abs($par->haber), $nasientop->importe, FS_NF0) )
-            {
-               if(!$subclipro)
-               {
-                  $subclipro = $this->subcuenta->get_by_codigo($par->codsubcuenta, $nasientop->codejercicio);
-               }
-               
-               if($subclipro)
-               {
-                  $partida1 = new partida();
-                  $partida1->idasiento = $nasientop->idasiento;
-                  $partida1->concepto = $nasientop->concepto;
-                  $partida1->idsubcuenta = $subclipro->idsubcuenta;
-                  $partida1->codsubcuenta = $subclipro->codsubcuenta;
-                  $partida1->debe = $par->haber;
-                  $partida1->coddivisa = $par->coddivisa;
-                  $partida1->tasaconv = $par->tasaconv;
-                  $partida1->codserie = $par->codserie;
-                  $partida1->save();
-                  
-                  $partida2 = new partida();
-                  $partida2->idasiento = $nasientop->idasiento;
-                  $partida2->concepto = $nasientop->concepto;
-                  $partida2->idsubcuenta = $subcaja->idsubcuenta;
-                  $partida2->codsubcuenta = $subcaja->codsubcuenta;
-                  $partida2->haber = $par->haber;
-                  $partida2->coddivisa = $par->coddivisa;
-                  $partida2->tasaconv = $par->tasaconv;
-                  $partida2->codserie = $par->codserie;
-                  $partida2->save();
-                  $encontrada = TRUE;
-               }
-               else
-               {
-                  $this->new_error_msg('No se ha encontrado la subcuenta '.$par->codsubcuenta
-                          .' en el ejercicio '.$nasientop->codejercicio);
-                  $nasientop->delete();
-               }
-               break;
-            }
-         }
-         
-         if(!$encontrada)
-         {
-            $this->new_error_msg('No se ha encontrado la partida necesaria para generar el asiento '.$nasientop->concepto);
-            $nasientop->delete();
-            $nasientop->idasiento = NULL;
-         }
-      }
-      else
-      {
-         $this->new_error_msg('Error al guardar el asiento de pago.');
-      }
-      
-      return $nasientop->idasiento;
-   }
-   
-   /**
-    * Invierte los valores debe/haber de las líneas del asiento
-    * @param asiento $asiento
-    */
-   public function invertir_asiento(&$asiento)
-   {
-      foreach($asiento->get_partidas() as $part)
-      {
-         $debe = abs($part->debe);
-         $haber = abs($part->haber);
-         
-         $part->debe = $haber;
-         $part->haber = $debe;
-         $part->baseimponible = abs($part->baseimponible);
-         $part->save();
-      }
-   }
-   
-   /**
-    * Comprueba la validez de un asiento contable
-    * @param asiento $asiento
-    * @return boolean
-    */
-   private function check_asiento($asiento)
-   {
-      $ok = FALSE;
-      
-      $debe = 0;
-      $haber = 0;
-      foreach($asiento->get_partidas() as $lin)
-      {
-         $debe += $lin->debe;
-         $haber += $lin->haber;
-      }
-      
-      if( abs($debe - $haber) < .01 )
-      {
-         $ok = TRUE;
-      }
-      
-      return $ok;
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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

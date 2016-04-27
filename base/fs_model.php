@@ -1,470 +1,191 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-
-require_once 'base/bround.php';
-require_once 'base/fs_cache.php';
-require_once 'base/fs_db2.php';
-require_once 'base/fs_default_items.php';
-
-/**
- * Esta función sirve para cargar modelos, y sobre todo, para cargarlos
- * desde la carpeta plugins, así se puede personalizar aún más el comportamiento
- * de el sistema.
- */
-function require_model($name)
-{
-   if( !isset($GLOBALS['models']) )
-   {
-      $GLOBALS['models'] = array();
-   }
-   
-   if( !in_array($name, $GLOBALS['models']) )
-   {
-      /// primero buscamos en los plugins
-      $found = FALSE;
-      foreach($GLOBALS['plugins'] as $plugin)
-      {
-         if( file_exists('plugins/'.$plugin.'/model/'.$name) )
-         {
-            require_once 'plugins/'.$plugin.'/model/'.$name;
-            $GLOBALS['models'][] = $name;
-            $found = TRUE;
-            break;
-         }
-      }
-      
-      if( !$found AND file_exists('model/'.$name) )
-      {
-         require_once 'model/'.$name;
-         $GLOBALS['models'][] = $name;
-      }
-   }
-}
-
-/**
- * La clase de la que heredan todos los modelos, conecta a la base de datos,
- * comprueba la estructura de la tabla y de ser necesario la crea o adapta.
- */
-abstract class fs_model
-{
-   /**
-    * Proporciona acceso directo a la base de datos.
-    * Implementa la clase fs_mysql o fs_postgresql.
-    * @var fs_db2
-    */
-   protected $db;
-   
-   /**
-    * Nombre de la tabla en la base de datos.
-    * @var type 
-    */
-   protected $table_name;
-   
-   /**
-    * Directorio donde se encuentra el directorio table con
-    * el XML con la estructura de la tabla.
-    * @var type 
-    */
-   protected $base_dir;
-   
-   /**
-    * Permite conectar e interactuar con memcache.
-    * @var fs_cache
-    */
-   protected $cache;
-   
-   /**
-    * Clase que se utiliza para definir algunos valores por defecto:
-    * codejercicio, codserie, coddivisa, etc...
-    * @var fs_default_items
-    */
-   protected $default_items;
-   
-   private static $checked_tables;
-   private static $errors;
-   
-   /**
-    * 
-    * @param type $name nombre de la tabla de la base de datos.
-    */
-   public function __construct($name = '')
-   {
-      $this->cache = new fs_cache();
-      $this->db = new fs_db2();
-      $this->table_name = $name;
-      
-      /// buscamos el xml de la tabla en los plugins
-      $this->base_dir = '';
-      foreach($GLOBALS['plugins'] as $plugin)
-      {
-         if( file_exists('plugins/'.$plugin.'/model/table/'.$name.'.xml') )
-         {
-            $this->base_dir = 'plugins/'.$plugin.'/';
-            break;
-         }
-      }
-      
-      $this->default_items = new fs_default_items();
-      
-      if( !self::$errors )
-         self::$errors = array();
-      
-      if( !self::$checked_tables )
-      {
-         self::$checked_tables = $this->cache->get_array('fs_checked_tables');
-         if(self::$checked_tables)
-         {
-            /// nos aseguramos de que existan todas las tablas que se suponen comprobadas
-            $tables = $this->db->list_tables();
-            foreach(self::$checked_tables as $ct)
-            {
-               if( !$this->db->table_exists($ct, $tables) )
-               {
-                  $this->clean_checked_tables();
-                  break;
-               }
-            }
-         }
-      }
-      
-      if($name != '')
-      {
-         if( !in_array($name, self::$checked_tables) )
-         {
-            if( $this->check_table($name) )
-            {
-               self::$checked_tables[] = $name;
-               $this->cache->set('fs_checked_tables', self::$checked_tables, 5400);
-            }
-         }
-      }
-   }
-   
-   protected function clean_checked_tables()
-   {
-      self::$checked_tables = array();
-      $this->cache->delete('fs_checked_tables');
-   }
-   
-   /**
-    * Muestra al usuario un mensaje de error
-    * @param type $msg mensaje de error
-    */
-   protected function new_error_msg($msg = FALSE)
-   {
-      if($msg)
-      {
-         self::$errors[] = $msg;
-      }
-   }
-   
-   /**
-    * Devuelve la lista de mensajes de error.
-    * @return type lista de errores.
-    */
-   public function get_errors()
-   {
-      return self::$errors;
-   }
-   
-   public function clean_errors()
-   {
-      self::$errors = array();
-   }
-   
-   /**
-    * Esta función es llamada al crear una tabla.
-    * Permite insertar valores en la tabla.
-    */
-   abstract protected function install();
-   
-   /**
-    * Esta función devuelve TRUE si los datos del objeto se encuentran
-    * en la base de datos.
-    */
-   abstract public function exists();
-   
-   /**
-    * Esta función sirve tanto para insertar como para actualizar
-    * los datos del objeto en la base de datos.
-    */
-   abstract public function save();
-   
-   /**
-    * Esta función sirve para eliminar los datos del objeto de la base de datos
-    */
-   abstract public function delete();
-   
-   /**
-    * Escapa las comillas de una cadena de texto.
-    * @param type $s cadena de texto a escapar
-    * @return type cadena de texto resultante
-    */
-   protected function escape_string($s = '')
-   {
-      return $this->db->escape_string($s);
-   }
-   
-   /**
-    * Transforma una variable en una cadena de texto válida para ser
-    * utilizada en una consulta SQL.
-    * @param type $v
-    * @return string
-    */
-   public function var2str($v)
-   {
-      if( is_null($v) )
-      {
-         return 'NULL';
-      }
-      else if( is_bool($v) )
-      {
-         if($v)
-         {
-            return 'TRUE';
-         }
-         else
-            return 'FALSE';
-      }
-      else if( preg_match('/^([0-9]{1,2})-([0-9]{1,2})-([0-9]{4})$/i', $v) ) /// es una fecha
-      {
-         return "'".Date($this->db->date_style(), strtotime($v))."'";
-      }
-      else if( preg_match('/^([0-9]{1,2})-([0-9]{1,2})-([0-9]{4}) ([0-9]{1,2}):([0-9]{1,2}):([0-9]{1,2})$/i', $v) ) /// es una fecha+hora
-      {
-         return "'".Date($this->db->date_style().' H:i:s', strtotime($v))."'";
-      }
-      else
-         return "'" . $this->db->escape_string($v) . "'";
-   }
-   
-   protected function bin2str($v)
-   {
-      if( is_null($v) )
-      {
-         return 'NULL';
-      }
-      else
-         return "'".base64_encode($v)."'";
-   }
-   
-   protected function str2bin($v)
-   {
-      if( is_null($v) )
-      {
-         return NULL;
-      }
-      else
-         return base64_decode($v);
-   }
-   
-   /**
-    * PostgreSQL guarda los valores TRUE como 't', MySQL como 1.
-    * Esta función devuelve TRUE si el valor se corresponde con
-    * alguno de los anteriores.
-    * @param type $v
-    * @return type
-    */
-   public function str2bool($v)
-   {
-      return ($v == 't' OR $v == '1');
-   }
-   
-   public function intval($s)
-   {
-      if( is_null($s) )
-      {
-         return NULL;
-      }
-      else
-         return intval($s);
-   }
-   
-   /**
-    * Compara dos números en coma flotante con una precisión de $precision,
-    * devuelve TRUE si son iguales, FALSE en caso contrario.
-    */
-   public function floatcmp($f1, $f2, $precision = 10, $round = FALSE)
-   {
-      if( $round OR !function_exists('bccomp') )
-      {
-         return( abs($f1-$f2) < 6/pow(10,$precision+1) );
-      }
-      else
-         return( bccomp( (string)$f1, (string)$f2, $precision ) == 0 );
-   }
-   
-   protected function date_range($first, $last, $step = '+1 day', $format = 'd-m-Y' )
-   {
-      $dates = array();
-      $current = strtotime($first);
-      $last = strtotime($last);
-      
-      while( $current <= $last )
-      {
-         $dates[] = date($format, $current);
-         $current = strtotime($step, $current);
-      }
-      
-      return $dates;
-   }
-   
-   /**
-    * Esta función convierte:
-    * < en &lt;
-    * > en &gt;
-    * " en &quot;
-    * ' en &#39;
-    * 
-    * No tengas la tentación de sustiturla por htmlentities o htmlspecialshars
-    * porque te encontrarás con muchas sorpresas desagradables.
-    */
-   public function no_html($t)
-   {
-      $newt = str_replace(
-              array('<','>','"',"'"),
-              array('&lt;','&gt;','&quot;','&#39;'),
-              $t
-      );
-      
-      return trim($newt);
-   }
-   
-   protected function random_string($length = 10)
-   {
-      return mb_substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"), 0, $length);
-   }
-   
-   /**
-    * Comprueba y actualiza la estructura de la tabla si es necesario
-    * @param type $table_name
-    * @return boolean
-    */
-   protected function check_table($table_name)
-   {
-      $done = TRUE;
-      $consulta = '';
-      $xml_columnas = array();
-      $xml_restricciones = array();
-      
-      if( $this->get_xml_table($table_name, $xml_columnas, $xml_restricciones) )
-      {
-         if( $this->db->table_exists($table_name) )
-         {
-            if( !$this->db->check_table_aux($table_name) )
-            {
-               $this->new_error_msg('Error al convertir la tabla a InnoDB.');
-            }
-            
-            /// eliminamos restricciones
-            $restricciones = $this->db->get_constraints($table_name);
-            $consulta2 = $this->db->compare_constraints($table_name, $xml_restricciones, $restricciones, TRUE);
-            if($consulta2 != '')
-            {
-               if( !$this->db->exec($consulta2) )
-               {
-                  $this->new_error_msg('Error al comprobar la tabla '.$table_name);
-               }
-            }
-            
-            /// comparamos las columnas
-            $columnas = $this->db->get_columns($table_name);
-            $consulta .= $this->db->compare_columns($table_name, $xml_columnas, $columnas);
-            
-            /// comparamos las restricciones
-            $restricciones = $this->db->get_constraints($table_name);
-            $consulta .= $this->db->compare_constraints($table_name, $xml_restricciones, $restricciones);
-         }
-         else
-         {
-            /// generamos el sql para crear la tabla
-            $consulta .= $this->db->generate_table($table_name, $xml_columnas, $xml_restricciones);
-            $consulta .= $this->install();
-         }
-         
-         if($consulta != '')
-         {
-            if( !$this->db->exec($consulta) )
-            {
-               $this->new_error_msg('Error al comprobar la tabla '.$table_name);
-               $done = FALSE;
-            }
-         }
-      }
-      else
-      {
-         $this->new_error_msg('Error con el xml.');
-         $done = FALSE;
-      }
-      
-      return $done;
-   }
-   
-   /**
-    * Obtiene las columnas y restricciones del fichero xml para una tabla
-    * @param type $table_name
-    * @param type $columnas
-    * @param type $restricciones
-    * @return boolean
-    */
-   protected function get_xml_table($table_name, &$columnas, &$restricciones)
-   {
-      $retorno = FALSE;
-      $filename = $this->base_dir.'model/table/'.$table_name.'.xml';
-      
-      if( file_exists($filename) )
-      {
-         $xml = simplexml_load_string( file_get_contents('./'.$filename, FILE_USE_INCLUDE_PATH) );
-         if($xml)
-         {
-            if($xml->columna)
-            {
-               $i = 0;
-               foreach($xml->columna as $col)
-               {
-                  $columnas[$i]['nombre'] = $col->nombre;
-                  $columnas[$i]['tipo'] = $col->tipo;
-                  
-                  $columnas[$i]['nulo'] = 'YES';
-                  if($col->nulo)
-                  {
-                     if( strtolower($col->nulo) == 'no')
-                     {
-                        $columnas[$i]['nulo'] = 'NO';
-                     }
-                  }
-                  
-                  if($col->defecto == '')
-                  {
-                     $columnas[$i]['defecto'] = NULL;
-                  }
-                  else
-                     $columnas[$i]['defecto'] = $col->defecto;
-                  
-                  $i++;
-               }
-               
-               /// debe de haber columnas, sino es un fallo
-               $retorno = TRUE;
-            }
-            
-            if($xml->restriccion)
-            {
-               $i = 0;
-               foreach($xml->restriccion as $col)
-               {
-                  $restricciones[$i]['nombre'] = $col->nombre;
-                  $restricciones[$i]['consulta'] = $col->consulta;
-                  $i++;
-               }
-            }
-         }
-         else
-            $this->new_error_msg('Error al leer el archivo '.$filename);
-      }
-      else
-         $this->new_error_msg('Archivo '.$filename.' no encontrado.');
-      
-      return $retorno;
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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

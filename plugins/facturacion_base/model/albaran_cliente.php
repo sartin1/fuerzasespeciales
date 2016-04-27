@@ -1,992 +1,520 @@
-<?php
-/*
- * This file is part of FacturaSctipts
- * Copyright (C) 2013-2016  Carlos Garcia Gomez  neorazorx@gmail.com
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-require_model('ejercicio.php');
-require_model('factura_cliente.php');
-require_model('linea_albaran_cliente.php');
-require_model('secuencia.php');
-
-/**
- * Albarán (boceto de factura o factura preliminar) de cliente
- */
-class albaran_cliente extends fs_model
-{
-   /**
-    * Clave primaria.
-    * @var type 
-    */
-   public $idalbaran;
-   
-   /**
-    * ID de la factura relacionada, si la hay.
-    * @var type 
-    */
-   public $idfactura;
-   
-   /**
-    * Identificador único de cara a humanos.
-    * @var type 
-    */
-   public $codigo;
-   
-   /**
-    * Serie relacionada.
-    * @var type 
-    */
-   public $codserie;
-   
-   /**
-    * Ejercicio relacionado. El que corresponde a la fecha.
-    * @var type 
-    */
-   public $codejercicio;
-   
-   /**
-    * Cliente del albarán.
-    * @var type 
-    */
-   public $codcliente;
-   
-   /**
-    * Empleado que ha creado este albarán. Modelo agente.
-    * @var type 
-    */
-   public $codagente;
-   
-   /**
-    * Forma de pago de este albarán.
-    * @var type 
-    */
-   public $codpago;
-   
-   /**
-    * Divisa de este albarán.
-    * @var type 
-    */
-   public $coddivisa;
-   
-   /**
-    * Almacén del que sale la mercancía.
-    * @var type 
-    */
-   public $codalmacen;
-   
-   /**
-    * País del cliente.
-    * @var type 
-    */
-   public $codpais;
-   
-   /**
-    * ID de la dirección del cliente. Modelo direccion_cliente.
-    * @var type 
-    */
-   public $coddir;
-   
-   /**
-    * Código postal del cliente.
-    * @var type 
-    */
-   public $codpostal;
-   
-   /**
-    * Número de albarán.
-    * Es único dentro de la serie+ejercicio.
-    * @var type 
-    */
-   public $numero;
-   
-   /**
-    * Número opcional a disposición del usuario.
-    * @var type 
-    */
-   public $numero2;
-   public $nombrecliente;
-   public $cifnif;
-   public $direccion;
-   public $ciudad;
-   public $provincia;
-   public $apartado;
-   public $fecha;
-   public $hora;
-   
-   /// datos de transporte
-   public $envio_codtrans;
-   public $envio_codigo;
-   public $envio_nombre;
-   public $envio_apellidos;
-   public $envio_direccion;
-   public $envio_codpostal;
-   public $envio_ciudad;
-   public $envio_provincia;
-   
-   /**
-    * Suma del pvptotal de líneas. Total del albarán antes de impuestos.
-    * @var type 
-    */
-   public $neto;
-   
-   /**
-    * Importe total del albarán, con impuestos.
-    * @var type 
-    */
-   public $total;
-   
-   /**
-    * Suma total del IVA de las líneas.
-    * @var type 
-    */
-   public $totaliva;
-   
-   /**
-    * Total expresado en euros, por si no fuese la divisa del albarán.
-    * Se calcula de forma automática.
-    * totaleuros = total * tasaconv
-    * @var type 
-    */
-   private $totaleuros;
-   
-   /**
-    * % de retención IRPF del albarán. Se obtiene de la serie.
-    * Cada línea puede tener un % distinto.
-    * @var type 
-    */
-   public $irpf;
-   
-   /**
-    * Suma total de las retenciones IRPF de las líneas.
-    * @var type 
-    */
-   public $totalirpf;
-   
-   /**
-    * % de comisión del empleado.
-    * @var type 
-    */
-   public $porcomision;
-   
-   /**
-    * Tasa de conversión a Euros de la divisa seleccionada.
-    * @var type 
-    */
-   public $tasaconv;
-   
-   /**
-    * Suma total del recargo de equivalencia de las líneas.
-    * @var type 
-    */
-   public $totalrecargo;
-   
-   public $observaciones;
-   
-   /**
-    * TRUE => está pendiente de factura.
-    * @var type 
-    */
-   public $ptefactura;
-   
-   /**
-    * Fecha en la que se envió el albarán por email.
-    * @var type 
-    */
-   public $femail;
-   
-   public function __construct($a=FALSE)
-   {
-      parent::__construct('albaranescli');
-      if($a)
-      {
-         $this->idalbaran = $this->intval($a['idalbaran']);
-         
-         $this->idfactura = $this->intval($a['idfactura']);
-         if($this->idfactura == 0)
-         {
-            $this->idfactura = NULL;
-         }
-         
-         $this->ptefactura = $this->str2bool($a['ptefactura']);
-         if($this->idfactura)
-         {
-            /// si ya hay una factura enlazada, no puede estar pendiente de factura
-            $this->ptefactura = FALSE;
-         }
-         
-         $this->codigo = $a['codigo'];
-         $this->codagente = $a['codagente'];
-         $this->codserie = $a['codserie'];
-         $this->codejercicio = $a['codejercicio'];
-         $this->codcliente = $a['codcliente'];
-         $this->codpago = $a['codpago'];
-         $this->coddivisa = $a['coddivisa'];
-         $this->codalmacen = $a['codalmacen'];
-         $this->codpais = $a['codpais'];
-         $this->coddir = $a['coddir'];
-         $this->codpostal = $a['codpostal'];
-         $this->numero = $a['numero'];
-         $this->numero2 = $a['numero2'];
-         $this->nombrecliente = $a['nombrecliente'];
-         $this->cifnif = $a['cifnif'];
-         $this->direccion = $a['direccion'];
-         $this->ciudad = $a['ciudad'];
-         $this->provincia = $a['provincia'];
-         $this->apartado = $a['apartado'];
-         $this->fecha = Date('d-m-Y', strtotime($a['fecha']));
-         
-         $this->hora = '00:00:00';
-         if( !is_null($a['hora']) )
-         {
-            $this->hora = date('H:i:s', strtotime($a['hora']));
-         }
-         
-         $this->neto = floatval($a['neto']);
-         $this->total = floatval($a['total']);
-         $this->totaliva = floatval($a['totaliva']);
-         $this->totaleuros = floatval($a['totaleuros']);
-         $this->irpf = floatval($a['irpf']);
-         $this->totalirpf = floatval($a['totalirpf']);
-         $this->porcomision = floatval($a['porcomision']);
-         $this->tasaconv = floatval($a['tasaconv']);
-         $this->totalrecargo = floatval($a['totalrecargo']);
-         $this->observaciones = $this->no_html($a['observaciones']);
-         
-         $this->femail = NULL;
-         if( !is_null($a['femail']) )
-         {
-            $this->femail = Date('d-m-Y', strtotime($a['femail']));
-         }
-         
-         $this->envio_codtrans = $a['codtrans'];
-         $this->envio_codigo = $a['codigoenv'];
-         $this->envio_nombre = $a['nombreenv'];
-         $this->envio_apellidos = $a['apellidosenv'];
-         $this->envio_direccion = $a['direccionenv'];
-         $this->envio_codpostal = $a['codpostalenv'];
-         $this->envio_ciudad = $a['ciudadenv'];
-         $this->envio_provincia = $a['provinciaenv'];
-      }
-      else
-      {
-         $this->idalbaran = NULL;
-         $this->idfactura = NULL;
-         $this->codigo = NULL;
-         $this->codagente = NULL;
-         $this->codserie = NULL;
-         $this->codejercicio = NULL;
-         $this->codcliente = NULL;
-         $this->codpago = NULL;
-         $this->coddivisa = NULL;
-         $this->codalmacen = NULL;
-         $this->codpais = NULL;
-         $this->coddir = NULL;
-         $this->codpostal = '';
-         $this->numero = NULL;
-         $this->numero2 = NULL;
-         $this->nombrecliente = NULL;
-         $this->cifnif = NULL;
-         $this->direccion = NULL;
-         $this->ciudad = NULL;
-         $this->provincia = NULL;
-         $this->apartado = NULL;
-         $this->fecha = Date('d-m-Y');
-         $this->hora = Date('H:i:s');
-         $this->neto = 0;
-         $this->total = 0;
-         $this->totaliva = 0;
-         $this->totaleuros = 0;
-         $this->irpf = 0;
-         $this->totalirpf = 0;
-         $this->porcomision = 0;
-         $this->tasaconv = 1;
-         $this->totalrecargo = 0;
-         $this->observaciones = NULL;
-         $this->ptefactura = TRUE;
-         $this->femail = NULL;
-         $this->envio_codtrans = NULL;
-         $this->envio_codigo = NULL;
-         $this->envio_nombre = NULL;
-         $this->envio_apellidos = NULL;
-         $this->envio_direccion = NULL;
-         $this->envio_codpostal = NULL;
-         $this->envio_ciudad = NULL;
-         $this->envio_provincia = NULL;
-      }
-   }
-   
-   protected function install()
-   {
-      return '';
-   }
-   
-   public function show_hora($s=TRUE)
-   {
-      if($s)
-      {
-         return Date('H:i:s', strtotime($this->hora));
-      }
-      else
-         return Date('H:i', strtotime($this->hora));
-   }
-   
-   public function observaciones_resume()
-   {
-      if($this->observaciones == '')
-      {
-         return '-';
-      }
-      else if( strlen($this->observaciones) < 60 )
-      {
-         return $this->observaciones;
-      }
-      else
-         return substr($this->observaciones, 0, 50).'...';
-   }
-   
-   public function url()
-   {
-      if( is_null($this->idalbaran) )
-      {
-         return 'index.php?page=ventas_albaranes';
-      }
-      else
-         return 'index.php?page=ventas_albaran&id='.$this->idalbaran;
-   }
-   
-   public function factura_url()
-   {
-      if( is_null($this->idfactura) )
-      {
-         return '#';
-      }
-      else
-         return 'index.php?page=ventas_factura&id='.$this->idfactura;
-   }
-   
-   public function agente_url()
-   {
-      if( is_null($this->codagente) )
-      {
-         return "index.php?page=admin_agentes";
-      }
-      else
-         return "index.php?page=admin_agente&cod=".$this->codagente;
-   }
-   
-   public function cliente_url()
-   {
-      if( is_null($this->codcliente) )
-      {
-         return "index.php?page=ventas_clientes";
-      }
-      else
-         return "index.php?page=ventas_cliente&cod=".$this->codcliente;
-   }
-   
-   public function get_lineas()
-   {
-      $linea = new linea_albaran_cliente();
-      return $linea->all_from_albaran($this->idalbaran);
-   }
-   
-   /**
-    * Devuelve el albarán solicitado o false si no se encuentra.
-    * @param type $id
-    * @return \albaran_cliente|boolean
-    */
-   public function get($id)
-   {
-      $albaran = $this->db->select("SELECT * FROM ".$this->table_name." WHERE idalbaran = ".$this->var2str($id).";");
-      if($albaran)
-      {
-         return new albaran_cliente($albaran[0]);
-      }
-      else
-         return FALSE;
-   }
-   
-   public function get_by_codigo($cod)
-   {
-      $albaran = $this->db->select("SELECT * FROM ".$this->table_name." WHERE upper(codigo) = ".strtoupper($this->var2str($cod)).";");
-      if($albaran)
-      {
-         return new albaran_cliente($albaran[0]);
-      }
-      else
-         return FALSE;
-   }
-   
-   public function exists()
-   {
-      if( is_null($this->idalbaran) )
-      {
-         return FALSE;
-      }
-      else
-         return $this->db->select("SELECT * FROM ".$this->table_name." WHERE idalbaran = ".$this->var2str($this->idalbaran).";");
-   }
-   
-   public function new_codigo()
-   {
-      $sec = new secuencia();
-      $sec = $sec->get_by_params2($this->codejercicio, $this->codserie, 'nalbarancli');
-      if($sec)
-      {
-         $this->numero = $sec->valorout;
-         $sec->valorout++;
-         $sec->save();
-      }
-      
-      if(!$sec OR $this->numero <= 1)
-      {
-         $numero = $this->db->select("SELECT MAX(".$this->db->sql_to_int('numero').") as num
-            FROM ".$this->table_name." WHERE codejercicio = ".$this->var2str($this->codejercicio).
-            " AND codserie = ".$this->var2str($this->codserie).";");
-         if($numero)
-         {
-            $this->numero = 1 + intval($numero[0]['num']);
-         }
-         else
-            $this->numero = 1;
-         
-         if($sec)
-         {
-            $sec->valorout = 1 + $this->numero;
-            $sec->save();
-         }
-      }
-      
-      if(FS_NEW_CODIGO == 'eneboo')
-      {
-         $this->codigo = $this->codejercicio.sprintf('%02s', $this->codserie).sprintf('%06s', $this->numero);
-      }
-      else
-      {
-         $this->codigo = strtoupper(substr(FS_ALBARAN, 0, 3)).$this->codejercicio.$this->codserie.$this->numero;
-      }
-   }
-   
-   public function test()
-   {
-      $this->observaciones = $this->no_html($this->observaciones);
-      $this->totaleuros = $this->total * $this->tasaconv;
-      
-      if($this->idfactura)
-      {
-         $this->ptefactura = FALSE;
-      }
-      
-      if( $this->floatcmp($this->total, $this->neto+$this->totaliva-$this->totalirpf+$this->totalrecargo, FS_NF0, TRUE) )
-      {
-         return TRUE;
-      }
-      else
-      {
-         $this->new_error_msg("Error grave: El total está mal calculado. ¡Avisa al informático!");
-         return FALSE;
-      }
-   }
-   
-   public function full_test($duplicados = TRUE)
-   {
-      $status = TRUE;
-      
-      /// comprobamos las líneas
-      $neto = 0;
-      $iva = 0;
-      $irpf = 0;
-      $recargo = 0;
-      foreach($this->get_lineas() as $l)
-      {
-         if( !$l->test() )
-         {
-            $status = FALSE;
-         }
-         
-         $neto += $l->pvptotal;
-         $iva += $l->pvptotal * $l->iva / 100;
-         $irpf += $l->pvptotal * $l->irpf / 100;
-         $recargo += $l->pvptotal * $l->recargo / 100;
-      }
-      
-      $neto = round($neto, FS_NF0);
-      $iva = round($iva, FS_NF0);
-      $irpf = round($irpf, FS_NF0);
-      $recargo = round($recargo, FS_NF0);
-      $total = $neto + $iva - $irpf + $recargo;
-      
-      if( !$this->floatcmp($this->neto, $neto, FS_NF0, TRUE) )
-      {
-         $this->new_error_msg("Valor neto de ".FS_ALBARAN." incorrecto. Valor correcto: ".$neto);
-         $status = FALSE;
-      }
-      else if( !$this->floatcmp($this->totaliva, $iva, FS_NF0, TRUE) )
-      {
-         $this->new_error_msg("Valor totaliva de ".FS_ALBARAN." incorrecto. Valor correcto: ".$iva);
-         $status = FALSE;
-      }
-      else if( !$this->floatcmp($this->totalirpf, $irpf, FS_NF0, TRUE) )
-      {
-         $this->new_error_msg("Valor totalirpf de ".FS_ALBARAN." incorrecto. Valor correcto: ".$irpf);
-         $status = FALSE;
-      }
-      else if( !$this->floatcmp($this->totalrecargo, $recargo, FS_NF0, TRUE) )
-      {
-         $this->new_error_msg("Valor totalrecargo de ".FS_ALBARAN." incorrecto. Valor correcto: ".$recargo);
-         $status = FALSE;
-      }
-      else if( !$this->floatcmp($this->total, $total, FS_NF0, TRUE) )
-      {
-         $this->new_error_msg("Valor total de ".FS_ALBARAN." incorrecto. Valor correcto: ".$total);
-         $status = FALSE;
-      }
-      else if( !$this->floatcmp($this->totaleuros, $this->total * $this->tasaconv, FS_NF0, TRUE) )
-      {
-         $this->new_error_msg("Valor totaleuros de ".FS_ALBARAN." incorrecto.
-            Valor correcto: ".round($this->total * $this->tasaconv, FS_NF0));
-         $status = FALSE;
-      }
-      
-      if($this->total != 0)
-      {
-         /// comprobamos las facturas asociadas
-         $linea_factura = new linea_factura_cliente();
-         $facturas = $linea_factura->facturas_from_albaran($this->idalbaran);
-         if($facturas)
-         {
-            if( count($facturas) > 1 )
-            {
-               $msg = "Este ".FS_ALBARAN." esta asociado a las siguientes facturas (y no debería):";
-               foreach($facturas as $f)
-                  $msg .= " <a href='".$f->url()."'>".$f->codigo."</a>";
-               $this->new_error_msg($msg);
-               $status = FALSE;
-            }
-            else if($facturas[0]->idfactura != $this->idfactura)
-            {
-               $this->new_error_msg("Este ".FS_ALBARAN." esta asociado a una <a href='".$this->factura_url().
-                       "'>factura</a> incorrecta. La correcta es <a href='".$facturas[0]->url()."'>esta</a>.");
-               $status = FALSE;
-            }
-         }
-         else if( isset($this->idfactura) )
-         {
-            $this->new_error_msg("Este ".FS_ALBARAN." esta asociado a una <a href='".$this->factura_url()
-                    ."'>factura</a> que ya no existe.");
-            $this->idfactura = NULL;
-            $this->save();
-            
-            $status = FALSE;
-         }
-      }
-      
-      if($status AND $duplicados)
-      {
-         /// comprobamos si es un duplicado
-         $data = $this->db->select("SELECT * FROM ".$this->table_name." WHERE fecha = ".$this->var2str($this->fecha)."
-            AND codcliente = ".$this->var2str($this->codcliente)." AND total = ".$this->var2str($this->total)."
-            AND codagente = ".$this->var2str($this->codagente)." AND numero2 = ".$this->var2str($this->numero2)."
-            AND observaciones = ".$this->var2str($this->observaciones)." AND idalbaran != ".$this->var2str($this->idalbaran).";");
-         if($data)
-         {
-            foreach($data as $alb)
-            {
-               /// comprobamos las líneas
-               $aux = $this->db->select("SELECT referencia FROM lineasalbaranescli WHERE
-                  idalbaran = ".$this->var2str($this->idalbaran)."
-                  AND referencia NOT IN (SELECT referencia FROM lineasalbaranescli
-                  WHERE idalbaran = ".$this->var2str($alb['idalbaran']).");");
-               if( !$aux )
-               {
-                  $this->new_error_msg("Este ".FS_ALBARAN." es un posible duplicado de
-                     <a href='index.php?page=ventas_albaran&id=".$alb['idalbaran']."'>este otro</a>.
-                     Si no lo es, para evitar este mensaje, simplemente modifica las observaciones.");
-                  $status = FALSE;
-               }
-            }
-         }
-      }
-      
-      return $status;
-   }
-   
-   public function save()
-   {
-      if( $this->test() )
-      {
-         if( $this->exists() )
-         {
-            $sql = "UPDATE ".$this->table_name." SET idfactura = ".$this->var2str($this->idfactura)
-                    .", codigo = ".$this->var2str($this->codigo)
-                    .", codagente = ".$this->var2str($this->codagente)
-                    .", codserie = ".$this->var2str($this->codserie)
-                    .", codejercicio = ".$this->var2str($this->codejercicio)
-                    .", codcliente = ".$this->var2str($this->codcliente)
-                    .", codpago = ".$this->var2str($this->codpago)
-                    .", coddivisa = ".$this->var2str($this->coddivisa)
-                    .", codalmacen = ".$this->var2str($this->codalmacen)
-                    .", codpais = ".$this->var2str($this->codpais)
-                    .", coddir = ".$this->var2str($this->coddir)
-                    .", codpostal = ".$this->var2str($this->codpostal)
-                    .", numero = ".$this->var2str($this->numero)
-                    .", numero2 = ".$this->var2str($this->numero2)
-                    .", nombrecliente = ".$this->var2str($this->nombrecliente)
-                    .", cifnif = ".$this->var2str($this->cifnif)
-                    .", direccion = ".$this->var2str($this->direccion)
-                    .", ciudad = ".$this->var2str($this->ciudad)
-                    .", provincia = ".$this->var2str($this->provincia)
-                    .", apartado = ".$this->var2str($this->apartado)
-                    .", fecha = ".$this->var2str($this->fecha)
-                    .", hora = ".$this->var2str($this->hora)
-                    .", neto = ".$this->var2str($this->neto)
-                    .", total = ".$this->var2str($this->total)
-                    .", totaliva = ".$this->var2str($this->totaliva)
-                    .", totaleuros = ".$this->var2str($this->totaleuros)
-                    .", irpf = ".$this->var2str($this->irpf)
-                    .", totalirpf = ".$this->var2str($this->totalirpf)
-                    .", porcomision = ".$this->var2str($this->porcomision)
-                    .", tasaconv = ".$this->var2str($this->tasaconv)
-                    .", totalrecargo = ".$this->var2str($this->totalrecargo)
-                    .", observaciones = ".$this->var2str($this->observaciones)
-                    .", ptefactura = ".$this->var2str($this->ptefactura)
-                    .", femail = ".$this->var2str($this->femail)
-                    .", codtrans = ".$this->var2str($this->envio_codtrans)
-                    .", codigoenv = ".$this->var2str($this->envio_codigo)
-                    .", nombreenv = ".$this->var2str($this->envio_nombre)
-                    .", apellidosenv = ".$this->var2str($this->envio_apellidos)
-                    .", direccionenv = ".$this->var2str($this->envio_direccion)
-                    .", codpostalenv = ".$this->var2str($this->envio_codpostal)
-                    .", ciudadenv = ".$this->var2str($this->envio_ciudad)
-                    .", provinciaenv = ".$this->var2str($this->envio_provincia)
-                    ."  WHERE idalbaran = ".$this->var2str($this->idalbaran).";";
-            
-            return $this->db->exec($sql);
-         }
-         else
-         {
-            $this->new_codigo();
-            $sql = "INSERT INTO ".$this->table_name." (idfactura,codigo,codagente,
-               codserie,codejercicio,codcliente,codpago,coddivisa,codalmacen,codpais,coddir,
-               codpostal,numero,numero2,nombrecliente,cifnif,direccion,ciudad,provincia,apartado,
-               fecha,hora,neto,total,totaliva,totaleuros,irpf,totalirpf,porcomision,tasaconv,
-               totalrecargo,observaciones,ptefactura,femail,codtrans,codigoenv,nombreenv,
-               apellidosenv,direccionenv,codpostalenv,ciudadenv,provinciaenv) VALUES "
-                    ."(".$this->var2str($this->idfactura)
-                    .",".$this->var2str($this->codigo)
-                    .",".$this->var2str($this->codagente)
-                    .",".$this->var2str($this->codserie)
-                    .",".$this->var2str($this->codejercicio)
-                    .",".$this->var2str($this->codcliente)
-                    .",".$this->var2str($this->codpago)
-                    .",".$this->var2str($this->coddivisa)
-                    .",".$this->var2str($this->codalmacen)
-                    .",".$this->var2str($this->codpais)
-                    .",".$this->var2str($this->coddir)
-                    .",".$this->var2str($this->codpostal)
-                    .",".$this->var2str($this->numero)
-                    .",".$this->var2str($this->numero2)
-                    .",".$this->var2str($this->nombrecliente)
-                    .",".$this->var2str($this->cifnif)
-                    .",".$this->var2str($this->direccion)
-                    .",".$this->var2str($this->ciudad)
-                    .",".$this->var2str($this->provincia)
-                    .",".$this->var2str($this->apartado)
-                    .",".$this->var2str($this->fecha)
-                    .",".$this->var2str($this->hora)
-                    .",".$this->var2str($this->neto)
-                    .",".$this->var2str($this->total)
-                    .",".$this->var2str($this->totaliva)
-                    .",".$this->var2str($this->totaleuros)
-                    .",".$this->var2str($this->irpf)
-                    .",".$this->var2str($this->totalirpf)
-                    .",".$this->var2str($this->porcomision)
-                    .",".$this->var2str($this->tasaconv)
-                    .",".$this->var2str($this->totalrecargo)
-                    .",".$this->var2str($this->observaciones)
-                    .",".$this->var2str($this->ptefactura)
-                    .",".$this->var2str($this->femail)
-                    .",".$this->var2str($this->envio_codtrans)
-                    .",".$this->var2str($this->envio_codigo)
-                    .",".$this->var2str($this->envio_nombre)
-                    .",".$this->var2str($this->envio_apellidos)
-                    .",".$this->var2str($this->envio_direccion)
-                    .",".$this->var2str($this->envio_codpostal)
-                    .",".$this->var2str($this->envio_ciudad)
-                    .",".$this->var2str($this->envio_provincia).");";
-            
-            if( $this->db->exec($sql) )
-            {
-               $this->idalbaran = $this->db->lastval();
-               return TRUE;
-            }
-            else
-               return FALSE;
-         }
-      }
-      else
-         return FALSE;
-   }
-   
-   public function delete()
-   {
-      if( $this->db->exec("DELETE FROM ".$this->table_name." WHERE idalbaran = ".$this->var2str($this->idalbaran).";") )
-      {
-         if($this->idfactura)
-         {
-            /**
-             * Delegamos la eliminación de la factura en la clase correspondiente,
-             * que tendrá que hacer más cosas.
-             */
-            $factura = new factura_cliente();
-            $factura0 = $factura->get($this->idfactura);
-            if($factura0)
-            {
-               $factura0->delete();
-            }
-         }
-         
-         return TRUE;
-      }
-      else
-         return FALSE;
-   }
-   
-   /**
-    * Devuelve un array con los últimos albaranes
-    * @param type $offset
-    * @param type $order
-    * @return \albaran_cliente
-    */
-   public function all($offset=0, $order='fecha DESC')
-   {
-      $albalist = array();
-      $sql = "SELECT * FROM ".$this->table_name." ORDER BY ".$order;
-      
-      $data = $this->db->select_limit($sql, FS_ITEM_LIMIT, $offset);
-      if($data)
-      {
-         foreach($data as $a)
-         {
-            $albalist[] = new albaran_cliente($a);
-         }
-      }
-      
-      return $albalist;
-   }
-   
-   /**
-    * Devuelve un array con los albaranes pendientes.
-    * @param type $offset
-    * @param type $order
-    * @return \albaran_cliente
-    */
-   public function all_ptefactura($offset=0, $order='fecha ASC')
-   {
-      $albalist = array();
-      $sql = "SELECT * FROM ".$this->table_name." WHERE ptefactura = true ORDER BY ".$order;
-      
-      $data = $this->db->select_limit($sql, FS_ITEM_LIMIT, $offset);
-      if($data)
-      {
-         foreach($data as $a)
-         {
-            $albalist[] = new albaran_cliente($a);
-         }
-      }
-      
-      return $albalist;
-   }
-   
-   /**
-    * Devuelve un array con los albaranes del cliente.
-    * @param type $codcliente
-    * @param type $offset
-    * @return \albaran_cliente
-    */
-   public function all_from_cliente($codcliente, $offset=0)
-   {
-      $albalist = array();
-      $sql = "SELECT * FROM ".$this->table_name." WHERE codcliente = ".$this->var2str($codcliente)
-              ." ORDER BY fecha DESC, codigo DESC";
-      
-      $data = $this->db->select_limit($sql, FS_ITEM_LIMIT, $offset);
-      if($data)
-      {
-         foreach($data as $a)
-         {
-            $albalist[] = new albaran_cliente($a);
-         }
-      }
-      
-      return $albalist;
-   }
-   
-   /**
-    * Devuelve un array con los albaranes del agente/empleado
-    * @param type $codagente
-    * @param type $offset
-    * @return \albaran_cliente
-    */
-   public function all_from_agente($codagente, $offset=0)
-   {
-      $albalist = array();
-      $sql = "SELECT * FROM ".$this->table_name." WHERE codagente = ".$this->var2str($codagente)
-              ." ORDER BY fecha DESC, codigo DESC";
-      
-      $data = $this->db->select_limit($sql, FS_ITEM_LIMIT, $offset);
-      if($data)
-      {
-         foreach($data as $a)
-         {
-            $albalist[] = new albaran_cliente($a);
-         }
-      }
-      
-      return $albalist;
-   }
-   
-   /**
-    * Devuelve todos los albaranes relacionados con la factura.
-    * @param type $id
-    * @return \albaran_cliente
-    */
-   public function all_from_factura($id)
-   {
-      $albalist = array();
-      $sql = "SELECT * FROM ".$this->table_name." WHERE idfactura = ".$this->var2str($id)
-              ." ORDER BY fecha DESC, codigo DESC;";
-      
-      $data = $this->db->select($sql);
-      if($data)
-      {
-         foreach($data as $a)
-         {
-            $albalist[] = new albaran_cliente($a);
-         }
-      }
-      
-      return $albalist;
-   }
-   
-   /**
-    * Devuelve un array con los albaranes comprendidos entre $desde y $hasta
-    * @param type $desde
-    * @param type $hasta
-    * @return \albaran_cliente
-    */
-   public function all_desde($desde, $hasta)
-   {
-      $alblist = array();
-      $sql = "SELECT * FROM ".$this->table_name." WHERE fecha >= ".$this->var2str($desde)
-              ." AND fecha <= ".$this->var2str($hasta)." ORDER BY codigo ASC;";
-      
-      $data = $this->db->select($sql);
-      if($data)
-      {
-         foreach($data as $a)
-         {
-            $alblist[] = new albaran_cliente($a);
-         }
-      }
-      
-      return $alblist;
-   }
-   
-   /**
-    * Devuelve un array con todos los albaranes que coinciden con $query
-    * @param type $query
-    * @param type $offset
-    * @return \albaran_cliente
-    */
-   public function search($query, $offset=0)
-   {
-      $alblist = array();
-      $query = strtolower( $this->no_html($query) );
-      
-      $consulta = "SELECT * FROM ".$this->table_name." WHERE ";
-      if( is_numeric($query) )
-      {
-         $consulta .= "codigo LIKE '%".$query."%' OR numero2 LIKE '%".$query."%' OR observaciones LIKE '%".$query."%'";
-      }
-      else
-      {
-         $consulta .= "lower(codigo) LIKE '%".$query."%' OR lower(numero2) LIKE '%".$query."%' "
-                 . "OR lower(observaciones) LIKE '%".str_replace(' ', '%', $query)."%'";
-      }
-      $consulta .= " ORDER BY fecha DESC, codigo DESC";
-      
-      $data = $this->db->select_limit($consulta, FS_ITEM_LIMIT, $offset);
-      if($data)
-      {
-         foreach($data as $a)
-         {
-            $alblist[] = new albaran_cliente($a);
-         }
-      }
-      
-      return $alblist;
-   }
-   
-   /**
-    * Devuelve un array con los albaranes del cliente $codcliente que coinciden con $query
-    * @param type $codcliente
-    * @param type $desde
-    * @param type $hasta
-    * @param type $serie
-    * @param type $obs
-    * @return \albaran_cliente
-    */
-   public function search_from_cliente($codcliente, $desde, $hasta, $serie, $obs='')
-   {
-      $albalist = array();
-      $sql = "SELECT * FROM ".$this->table_name." WHERE codcliente = ".$this->var2str($codcliente).
-         " AND ptefactura AND fecha BETWEEN ".$this->var2str($desde)." AND ".$this->var2str($hasta).
-         " AND codserie = ".$this->var2str($serie);
-      
-      if($obs != '')
-      {
-         $sql .= " AND lower(observaciones) = ".$this->var2str(strtolower($obs));
-      }
-      
-      $sql .= " ORDER BY fecha DESC, codigo DESC;";
-      
-      $data = $this->db->select($sql);
-      if($data)
-      {
-         foreach($data as $a)
-         {
-            $albalist[] = new albaran_cliente($a);
-         }
-      }
-      
-      return $albalist;
-   }
-   
-   public function cron_job()
-   {
-      /**
-       * Ponemos a NULL todos los idfactura = 0
-       */
-      $this->db->exec("UPDATE ".$this->table_name." SET idfactura = NULL WHERE idfactura = '0';");
-      
-      /**
-       * Ponemos a NULL todos los idfactura que no están en facturascli
-       */
-      $this->db->exec("UPDATE ".$this->table_name." SET idfactura = NULL WHERE idfactura NOT IN"
-              . " (SELECT idfactura FROM facturascli);");
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+0CPr56I5jGni080=

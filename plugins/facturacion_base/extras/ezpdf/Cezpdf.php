@@ -1,1885 +1,948 @@
-<?php
-/**
- * Helper class to create pdf documents
- *
- * this class will take the basic interaction facilities of the Cpdf class
- * and make more useful functions so that the user does not have to
- * know all the ins and outs of pdf presentation to produce something pretty.
- *
- * IMPORTANT NOTE
- * there is no warranty, implied or otherwise with this software.
- *
- * @package Cpdf
- * @version 0.11.6
- * @license released under a public domain licence.
- * @link http://www.sourceforge.net/p/pdf-php/
- * @author Wayne Munro, R&OS Ltd, http://www.ros.co.nz/pdf
- * @author 2002-07-24: Nicola Asuni (info@tecnick.com)
- * @author Ole K <ole1986@users.sourceforge.net>
- */
-include_once 'Cpdf.php';
-
-class Cezpdf extends Cpdf {
-
-    public $ez=array('fontSize'=>10); // used for storing most of the page configuration parameters
-    public $y; // this is the current vertical positon on the page of the writing point, very important
-    public $ezPages=array(); // keep an array of the ids of the pages, making it easy to go back and add page numbers etc.
-    public $ezPageCount=0;
-
-    // Background color and image stuff added
-    protected $ezBackground = array();
-    /**
-     *   $type        : { 'none' | 'color' | 'colour' | 'image' }
-     *   $options     : if type == 'color' or 'colour':
-     *                    $options[0] = red-component   of backgroundcolour ( 0 <= r <= 1)
-     *                    $options[1] = green-component of backgroundcolour ( 0 <= g <= 1)
-     *                    $options[2] = blue-component  of backgroundcolour ( 0 <= b <= 1)
- 	 *                   if type == 'image':
-     *                    $options['img']     = location of image file; URI's are allowed if allow_url_open is enabled in php.ini
-     *                    $options['width']   = width of background image; default is width of page
-     *                    $options['height']  = height of background image; default is height of page
-     *                    $options['xpos']    = horizontal position of background image; default is 0
-     *                    $options['ypos']    = vertical position of background image; default is 0
-     *           *new*    $options['repeat']  = repeat image horizontally (1), repeat image vertically (2) or full in both directions (3); default is 0
-     *                                          highly recommend to set this->hashed to true when using repeat function
-	 *
-     * Assuming that people don't want to specify the paper size using the absolute coordinates
-     * allow a couple of options:
-     * orientation can be 'portrait' or 'landscape'
-     * or, to actually set the coordinates, then pass an array in as the first parameter.
-     * the defaults are as shown.
-     *
-     * 2002-07-24 - Nicola Asuni (info@tecnick.com):
-     * Added new page formats (45 standard ISO paper formats and 4 american common formats)
-     * paper cordinates are calculated in this way: (inches * 72) where 1 inch = 2.54 cm
-     *
-     * Now you may also pass a 2 values array containing the page width and height in centimeters
-     *
-     * @param $paper
-     * @param $orientation
-     * @param $type
-     * @param $options
-     * @return unknown_type
-     */
-    public function __construct($paper='a4',$orientation='portrait', $type = 'none', $options = array()){
-        if (!is_array($paper)){
-            switch (strtoupper($paper)){
-                case '4A0': {$size = array(0,0,4767.87,6740.79); break;}
-                case '2A0': {$size = array(0,0,3370.39,4767.87); break;}
-                case 'A0': {$size = array(0,0,2383.94,3370.39); break;}
-                case 'A1': {$size = array(0,0,1683.78,2383.94); break;}
-                case 'A2': {$size = array(0,0,1190.55,1683.78); break;}
-                case 'A3': {$size = array(0,0,841.89,1190.55); break;}
-                case 'A4': default: {$size = array(0,0,595.28,841.89); break;}
-                case 'A5': {$size = array(0,0,419.53,595.28); break;}
-                case 'A6': {$size = array(0,0,297.64,419.53); break;}
-                case 'A7': {$size = array(0,0,209.76,297.64); break;}
-                case 'A8': {$size = array(0,0,147.40,209.76); break;}
-                case 'A9': {$size = array(0,0,104.88,147.40); break;}
-                case 'A10': {$size = array(0,0,73.70,104.88); break;}
-                case 'B0': {$size = array(0,0,2834.65,4008.19); break;}
-                case 'B1': {$size = array(0,0,2004.09,2834.65); break;}
-                case 'B2': {$size = array(0,0,1417.32,2004.09); break;}
-                case 'B3': {$size = array(0,0,1000.63,1417.32); break;}
-                case 'B4': {$size = array(0,0,708.66,1000.63); break;}
-                case 'B5': {$size = array(0,0,498.90,708.66); break;}
-                case 'B6': {$size = array(0,0,354.33,498.90); break;}
-                case 'B7': {$size = array(0,0,249.45,354.33); break;}
-                case 'B8': {$size = array(0,0,175.75,249.45); break;}
-                case 'B9': {$size = array(0,0,124.72,175.75); break;}
-                case 'B10': {$size = array(0,0,87.87,124.72); break;}
-                case 'C0': {$size = array(0,0,2599.37,3676.54); break;}
-                case 'C1': {$size = array(0,0,1836.85,2599.37); break;}
-                case 'C2': {$size = array(0,0,1298.27,1836.85); break;}
-                case 'C3': {$size = array(0,0,918.43,1298.27); break;}
-                case 'C4': {$size = array(0,0,649.13,918.43); break;}
-                case 'C5': {$size = array(0,0,459.21,649.13); break;}
-                case 'C6': {$size = array(0,0,323.15,459.21); break;}
-                case 'C7': {$size = array(0,0,229.61,323.15); break;}
-                case 'C8': {$size = array(0,0,161.57,229.61); break;}
-                case 'C9': {$size = array(0,0,113.39,161.57); break;}
-                case 'C10': {$size = array(0,0,79.37,113.39); break;}
-                case 'RA0': {$size = array(0,0,2437.80,3458.27); break;}
-                case 'RA1': {$size = array(0,0,1729.13,2437.80); break;}
-                case 'RA2': {$size = array(0,0,1218.90,1729.13); break;}
-                case 'RA3': {$size = array(0,0,864.57,1218.90); break;}
-                case 'RA4': {$size = array(0,0,609.45,864.57); break;}
-                case 'SRA0': {$size = array(0,0,2551.18,3628.35); break;}
-                case 'SRA1': {$size = array(0,0,1814.17,2551.18); break;}
-                case 'SRA2': {$size = array(0,0,1275.59,1814.17); break;}
-                case 'SRA3': {$size = array(0,0,907.09,1275.59); break;}
-                case 'SRA4': {$size = array(0,0,637.80,907.09); break;}
-                case 'LETTER': {$size = array(0,0,612.00,792.00); break;}
-                case 'LEGAL': {$size = array(0,0,612.00,1008.00); break;}
-                case 'EXECUTIVE': {$size = array(0,0,521.86,756.00); break;}
-                case 'FOLIO': {$size = array(0,0,612.00,936.00); break;}
-            }
-            switch (strtolower($orientation)){
-                case 'landscape':
-                    $a=$size[3];
-                    $size[3]=$size[2];
-                    $size[2]=$a;
-                    break;
-            }
-        } else {
-            if (count($paper)>2) {
-                // then an array was sent it to set the size
-                $size = $paper;
-            }
-            else { //size in centimeters has been passed
-                $size[0] = 0;
-                $size[1] = 0;
-                $size[2] = ( $paper[0] / 2.54 ) * 72;
-                $size[3] = ( $paper[1] / 2.54 ) * 72;
-            }
-        }
-        parent::__construct($size);
-        $this->ez['pageWidth']=$size[2];
-        $this->ez['pageHeight']=$size[3];
-
-        // also set the margins to some reasonable defaults
-        $this->ez['topMargin']=30;
-        $this->ez['bottomMargin']=30;
-        $this->ez['leftMargin']=40;
-        $this->ez['rightMargin']=20;
-
-        // set the current writing position to the top of the first page
-        $this->y = $this->ez['pageHeight']-$this->ez['topMargin'];
-        // and get the ID of the page that was created during the instancing process.
-        $this->ezPages[1]=$this->getFirstPageId();
-        $this->ezPageCount=1;
-
-        switch ($type) {
-            case 'color'  :
-            case 'colour' :
-            	$this->ezBackground['type'] = 'color';
-            	$this->ezBackground['color'] = $options;
-                break;
-            case 'image'  :
-            	if(!isset($options['img']))
-            	{
-            		$errormsg="Background Image not set.";
-                	break;
-            	}
-            	
-                if (!file_exists($options['img']))
-                {
-                	$errormsg="Background Image does not exists: '".$options['img']."'";
-                	break;
-            	}
-            	
-            	$im = getimagesize($options['img']);
-            	if($im === false){
-            		$errormsg="Background Image is invalid: '".$options['img']."'";
-            		break;
-            	}
-            	
-            	$this->ezBackground['type'] = 'image';
-            	$this->ezBackground['image'] = $options['img'];
-            	$this->ezBackground['format'] = $im[2];
-            	$this->ezBackground['repeat'] = $options['repeat'];
-            	
-            	if (isset($options['width']) && is_numeric($options['width']))  $this->ezBackground['width'] = $options['width'];  else $this->ezBackground['width']  = $this->ez['pageWidth'];
-            	if (isset($options['height']) && is_numeric($options['height'])) $this->ezBackground['height'] = $options['height']; else $this->ezBackground['height'] = $this->ez['pageHeight'];
-            	if (isset($options['xpos']) && is_numeric($options['xpos']))   $this->ezBackground['xpos']  = $options['xpos'];   else $this->ezBackground['xpos'] = 0;
-            	if (isset($options['ypos']) && is_numeric($options['ypos']))   $this->ezBackground['ypos']  = $options['ypos'];   else $this->ezBackground['ypos']   = 0;
-                break;
-            case 'none':
-            default:
-                $this->ezBackground['type'] = 'none';
-                break;
-        }
-        
-        $this->setBackground();
-    }
-    
-    /**
-     * Set the background image or color on all pages
-     * gets executed in constructor and in ezNewPage
-     * @access protected
-     */
-	protected function setBackground(){
-		if(isset($this->ezBackground['type'])){
-	        switch ($this->ezBackground['type'])
-	        {
-	            case 'color':
-	            	if (isset($this->ezBackground['color']) && count(array_filter( array_map( function($_){ return is_numeric($_)&&0<=$_&&$_<=1; }, $this->ezBackground['color']))) == 3)
-	            	{
-	                	$this->saveState();
-	                	$this->setColor($this->ezBackground['color'][0], $this->ezBackground['color'][1], $this->ezBackground['color'][2], 1);
-	                	$this->filledRectangle(0, 0, $this->ez['pageWidth'], $this->ez['pageHeight']);
-	                	$this->restoreState();
-	            	}
-	                break;
-	            case 'image':
-	            	$ypos = 0;
-	            	if($this->ezBackground['repeat'] == 1){
-	            		$ypos = $this->ezBackground['ypos'];
-	            	}
-	        		
-	        		$xpos = 0;
-	            	if($this->ezBackground['repeat'] == 2){
-	            		$xpos = $this->ezBackground['xpos'];;
-	            	}
-	            	
-	            	$this->addBackgroundImage($xpos, $ypos);
-	            	
-	            	if($this->ezBackground['repeat'] & 1){ // repeat-x
-	            		$numX = ceil($this->ez['pageWidth'] / $this->ezBackground['width']);
-	            		for($i = 1; $i <= $numX; $i++){
-	            			$xpos = ($this->ezBackground['width'] * $i);
-	            			$this->addBackgroundImage($xpos,$ypos);
-	            		}
-	            	}
-	            	
-	            	$xpos = 0;
-	            	if($this->ezBackground['repeat'] & 2){ // repeat-y
-	            		$numY = ceil($this->ez['pageHeight'] / $this->ezBackground['height']);
-        				for($i = 1; $i <= $numY; $i++){
-        					$ypos = ($this->ezBackground['height'] * $i);
-        					$this->addBackgroundImage($xpos,$ypos);
-        				}
-        			}
-        			
-        			if($this->ezBackground['repeat'] == 3){ // repeat all
-	            		$numX = ceil($this->ez['pageWidth'] / $this->ezBackground['width']);
-	            		$numY = ceil($this->ez['pageHeight'] / $this->ezBackground['height']);
-	            		
-	            		for($i = 1; $i <= $numX; $i++){
-	            			$xpos = ($this->ezBackground['width'] * $i);
-	            			for($j = 1; $j <= $numY; $j++){
-	            				$ypos = ($this->ezBackground['height'] * $j);
-	            				$this->addBackgroundImage($xpos,$ypos);
-	            			}
-	            		}
-	            	}
-        			
-	                break;
-	            case 'none':
-	            default:
-	                break;
-	        }
-        }
-	}
-	
-	/**
-	 * adds background image for JPEG and PNG file format
-	 * Especially used for repeating function
-	 * @access private
-	 */
-	private function addBackgroundImage($xOffset = 0, $yOffset = 0){
-		switch ($this->ezBackground['format']) {
-            case IMAGETYPE_JPEG:
-            	$this->addJpegFromFile($this->ezBackground['image'], $xOffset, $yOffset, $this->ezBackground['width'], $this->ezBackground['height']);
-            break;
-            case IMAGETYPE_PNG:
-            	$this->addPngFromFile($this->ezBackground['image'], $xOffset, $yOffset, $this->ezBackground['width'], $this->ezBackground['height']);
-            break;
-        }
-	}
-
-    /**
-     *
-     * @param $top
-     * @param $bottom
-     * @param $left
-     * @param $right
-     * @return unknown_type
-     * @access public
-     */
-    public function ezSetMargins($top,$bottom,$left,$right){
-        // sets the margins to new values
-        $this->ez['topMargin']=$top;
-        $this->ez['bottomMargin']=$bottom;
-        $this->ez['leftMargin']=$left;
-        $this->ez['rightMargin']=$right;
-        // check to see if this means that the current writing position is outside the
-        // writable area
-        if ($this->y > $this->ez['pageHeight']-$top){
-            // then move y down
-            $this->y = $this->ez['pageHeight']-$top;
-        }
-        if ( $this->y < $bottom){
-            // then make a new page
-            $this->ezNewPage();
-        }
-    }
-
-    /**
-     * Set Margins in centimeters
-     * @author 2002-07-24: Nicola Asuni (info@tecnick.com)
-     *
-     * @param $top
-     * @param $bottom
-     * @param $left
-     * @param $right
-     * @return unknown_type
-     * @access public
-     */
-    public function ezSetCmMargins($top,$bottom,$left,$right){
-        $top = ( $top / 2.54 ) * 72;
-        $bottom = ( $bottom / 2.54 ) * 72;
-        $left = ( $left / 2.54 ) * 72;
-        $right = ( $right / 2.54 ) * 72;
-        $this->ezSetMargins($top,$bottom,$left,$right);
-    }
-
-	/**
-     * creates a new Page
-     * @return unknown_type
-     * @access public
-     */
-    public function ezNewPage(){
-        $pageRequired=1;
-        if (isset($this->ez['columns']) && $this->ez['columns']['on']==1){
-            // check if this is just going to a new column
-            // increment the column number
-            //echo 'HERE<br>';
-            $this->ez['columns']['colNum']++;
-            //echo $this->ez['columns']['colNum'].'<br>';
-            if ($this->ez['columns']['colNum'] <= $this->ez['columns']['options']['num']){
-                // then just reset to the top of the next column
-                $pageRequired=0;
-            } else {
-                $this->ez['columns']['colNum']=1;
-                $this->ez['topMargin']=$this->ez['columns']['margins'][2];
-            }
-
-            $width = $this->ez['columns']['width'];
-            $this->ez['leftMargin']=$this->ez['columns']['margins'][0]+($this->ez['columns']['colNum']-1)*($this->ez['columns']['options']['gap']+$width);
-            $this->ez['rightMargin']=$this->ez['pageWidth']-$this->ez['leftMargin']-$width;
-        }
-
-        if ($pageRequired){
-            // make a new page, setting the writing point back to the top
-            $this->y = $this->ez['pageHeight']-$this->ez['topMargin'];
-            // make the new page with a call to the basic class.
-            $this->ezPageCount++;
-            if (isset($this->ez['insertMode']) && $this->ez['insertMode']==1){
-                $id = $this->ezPages[$this->ezPageCount] = $this->newPage(1,$this->ez['insertOptions']['id'],$this->ez['insertOptions']['pos']);
-                // then manipulate the insert options so that inserted pages follow each other
-                $this->ez['insertOptions']['id']=$id;
-                $this->ez['insertOptions']['pos']='after';
-            } else {
-                $this->ezPages[$this->ezPageCount] = $this->newPage();
-            }
-        } else {
-            $this->y = $this->ez['pageHeight']-$this->ez['topMargin'];
-        }
-        
-        $this->setBackground();
-    }
-
-    /**
-     * starts to flow text into columns
-     * @param $options array with option for gaps and no of columns
-     * @return unknown_type
-     * @access public
-     */
-    public function ezColumnsStart($options=array()){
-        // start from the current y-position, make the set number of columne
-        if (isset($this->ez['columns']) && $this->ez['columns']==1){
-            // if we are already in a column mode then just return.
-            return;
-        }
-        $def=array('gap'=>10,'num'=>2);
-        foreach ($def as $k=>$v){
-            if (!isset($options[$k])){
-                $options[$k]=$v;
-            }
-        }
-        // setup the columns
-        $this->ez['columns']=array('on'=>1,'colNum'=>1);
-
-        // store the current margins
-        $this->ez['columns']['margins']=array(
-            $this->ez['leftMargin'],
-            $this->ez['rightMargin'],
-            $this->ez['topMargin'],
-            $this->ez['bottomMargin']
-        );
-        // and store the settings for the columns
-        $this->ez['columns']['options']=$options;
-        // then reset the margins to suit the new columns
-        // safe enough to assume the first column here, but start from the current y-position
-        $this->ez['topMargin']=$this->ez['pageHeight']-$this->y;
-        $width=($this->ez['pageWidth']-$this->ez['leftMargin']-$this->ez['rightMargin']-($options['num']-1)*$options['gap'])/$options['num'];
-        $this->ez['columns']['width']=$width;
-        $this->ez['rightMargin']=$this->ez['pageWidth']-$this->ez['leftMargin']-$width;
-
-    }
-
-    /**
-     * stops the multi column mode
-     * @return unknown_type
-     * @access public
-     */
-    public function ezColumnsStop(){
-        if (isset($this->ez['columns']) && $this->ez['columns']['on']==1){
-            $this->ez['columns']['on']=0;
-            $this->ez['leftMargin']=$this->ez['columns']['margins'][0];
-            $this->ez['rightMargin']=$this->ez['columns']['margins'][1];
-            $this->ez['topMargin']=$this->ez['columns']['margins'][2];
-            $this->ez['bottomMargin']=$this->ez['columns']['margins'][3];
-        }
-    }
-
-    /**
-     * puts the document into insert mode. new pages are inserted until this is re-called with status=0
-     * by default pages wil be inserted at the start of the document
-     *
-     * @param $status
-     * @param $pageNum
-     * @param $pos
-     * @return unknown_type
-     * @access public
-     */
-    public function ezInsertMode($status=1,$pageNum=1,$pos='before'){
-        switch($status){
-            case '1':
-                if (isset($this->ezPages[$pageNum])){
-                    $this->ez['insertMode']=1;
-                    $this->ez['insertOptions']=array('id'=>$this->ezPages[$pageNum],'pos'=>$pos);
-                }
-                break;
-            case '0':
-                $this->ez['insertMode']=0;
-                break;
-        }
-    }
-
-	/**
-     * sets the Y position of the document
-     * @param $y
-     * @return unknown_type
-     * @access public
-     */
-    public function ezSetY($y){
-        // used to change the vertical position of the writing point.
-        $this->y = $y;
-        if ( $this->y < $this->ez['bottomMargin']){
-            // then make a new page
-            $this->ezNewPage();
-        }
-    }
-
-    /**
-     * changes the Y position of the document by writing positive or negative numbers
-     * @param $dy
-     * @param $mod
-     * @return unknown_type
-     * @access public
-     */
-    public function ezSetDy($dy,$mod=''){
-        // used to change the vertical position of the writing point.
-        // changes up by a positive increment, so enter a negative number to go
-        // down the page
-        // if $mod is set to 'makeSpace' and a new page is forced, then the pointed will be moved
-        // down on the new page, this will allow space to be reserved for graphics etc.
-        $this->y += $dy;
-        if ( $this->y < $this->ez['bottomMargin']){
-            // then make a new page
-            $this->ezNewPage();
-            if ($mod=='makeSpace'){
-                $this->y += $dy;
-            }
-        }
-    }
-
-    /**
-     * put page numbers on the pages from here.
-     * place then on the 'pos' side of the coordinates (x,y).
-     * use the given 'pattern' for display, where (PAGENUM} and {TOTALPAGENUM} are replaced
-     * as required.
-     * Adjust this function so that each time you 'start' page numbers then you effectively start a different batch
-     * return the number of the batch, so that they can be stopped in a different order if required.
-	 *
-     * @param integer $x X-coordinate
-     * @param integer $y Y-coordinate
-     * @param $size
-     * @param string $pos use right or left
-     * @param $pattern
-     * @param integer $num optional. make the first page this number, the number of total pages will
-     * be adjusted to account for this.
-     *
-     * @access public
-     * @return unknown_type
-     */
-    public function ezStartPageNumbers($x,$y,$size,$pos='left',$pattern='{PAGENUM} of {TOTALPAGENUM}',$num=''){
-        if (!$pos || !strlen($pos)){
-            $pos='left';
-        }
-        if (!$pattern || !strlen($pattern)){
-            $pattern='{PAGENUM} of {TOTALPAGENUM}';
-        }
-        if (!isset($this->ez['pageNumbering'])){
-            $this->ez['pageNumbering']=array();
-        }
-        $i = count($this->ez['pageNumbering']);
-        $this->ez['pageNumbering'][$i][$this->ezPageCount]=array('x'=>$x,'y'=>$y,'pos'=>$pos,'pattern'=>$pattern,'num'=>$num,'size'=>$size);
-        return $i;
-    }
-
-    /**
-     * returns the number of a page within the specified page numbering system
-     * @param $pageNum
-     * @param $i
-     * @access public
-     * @return integer page number
-     */
-    public function ezWhatPageNumber($pageNum,$i=0){
-        // given a particular generic page number (ie, document numbered sequentially from beginning),
-        // return the page number under a particular page numbering scheme ($i)
-        $num=0;
-        $start=1;
-        $startNum=1;
-        if (!isset($this->ez['pageNumbering'])) {
-            $this->addMessage('WARNING: page numbering called for and wasn\'t started with ezStartPageNumbers');
-            return 0;
-        }
-        foreach ($this->ez['pageNumbering'][$i] as $k=>$v){
-            if ($k<=$pageNum){
-                if (is_array($v)){
-                    // start block
-                    if (strlen($v['num'])){
-                        // a start was specified
-                        $start=$v['num'];
-                        $startNum=$k;
-                        $num=$pageNum-$startNum+$start;
-                    }
-                } else {
-                    // stop block
-                    $num=0;
-                }
-            }
-        }
-        return $num;
-    }
-    
-	/**
-     * returns the current page number
-     * @access public
-     * @return integer page number
-     */
-    public function ezGetCurrentPageNumber(){
-        // return the strict numbering (1,2,3,4..) number of the current page
-        return $this->ezPageCount;
-    }
-
-    /**
-     * stops the custom page numbering
-     * @param $stopTotal
-     * @param $next
-     * @param $i
-     * @access public
-     * @return unknown_type
-     */
-    public function ezStopPageNumbers($stopTotal=0,$next=0,$i=0){
-        // if stopTotal=1 then the totalling of pages for this number will stop too
-        // if $next=1, then do this page, but not the next, else do not do this page either
-        // if $i is set, then stop that particular pagenumbering sequence.
-        if (!isset($this->ez['pageNumbering'])){
-            $this->ez['pageNumbering']=array();
-        }
-        if ($next && isset($this->ez['pageNumbering'][$i][$this->ezPageCount]) && is_array($this->ez['pageNumbering'][$i][$this->ezPageCount])){
-            // then this has only just been started, this will over-write the start, and nothing will appear
-            // add a special command to the start block, telling it to stop as well
-            if ($stopTotal){
-                $this->ez['pageNumbering'][$i][$this->ezPageCount]['stoptn']=1;
-            } else {
-                $this->ez['pageNumbering'][$i][$this->ezPageCount]['stopn']=1;
-            }
-        } else {
-            if ($stopTotal){
-                $this->ez['pageNumbering'][$i][$this->ezPageCount]='stopt';
-            } else {
-                $this->ez['pageNumbering'][$i][$this->ezPageCount]='stop';
-            }
-            if ($next){
-                $this->ez['pageNumbering'][$i][$this->ezPageCount].='n';
-            }
-        }
-    }
-
-    /**
-     *
-     * @param $lbl
-     * @param $tmp
-     * @access private
-     * @return unknown_type
-     */
-    private function ezPageNumberSearch($lbl,&$tmp){
-        foreach ($tmp as $i=>$v){
-            if (is_array($v)){
-                if (isset($v[$lbl])){
-                    return $i;
-                }
-            } else {
-                if ($v==$lbl){
-                    return $i;
-                }
-            }
-        }
-        return 0;
-    }
-
-    /**
-     * @access private
-     */
-    private function addPageNumbers(){
-        // this will go through the pageNumbering array and add the page numbers are required
-        if (isset($this->ez['pageNumbering'])){
-            $totalPages1 = $this->ezPageCount;
-            $tmp1=$this->ez['pageNumbering'];
-            $status=0;
-            foreach ($tmp1 as $i=>$tmp){
-                // do each of the page numbering systems
-                // firstly, find the total pages for this one
-                $k = $this->ezPageNumberSearch('stopt',$tmp);
-                if ($k && $k>0){
-                    $totalPages = $k-1;
-                } else {
-                    $l = $this->ezPageNumberSearch('stoptn',$tmp);
-                    if ($l && $l>0){
-                        $totalPages = $l;
-                    } else {
-                        $totalPages = $totalPages1;
-                    }
-                }
-                foreach ($this->ezPages as $pageNum=>$id){
-                    if (isset($tmp[$pageNum])){
-                        if (is_array($tmp[$pageNum])){
-                            // then this must be starting page numbers
-                            $status=1;
-                            $info = $tmp[$pageNum];
-                            $info['dnum']=$info['num']-$pageNum;
-                            // also check for the special case of the numbering stopping and starting on the same page
-                            if (isset($info['stopn']) || isset($info['stoptn']) ){
-                                $status=2;
-                            }
-                        } else if ($tmp[$pageNum]=='stop' || $tmp[$pageNum]=='stopt'){
-                            // then we are stopping page numbers
-                            $status=0;
-                        } else if ($status==1 && ($tmp[$pageNum]=='stoptn' || $tmp[$pageNum]=='stopn')){
-                            // then we are stopping page numbers
-                            $status=2;
-                        }
-                    }
-                    if ($status){
-                        // then add the page numbering to this page
-                        if (strlen($info['num'])){
-                            $num=$pageNum+$info['dnum'];
-                        } else {
-                            $num=$pageNum;
-                        }
-                        $total = $totalPages+$num-$pageNum;
-                        $pat = str_replace('{PAGENUM}',$num,$info['pattern']);
-                        $pat = str_replace('{TOTALPAGENUM}',$total,$pat);
-                        $this->reopenObject($id);
-                        switch($info['pos']){
-                            case 'right':
-                                $this->addText($info['x'],$info['y'],$info['size'],$pat);
-                                break;
-                            default:
-                                $w=$this->getTextWidth($info['size'],$pat);
-                                $this->addText($info['x']-$w,$info['y'],$info['size'],$pat);
-                                break;
-                        }
-                        $this->closeObject();
-                    }
-                    if ($status==2){
-                        $status=0;
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * @access private
-     * @return unknown_type
-     */
-    private function cleanUp(){
-        $this->addPageNumbers();
-    }
-
-    /**
-     *
-     * @param $pos
-     * @param $gap
-     * @param $x0
-     * @param $x1
-     * @param $y0
-     * @param $y1
-     * @param $y2
-     * @param $col
-     * @param $inner
-     * @param $outer
-     * @param $opt
-     * @access protected
-     * @return unknown_type
-     */
-    protected function ezTableDrawLines($pos,$gap,$x0,$x1,$y0,$y1,$y2,$col,$inner,$outer,$opt=1){
-        $x0=1000;
-        $x1=0;
-        $this->setStrokeColor($col[0],$col[1],$col[2]);
-        $cnt=0;
-        $n = count($pos);
-        foreach ($pos as $x){
-            $cnt++;
-            if ($cnt==1 || $cnt==$n)
-            $this->setLineStyle($outer);
-            else
-            $this->setLineStyle($inner);
-
-            if ($opt != 3) $this->line($x-$gap/2,$y0,$x-$gap/2,$y2);
-            if ($x>$x1) $x1=$x;
-            if ($x<$x0) $x0=$x;
-        }
-        $this->setLineStyle($outer);
-        $this->line($x0-$gap/2 - $outer/2,$y0, $x1 - $gap/2+$outer/2,$y0);
-        // only do the second line if it is different to the first, AND each row does not have
-        // a line on it.
-        if ($y0!=$y1 && $opt<2)
-        $this->line($x0-$gap/2,$y1,$x1-$gap/2,$y1);
-
-        $this->line($x0-$gap/2 - $outer/2,$y2,$x1 - $gap/2+$outer/2,$y2);
-    }
-
-    /**
-     *
-     * @param $cols
-     * @param $pos
-     * @param $maxWidth
-     * @param $height
-     * @param $decender
-     * @param $gap
-     * @param $size
-     * @param $y
-     * @param $optionsAll
-     * @access protected
-     * @return unknown_type
-     */
-    protected function ezTableColumnHeadings($cols,$pos,$maxWidth,$height,$decender,$gap,$size,&$y,$optionsAll=array()){
-        // uses ezText to add the text, and returns the height taken by the largest heading
-        // this page will move the headings to a new page if they will not fit completely on this one
-        // transaction support will be used to implement this
-
-        if (isset($optionsAll['cols'])){
-            $options = $optionsAll['cols'];
-        } else {
-            $options = array();
-        }
-
-        $mx=0;
-        $startPage = $this->ezPageCount;
-        $secondGo=0;
-
-        // $y is the position at which the top of the table should start, so the base
-        // of the first text, is $y-$height-$gap-$decender, but ezText starts by dropping $height
-
-        // the return from this function is the total cell height, including gaps, and $y is adjusted
-        // to be the postion of the bottom line
-
-        // begin the transaction
-        $this->transaction('start');
-        $ok=0;
-        //  $y-=$gap-$decender;
-        $y-=$gap;
-        while ($ok==0){
-            foreach ($cols as $colName=>$colHeading){
-                $this->ezSetY($y);
-                if (isset($options[$colName]) && isset($options[$colName]['justification'])){
-                    $justification = $options[$colName]['justification'];
-                } else {
-                    $justification = 'left';
-                }
-                $this->ezText($colHeading,$size,array('aleft'=> $pos[$colName],'aright'=>($maxWidth[$colName]+$pos[$colName]),'justification'=>$justification));
-                $dy = $y-$this->y;
-                if ($dy>$mx){
-                    $mx=$dy;
-                }
-            }
-            $y = $y - $mx - $gap + $decender;
-            //    $y -= $mx-$gap+$decender;
-
-            // now, if this has moved to a new page, then abort the transaction, move to a new page, and put it there
-            // do not check on the second time around, to avoid an infinite loop
-            if ($this->ezPageCount != $startPage && $secondGo==0){
-                $this->transaction('rewind');
-                $this->ezNewPage();
-                $y = $this->y - $gap-$decender;
-                $ok=0;
-                $secondGo=1;
-                //      $y = $store_y;
-                $mx=0;
-
-            } else {
-                $this->transaction('commit');
-                $ok=1;
-            }
-        }
-
-        return $mx+$gap*2-$decender;
-    }
-
-    /**
-     * will calculate the maximum width, taking into account that the text may be broken
-     * by line breaks.
-     *
-     * @param $size
-     * @param $text
-     * @access public
-     * @return unknown_type
-     */
-    public function ezGetTextWidth($size,$text){
-        $mx=0;
-        $lines = explode("\n",$text);
-        foreach ($lines as $line){
-            $w = $this->getTextWidth($size,$line);
-            if ($w>$mx){
-                $mx=$w;
-            }
-        }
-        return $mx;
-    }
-
-    /**
-     *  add a table of information to the pdf document
-     *  $data is a two dimensional array
-     *  $cols (optional) is an associative array, the keys are the names of the columns from $data
-     *  to be presented (and in that order), the values are the titles to be given to the columns
-     *  $title (optional) is the title to be put on the top of the table
-     *
-     *  $options is an associative array which can contain:
-     * 'showLines'=> 0,1,2,3,4 default is 1 (show outside and top lines only), 2=> lines on each row, 3=> lines for only rowa (excl. headline), 4=> HEAD LINE only
-	 * 'showHeadings' => 0 or 1
-     * 'shaded'=> 0,1,2,3 default is 1 (1->alternate lines are shaded, 0->no shading, 2-> both shaded, second uses shadeCol2)
-     * 'showBgCol'=> 0,1 default is 0 (1->active bg color column setting. if is set to 1, bgcolor attribute ca be used in 'cols' 0->no active bg color columns setting)
-     * 'shadeCol' => (r,g,b) array, defining the colour of the shading, default is (0.8,0.8,0.8)
-     * 'shadeCol2' => (r,g,b) array, defining the colour of the shading of the other blocks, default is (0.7,0.7,0.7)
-     * 'fontSize' => 10
-     * 'textCol' => (r,g,b) array, text colour
-     * 'titleFontSize' => 12
-     * 'rowGap' => 2 , the space added at the top and bottom of each row, between the text and the lines
-     * 'colGap' => 5 , the space on the left and right sides of each cell
-     * 'lineCol' => (r,g,b) array, defining the colour of the lines, default, black.
-     * 'xPos' => 'left','right','center','centre',or coordinate, reference coordinate in the x-direction
-     * 'xOrientation' => 'left','right','center','centre', position of the table w.r.t 'xPos'
-     * 'width'=> <number> which will specify the width of the table, if it turns out to not be this
-     * wide, then it will stretch the table to fit, if it is wider then each cell will be made
-     * proportionalty smaller, and the content may have to wrap.
-     * 'maxWidth'=> <number> similar to 'width', but will only make table smaller than it wants to be
-     * 'cols' => array(<colname>=>array('justification'=>'left','width'=>100,'link'=>linkDataName,'bgcolor'=>array(r,g,b) ),<colname>=>....) allow the setting of other paramaters for the individual columns
-     * 'minRowSpace'=> the minimum space between the bottom of each row and the bottom margin, in which a new row will be started
-     * if it is less, then a new page would be started, default=-100
-     * 'innerLineThickness'=>1
-     * 'outerLineThickness'=>1
-     * 'splitRows'=>0, 0 or 1, whether or not to allow the rows to be split across page boundaries
-     * 'protectRows'=>number, the number of rows to hold with the heading on page, ie, if there less than this number of rows on the page, then move the whole lot onto the next page, default=1
-     * 'nextPageY'=> true or false (eg. 0 or 1) Sets the Y Postion of the Table of a newPage to current Table Postion
-     * note that the user will have had to make a font selection already or this will not // produce a valid pdf file.
-  	 *
-     * @param $data
-     * @param $cols
-     * @param $title
-     * @param $options
-     * @access public
-     * @return unknown_type
-     */
-    public function ezTable(&$data,$cols='',$title='',$options=''){
-        if (!is_array($data)){
-            return;
-        }
-
-        if (!is_array($cols)){
-            // take the columns from the first row of the data set
-            reset($data);
-            list($k,$v)=each($data);
-            if (!is_array($v)){
-                return;
-            }
-            $cols=array();
-            foreach ($v as $k1=>$v1){
-                $cols[$k1]=$k1;
-            }
-        }
-
-        if (!is_array($options)){
-            $options=array();
-        }
-
-        $defaults = array('shaded'=>1,'showBgCol'=>0,'showLines'=>1,'shadeCol'=>array(0.8,0.8,0.8),'shadeCol2'=>array(0.7,0.7,0.7),'fontSize'=>10,'titleFontSize'=>12,
-        'titleGap'=>5,'lineCol'=>array(0,0,0),'gap'=>5,'xPos'=>'centre','xOrientation'=>'centre',
-        'showHeadings'=>1,'textCol'=>array(0,0,0),'width'=>0,'maxWidth'=>0,'cols'=>array(),'minRowSpace'=>-100,'rowGap'=>2,'colGap'=>5,
-        'innerLineThickness'=>1,'outerLineThickness'=>1,'splitRows'=>0,'protectRows'=>1,'nextPageY'=>0
-        );
-
-        foreach ($defaults as $key=>$value){
-            if (is_array($value)){
-                if (!isset($options[$key]) || !is_array($options[$key])){
-                    $options[$key]=$value;
-                }
-            } else {
-                if (!isset($options[$key])){
-                    $options[$key]=$value;
-                }
-            }
-        }
-        $options['gap']=2*$options['colGap'];
-        // Use Y Position of Current Page position in Table
-        if ($options['nextPageY']) $nextPageY = $this->y;
-
-        $middle = ($this->ez['pageWidth']-$this->ez['rightMargin'])/2+($this->ez['leftMargin'])/2;
-        // figure out the maximum widths of the text within each column
-        $maxWidth=array();
-        foreach ($cols as $colName=>$colHeading){
-            $maxWidth[$colName]=0;
-        }
-        // find the maximum cell widths based on the data
-        foreach ($data as $row){
-            foreach ($cols as $colName=>$colHeading){
-                $w = $this->ezGetTextWidth($options['fontSize'],(string)$row[$colName])*1.01;
-                if ($w > $maxWidth[$colName]){
-                    $maxWidth[$colName]=$w;
-                }
-            }
-        }
-        // and the maximum widths to fit in the headings
-        foreach ($cols as $colName=>$colTitle){
-            $w = $this->ezGetTextWidth($options['fontSize'],(string)$colTitle)*1.01;
-            if ($w > $maxWidth[$colName]){
-                $maxWidth[$colName]=$w;
-            }
-        }
-
-        // calculate the start positions of each of the columns
-        $pos=array();
-        $x=0;
-        $t=$x;
-        $adjustmentWidth=0;
-        $setWidth=0;
-        foreach ($maxWidth as $colName => $w){
-            $pos[$colName]=$t;
-            // if the column width has been specified then set that here, also total the
-            // width avaliable for adjustment
-            if (isset($options['cols'][$colName]) && isset($options['cols'][$colName]['width']) && $options['cols'][$colName]['width']>0){
-                $t=$t+$options['cols'][$colName]['width'];
-                $maxWidth[$colName] = $options['cols'][$colName]['width']-$options['gap'];
-                $setWidth += $options['cols'][$colName]['width'];
-            } else {
-                $t=$t+$w+$options['gap'];
-                $adjustmentWidth += $w;
-                $setWidth += $options['gap'];
-            }
-        }
-        $pos['_end_']=$t;
-
-        // if maxWidth is specified, and the table is too wide, and the width has not been set,
-        // then set the width.
-        if ($options['width']==0 && $options['maxWidth'] && ($t-$x)>$options['maxWidth']){
-            // then need to make this one smaller
-            $options['width']=$options['maxWidth'];
-        }
-
-        if ($options['width'] && $adjustmentWidth>0 && $setWidth<$options['width']){
-            // first find the current widths of the columns involved in this mystery
-            $cols0 = array();
-            $cols1 = array();
-            $xq=0;
-            $presentWidth=0;
-            $last='';
-            foreach ($pos as $colName=>$p){
-                if (!isset($options['cols'][$last]) || !isset($options['cols'][$last]['width']) || $options['cols'][$last]['width']<=0){
-                    if (strlen($last)){
-                        $cols0[$last]=$p-$xq -$options['gap'];
-                        $presentWidth += ($p-$xq - $options['gap']);
-                    }
-                } else {
-                    $cols1[$last]=$p-$xq;
-                }
-                $last=$colName;
-                $xq=$p;
-            }
-            // $cols0 contains the widths of all the columns which are not set
-            $neededWidth = $options['width']-$setWidth;
-            // if needed width is negative then add it equally to each column, else get more tricky
-            if ($presentWidth<$neededWidth){
-                foreach ($cols0 as $colName=>$w){
-                    $cols0[$colName]+= ($neededWidth-$presentWidth)/count($cols0);
-                }
-            } else {
-
-                $cnt=0;
-                while ($presentWidth>$neededWidth && $cnt<100){
-                    $cnt++; // insurance policy
-                    // find the widest columns, and the next to widest width
-                    $aWidest = array();
-                    $nWidest=0;
-                    $widest=0;
-                    foreach ($cols0 as $colName=>$w){
-                        if ($w>$widest){
-                            $aWidest=array($colName);
-                            $nWidest = $widest;
-                            $widest=$w;
-                        } else if ($w==$widest){
-                            $aWidest[]=$colName;
-                        }
-                    }
-                    // then figure out what the width of the widest columns would have to be to take up all the slack
-                    $newWidestWidth = $widest - ($presentWidth-$neededWidth)/count($aWidest);
-                    if ($newWidestWidth > $nWidest){
-                        // then there is space to set them to this
-                        foreach ($aWidest as $colName){
-                            $cols0[$colName] = $newWidestWidth;
-                        }
-                        $presentWidth=$neededWidth;
-                    } else {
-                        // there is not space, reduce the size of the widest ones down to the next size down, and we
-                        // will go round again
-                        foreach ($aWidest as $colName){
-                            $cols0[$colName] = $nWidest;
-                        }
-                        $presentWidth=$presentWidth-($widest-$nWidest)*count($aWidest);
-                    }
-                }
-            }
-            // $cols0 now contains the new widths of the constrained columns.
-            // now need to update the $pos and $maxWidth arrays
-            $xq=0;
-            foreach ($pos as $colName=>$p){
-                $pos[$colName]=$xq;
-                if (!isset($options['cols'][$colName]) || !isset($options['cols'][$colName]['width']) || $options['cols'][$colName]['width']<=0){
-                    if (isset($cols0[$colName])){
-                        $xq += $cols0[$colName] + $options['gap'];
-                        $maxWidth[$colName]=$cols0[$colName];
-                    }
-                } else {
-                    if (isset($cols1[$colName])){
-                        $xq += $cols1[$colName];
-                    }
-                }
-            }
-
-            $t=$x+$options['width'];
-            $pos['_end_']=$t;
-        }
-
-        // now adjust the table to the correct location across the page
-        switch ($options['xPos']){
-            case 'left':
-                $xref = $this->ez['leftMargin'];
-                break;
-            case 'right':
-                $xref = $this->ez['pageWidth'] - $this->ez['rightMargin'];
-                break;
-            case 'centre':
-            case 'center':
-                $xref = $middle;
-                break;
-            default:
-                $xref = $options['xPos'];
-                break;
-        }
-        switch ($options['xOrientation']){
-            case 'left':
-                $dx = $xref-$t;
-                break;
-            case 'right':
-                $dx = $xref;
-                break;
-            case 'centre':
-            case 'center':
-                $dx = $xref-$t/2;
-                break;
-        }
-
-
-        foreach ($pos as $k=>$v){
-            $pos[$k]=$v+$dx;
-        }
-        $x0=$x+$dx;
-        $x1=$t+$dx;
-
-        $baseLeftMargin = $this->ez['leftMargin'];
-        $basePos = $pos;
-        $baseX0 = $x0;
-        $baseX1 = $x1;
-        // ok, just about ready to make me a table
-        $this->setColor($options['textCol'][0],$options['textCol'][1],$options['textCol'][2]);
-        $this->setStrokeColor($options['shadeCol'][0],$options['shadeCol'][1],$options['shadeCol'][2]);
-
-        $middle = ($x1+$x0)/2;
-
-        // start a transaction which will be used to regress the table, if there are not enough rows protected
-        if ($options['protectRows']>0){
-            $this->transaction('start');
-            $movedOnce=0;
-        }
-        $abortTable = 1;
-        while ($abortTable){
-            $abortTable=0;
-            $dm = $this->ez['leftMargin']-$baseLeftMargin;
-            foreach ($basePos as $k=>$v){
-                $pos[$k]=$v+$dm;
-            }
-            $x0=$baseX0+$dm;
-            $x1=$baseX1+$dm;
-            $middle = ($x1+$x0)/2;
-
-
-            // if the title is set, then do that
-            if (strlen($title)){
-                $w = $this->getTextWidth($options['titleFontSize'],$title);
-                $this->y -= $this->getFontHeight($options['titleFontSize']);
-                if ($this->y < $this->ez['bottomMargin']){
-                    $this->ezNewPage();
-                    // margins may have changed on the newpage
-                    $dm = $this->ez['leftMargin']-$baseLeftMargin;
-                    foreach ($basePos as $k=>$v){
-                        $pos[$k]=$v+$dm;
-                    }
-                    $x0=$baseX0+$dm;
-                    $x1=$baseX1+$dm;
-                    $middle = ($x1+$x0)/2;
-                    $this->y -= $this->getFontHeight($options['titleFontSize']);
-                }
-                $this->addText($middle-$w/2,$this->y,$options['titleFontSize'],$title);
-                $this->y -= $options['titleGap'];
-            }
-            // margins may have changed on the newpage
-            $dm = $this->ez['leftMargin']-$baseLeftMargin;
-            foreach ($basePos as $k=>$v){
-                $pos[$k]=$v+$dm;
-            }
-            $x0=$baseX0+$dm;
-            $x1=$baseX1+$dm;
-
-            $y=$this->y; // to simplify the code a bit
-
-            // make the table
-            $height = $this->getFontHeight($options['fontSize']);
-            $decender = $this->getFontDecender($options['fontSize']);
-
-
-
-            $y0=$y+$decender;
-            $dy=0;
-            if ($options['showHeadings']){
-                // this function will move the start of the table to a new page if it does not fit on this one
-                $headingHeight = $this->ezTableColumnHeadings($cols,$pos,$maxWidth,$height,$decender,$options['rowGap'],$options['fontSize'],$y,$options);
-                $y0 = $y+$headingHeight;
-                $y1 = $y;
-
-                $dm = $this->ez['leftMargin']-$baseLeftMargin;
-                foreach ($basePos as $k=>$v){
-                    $pos[$k]=$v+$dm;
-                }
-                $x0=$baseX0+$dm;
-                $x1=$baseX1+$dm;
-            } else {
-                $y1 = $y0;
-            }
-            $firstLine=1;
-
-            // open an object here so that the text can be put in over the shading
-            if ($options['shaded'] || $options['showBgCol']){
-                $this->saveState();
-                $textObjectId = $this->openObject();
-                $this->closeObject();
-                $this->addObject($textObjectId);
-                $this->reopenObject($textObjectId);
-            }
-
-            $cnt=0;
-            $newPage=0;
-            foreach ($data as $row){
-                $cnt++;
-                // the transaction support will be used to prevent rows being split
-                if ($options['splitRows']==0){
-                    $pageStart = $this->ezPageCount;
-                    if (isset($this->ez['columns']) && $this->ez['columns']['on']==1){
-                        $columnStart = $this->ez['columns']['colNum'];
-                    }
-                    $this->transaction('start');
-                    $row_orig = $row;
-                    $y_orig = $y;
-                    $y0_orig = $y0;
-                    $y1_orig = $y1;
-                }
-                $ok=0;
-                $secondTurn=0;
-                while(!$abortTable && $ok == 0){
-
-                    $mx=0;
-                    $newRow=1;
-                    while(!$abortTable && ($newPage || $newRow)){
-
-                        $y-=$height;
-                        if ($newPage || $y<$this->ez['bottomMargin'] || (isset($options['minRowSpace']) && $y<($this->ez['bottomMargin']+$options['minRowSpace'])) ){
-                            // check that enough rows are with the heading
-                            if ($options['protectRows']>0 && $movedOnce==0 && $cnt<=$options['protectRows']){
-                                // then we need to move the whole table onto the next page
-                                $movedOnce = 1;
-                                $abortTable = 1;
-                            }
-
-                            $y2=$y-$mx+2*$height+$decender-$newRow*$height;
-                            if ($options['showLines']){
-                                if (!$options['showHeadings']){
-                                    $y0=$y1;
-                                }
-                                if ($options['showLines'] > 3){
-                                    $this->SetStrokeColor($options['lineCol'][0],$options['lineCol'][1],$options['lineCol'][2],1);
-                                    $this->line($x0,$y1,$x1,$y1);
-                                }else if ($options['showLines'] < 3){
-                                    $this->ezTableDrawLines($pos,$options['gap'],$x0,$x1,$y0,$y1,$y2,$options['lineCol'],$options['innerLineThickness'],$options['outerLineThickness'],$options['showLines']);
-                                }
-                            }
-                            if ($options['shaded'] || $options['showBgCol']){
-                                $this->closeObject();
-                                $this->restoreState();
-                            }
-                            $this->ezNewPage();
-                            // and the margins may have changed, this is due to the possibility of the columns being turned on
-                            // as the columns are managed by manipulating the margins
-                            $dm	= $this->ez['leftMargin']-$baseLeftMargin;
-                            foreach ($basePos as $k=>$v){
-                                $pos[$k]=$v+$dm;
-                            }
-                            // $x0=$x0+$dm;
-                            // $x1=$x1+$dm;
-                            $x0=$baseX0+$dm;
-                            $x1=$baseX1+$dm;
-                            if ($options['shaded'] || $options['showBgCol']){
-                                $this->saveState();
-                                $textObjectId = $this->openObject();
-                                $this->closeObject();
-                                $this->addObject($textObjectId);
-                                $this->reopenObject($textObjectId);
-                            }
-                            $this->setColor($options['textCol'][0],$options['textCol'][1],$options['textCol'][2],1);
-                            $y = ($options['nextPageY'])?$nextPageY:($this->ez['pageHeight']-$this->ez['topMargin']);
-                            $y0=$y+$decender;
-                            $mx=0;
-                            if ($options['showHeadings']){
-                                $this->ezTableColumnHeadings($cols,$pos,$maxWidth,$height,$decender,$options['rowGap'],$options['fontSize'],$y,$options);
-                                $y1=$y;
-                            } else {
-                                $y1=$y0;
-                            }
-                            $firstLine=1;
-                            $y -= $height;
-                        }
-                        $newRow=0;
-                        // write the actual data
-                        // if these cells need to be split over a page, then $newPage will be set, and the remaining
-                        // text will be placed in $leftOvers
-                        $newPage=0;
-                        $leftOvers=array();
-
-                        foreach ($cols as $colName=>$colTitle){
-                            $this->ezSetY($y+$height);
-                            $colNewPage=0;
-                            if (isset($row[$colName])){
-                                if (isset($options['cols'][$colName]) && isset($options['cols'][$colName]['link']) && strlen($options['cols'][$colName]['link'])){
-
-                                    $lines = explode("\n",$row[$colName]);
-                                    if (isset($row[$options['cols'][$colName]['link']]) && strlen($row[$options['cols'][$colName]['link']])){
-                                        foreach ($lines as $k=>$v){
-                                            $lines[$k]='<c:alink:'.$row[$options['cols'][$colName]['link']].'>'.$v.'</c:alink>';
-                                        }
-                                    }
-                                } else {
-                                    $lines = explode("\n",$row[$colName]);
-                                }
-                            } else {
-                                $lines = array();
-                            }
-                            $this->y -= $options['rowGap'];
-                            foreach ($lines as $line){
-                                $line = $this->ezProcessText($line);
-                                $start=1;
-
-                                while (strlen($line) || $start){
-                                    $start=0;
-                                    if (!$colNewPage){
-                                        $this->y=$this->y-$height;
-                                    }
-                                    if ($this->y < $this->ez['bottomMargin']){
-                                        // $this->ezNewPage();
-                                        $newPage=1; // whether a new page is required for any of the columns
-                                        $colNewPage=1; // whether a new page is required for this column
-                                    }
-                                    if ($colNewPage){
-                                        if (isset($leftOvers[$colName])){
-                                            $leftOvers[$colName].="\n".$line;
-                                        } else {
-                                            $leftOvers[$colName] = $line;
-                                        }
-                                        $line='';
-                                    } else {
-                                        if (isset($options['cols'][$colName]) && isset($options['cols'][$colName]['justification']) ){
-                                            $just = $options['cols'][$colName]['justification'];
-                                        } else {
-                                            $just='left';
-                                        }
-
-                                        $line=$this->addTextWrap($pos[$colName],$this->y,$maxWidth[$colName],$options['fontSize'],$line,$just);
-                                    }
-                                }
-                            }
-
-                            $dy=$y+$height-$this->y+$options['rowGap'];
-                            if ($dy-$height*$newPage>$mx){
-                                $mx=$dy-$height*$newPage;
-                            }
-                        }
-                        // set $row to $leftOvers so that they will be processed onto the new page
-                        $row = $leftOvers;
-                        // now add the shading underneath
-                        if ($options['shaded'] && $cnt%2==0){
-                            $this->closeObject();
-                            $this->setColor($options['shadeCol'][0],$options['shadeCol'][1],$options['shadeCol'][2],1);
-                            $this->filledRectangle($x0-$options['gap']/2,$y+$decender+$height-$mx,$x1-$x0,$mx);
-                            $this->reopenObject($textObjectId);
-                        }
-
-                        if ($options['shaded']==2 && $cnt%2==1){
-                            $this->closeObject();
-                            $this->setColor($options['shadeCol2'][0],$options['shadeCol2'][1],$options['shadeCol2'][2],1);
-                            $this->filledRectangle($x0-$options['gap']/2,$y+$decender+$height-$mx,$x1-$x0,$mx);
-                            $this->reopenObject($textObjectId);
-                        }
-
-                        // if option showColColor is set,  then can draw filledrectangle column
-                        if ($options['showBgCol'] == 1) {
-                            foreach ($cols as $colName=>$colTitle){
-                                if ( isset($options['cols'][$colName]) && isset($options['cols'][$colName]['bgcolor'])) {
-                                    $arrColColor = $options['cols'][$colName]['bgcolor'];
-                                    $this->closeObject();
-                                    $this->setColor($arrColColor[0],$arrColColor[1],$arrColColor[2],1);
-                                    $this->filledRectangle($pos[$colName]-$options['gap']/2,$y+$decender+$height-$mx,$maxWidth[$colName]+$options['gap'],$mx);
-                                    $this->reopenObject($textObjectId);
-                                }
-                            }
-                        }
-                        if ($options['showLines']>1){
-                            // then draw a line on the top of each block
-                            // $this->closeObject();
-                            $this->saveState();
-                            $this->setStrokeColor($options['lineCol'][0],$options['lineCol'][1],$options['lineCol'][2],1);
-                            // $this->line($x0-$options['gap']/2,$y+$decender+$height-$mx,$x1-$x0,$mx);
-                            if ($firstLine){
-                                $this->setLineStyle($options['outerLineThickness']);
-                                $firstLine=0;
-                            } else {
-                                $this->setLineStyle($options['innerLineThickness']);
-                            }
-                            if ($options['showLines'] < 4){
-                                $this->line($x0-$options['gap']/2,$y+$decender+$height,$x1-$options['gap']/2,$y+$decender+$height);
-                            }
-                            $this->restoreState();
-                            // $this->reopenObject($textObjectId);
-                        }
-                    } // end of while
-                    $y=$y-$mx+$height;
-
-                    // checking row split over pages
-                    if ($options['splitRows']==0){
-                        if ( ( ($this->ezPageCount != $pageStart) || (isset($this->ez['columns']) && $this->ez['columns']['on']==1 && $columnStart != $this->ez['columns']['colNum'] )) && $secondTurn==0){
-                            // then we need to go back and try that again !
-                            $newPage=1;
-                            $secondTurn=1;
-                            $this->transaction('rewind');
-                            $row = $row_orig;
-                            $y = $y_orig;
-                            $y0 = $y0_orig;
-                            $y1 = $y1_orig;
-                            $ok=0;
-                            // MARKIERT
-                            $dm = $this->ez['leftMargin']-$baseLeftMargin;
-                            foreach ($basePos as $k=>$v){
-                                $pos[$k]=$v+$dm;
-                            }
-                            $x0=$baseX0+$dm;
-                            $x1=$baseX1+$dm;
-
-                        } else {
-                            $this->transaction('commit');
-                            $ok=1;
-                        }
-                    } else {
-                        $ok=1; // don't go round the loop if splitting rows is allowed
-                    }
-                } // end of while to check for row splitting
-                if ($abortTable){
-                    if ($ok==0){
-                        $this->transaction('abort');
-                    }
-                    // only the outer transaction should be operational
-                    $this->transaction('rewind');
-                    $this->ezNewPage();
-                    break;
-                }
-
-            } // end of foreach ($data as $row)
-
-        } // end of while ($abortTable)
-
-        // table has been put on the page, the rows guarded as required, commit.
-        $this->transaction('commit');
-
-        $y2=$y+$decender;
-        if ($options['showLines']){
-            if (!$options['showHeadings']){
-                $y0=$y1;
-            }
-            if ($options['showLines'] > 3){
-                $this->SetStrokeColor($options['lineCol'][0],$options['lineCol'][1],$options['lineCol'][2],1);
-                $this->line($x0,$y1,$x1,$y1);
-            } else if ($options['showLines'] < 3){
-                $this->ezTableDrawLines($pos,$options['gap'],$x0,$x1,$y0,$y1,$y2,$options['lineCol'],$options['innerLineThickness'],$options['outerLineThickness'],$options['showLines']);
-            }
-        }
-        // close the object for drawing the text on top
-        if ($options['shaded'] || $options['showBgCol']){
-            $this->closeObject();
-            $this->restoreState();
-        }
-
-        $this->y=$y;
-        return $y;
-    }
-
-    /**
-     *
-     * @param $text
-     * @access protected
-     * @return unknown_type
-     */
-    protected function ezProcessText($text){
-        // this function will intially be used to implement underlining support, but could be used for a range of other
-        // purposes
-        $search = array('<u>','<U>','</u>','</U>');
-        $replace = array('<c:uline>','<c:uline>','</c:uline>','</c:uline>');
-        return str_replace($search,$replace,$text);
-    }
-
-    /**
-     * this will add a string of text to the document, starting at the current drawing
-     * position.
-	 * it will wrap to keep within the margins, including optional offsets from the left
-     * and the right, if $size is not specified, then it will be the last one used, or
-     * the default value (12 I think).
-     * the text will go to the start of the next line when a return code "\n" is found.
-     * possible options are:
-     * 'left'=> number, gap to leave from the left margin
-     * 'right'=> number, gap to leave from the right margin
-     * 'aleft'=> number, absolute left position (overrides 'left')
-     * 'aright'=> number, absolute right position (overrides 'right')
-     * 'justification' => 'left','right','center','centre','full'
-	 *
-     * only set one of the next two items (leading overrides spacing)
-     * 'leading' => number, defines the total height taken by the line, independent of the font height.
-     * 'spacing' => a real number, though usually set to one of 1, 1.5, 2 (line spacing as used in word processing)
-	 *
-     * if $test is set then this should just check if the text is going to flow onto a new page or not, returning true or false
-	 *
-     *
-     * @param $text
-     * @param $size
-     * @param $options
-     * @param $test
-     * @access public
-     * @return unknown_type
-     */
-    public function ezText($text,$size=0,$options=array(),$test=0){
-        // apply the filtering which will make the underlining function.
-        $text = $this->ezProcessText($text);
-
-        $newPage=false;
-        $store_y = $this->y;
-
-        if (is_array($options) && isset($options['aleft'])){
-            $left=$options['aleft'];
-        } else {
-            $left = $this->ez['leftMargin'] + ((is_array($options) && isset($options['left']))?$options['left']:0);
-        }
-        if (is_array($options) && isset($options['aright'])){
-            $right=$options['aright'];
-        } else {
-            $right = $this->ez['pageWidth'] - $this->ez['rightMargin'] - ((is_array($options) && isset($options['right']))?$options['right']:0);
-        }
-        if ($size<=0){
-            $size = $this->ez['fontSize'];
-        } else {
-            $this->ez['fontSize']=$size;
-        }
-
-        if (is_array($options) && isset($options['justification'])){
-            $just = $options['justification'];
-        } else {
-            $just = 'left';
-        }
-
-        // modifications to give leading and spacing based on those given by Craig Heydenburg 1/1/02
-        if (is_array($options) && isset($options['leading'])) { ## use leading instead of spacing
-            $height = $options['leading'];
-        } else if (is_array($options) && isset($options['spacing'])) {
-            $height = $this->getFontHeight($size) * $options['spacing'];
-        } else {
-            $height = $this->getFontHeight($size);
-        }
-
-        $lines = explode("\n",$text);
-        foreach ($lines as $line){
-            $start=1;
-            while (strlen($line) || $start){
-                $start=0;
-                $this->y=$this->y-$height;
-                if ($this->y < $this->ez['bottomMargin']){
-                    if ($test){
-                        $newPage=true;
-                    } else {
-                        $this->ezNewPage();
-                        // and then re-calc the left and right, in case they have changed due to columns
-                        $this->y= $this->y - $height;
-                    }
-                }
-                if (is_array($options) && isset($options['aleft'])){
-                    $left=$options['aleft'];
-                } else {
-                    $left = $this->ez['leftMargin'] + ((is_array($options) && isset($options['left']))?$options['left']:0);
-                }
-                if (is_array($options) && isset($options['aright'])){
-                    $right=$options['aright'];
-                } else {
-                    $right = $this->ez['pageWidth'] - $this->ez['rightMargin'] - ((is_array($options) && isset($options['right']))?$options['right']:0);
-                }
-                $line=$this->addTextWrap($left,$this->y,$right-$left,$size,$line,$just,0,$test);
-            }
-        }
-
-        if ($test){
-            $this->y=$store_y;
-            return $newPage;
-        } else {
-            return $this->y;
-        }
-    }
-
-    /**
-     * Used to display image
-     * supported images are:
-     *  - JPEG
-     *  - PNG (transparent)
-     *  - GIF (but internally converted into JPEG)
-     * @param $image
-     * @param $pad
-     * @param $width
-     * @param $resize
-     * @param $just
-     * @param $border
-     * @access public
-     * @return unknown_type
-     */
-    public function ezImage($image, $pad = 5, $width = 0, $resize = 'full', $just = 'center', $border = '') {
-    	$temp = false;
-        //beta ezimage function
-        if (stristr($image, '://')) { //copy to temp file
-        	$cont = file_get_contents($image);
-        	
-            $image = tempnam($this->tempPath, "ezImg");
-            $fp2 = @ fopen($image, "w");
-            fwrite($fp2, $cont);
-            fclose($fp2);
-            $temp = true;
-        }
-
-		
-        if (!(file_exists($image))){
-        	$this->debug("ezImage: Could not find image '$image'", E_USER_WARNING);
-            return false; //return immediately if image file does not exist
-        }
-        
-        $imageInfo = getimagesize($image);
-        
-        
-        if($imageInfo === false){
-        	$this->debug("ezImage: Could not get image info for '$image'", E_USER_ERROR);
-        }
-        
-        if ($width == 0)
-            $width = $imageInfo[0]; //set width
-        $ratio = $imageInfo[0] / $imageInfo[1];
-
-        //get maximum width of image
-        if (isset ($this->ez['columns']) && $this->ez['columns']['on'] == 1) {
-            $bigwidth = $this->ez['columns']['width'] - ($pad * 2);
-        } else {
-            $bigwidth = $this->ez['pageWidth'] - ($pad * 2);
-        }
-        //fix width if larger than maximum or if $resize=full
-        if ($resize == 'full' || ($resize == 'width' && $width > $bigwidth) ) {
-            $width = $bigwidth - $this->ez['leftMargin'] - $this->ez['rightMargin'];
-        }
-
-        $height = ($width / $ratio); //set height
-
-        //fix size if runs off page
-        if ($height > ($this->y - $this->ez['bottomMargin'] - ($pad * 2))) {
-            if ($resize != 'full') {
-                $this->ezNewPage();
-            } else {
-                $height = ($this->y - $this->ez['bottomMargin'] - ($pad * 2)); //shrink height
-                $width = ($height * $ratio); //fix width
-            }
-        }
-        //fix x-offset if image smaller than bigwidth
-        if ($width < $bigwidth) {
-            //center if justification=center
-            if ($just == 'center') {
-                $offset = (($bigwidth - $width) / 2) - $this->ez['leftMargin'];
-            }
-            //move to right if justification=right
-            if ($just == 'right') {
-                $offset = ($bigwidth - $width) - $this->ez['leftMargin'] - $this->ez['rightMargin'];
-            }
-            //leave at left if justification=left
-            if ($just == 'left') {
-                $offset = 0;
-            }
-        }
-
-        //call appropriate function
-        switch ($imageInfo[2]) {
-            case IMAGETYPE_JPEG:
-            	$this->addJpegFromFile($image, $this->ez['leftMargin'] + $pad + $offset, $this->y + $this->getFontHeight($this->ez['fontSize']) - $pad - $height, $width);
-                break;
-            case IMAGETYPE_PNG:
-            	$this->addPngFromFile($image, $this->ez['leftMargin'] + $pad + $offset, $this->y + $this->getFontHeight($this->ez['fontSize']) - $pad - $height, $width);
-                break;
-            case IMAGETYPE_GIF:
-            	// use GD to convert the GIF image to PNG and allow transparency
-            	$this->addGifFromFile($image, $this->ez['leftMargin'] + $pad + $offset, $this->y + $this->getFontHeight($this->ez['fontSize']) - $pad - $height, $width);
-            	break;
-            default:
-            	$this->debug("ezImage: Unsupported image type".$imageInfo[2], E_USER_WARNING);
-                return false; //return if file is not jpg or png
-        }
-        
-        //draw border
-        if ($border != '') {
-            if (!(isset ($border['color']))) {
-                $border['color']['red'] = .5;
-                $border['color']['blue'] = .5;
-                $border['color']['green'] = .5;
-            }
-            if (!(isset ($border['width'])))
-                $border['width'] = 1;
-            if (!(isset ($border['cap'])))
-                $border['cap'] = 'round';
-            if (!(isset ($border['join'])))
-                $border['join'] = 'round';
-
-            $this->setStrokeColor($border['color']['red'], $border['color']['green'], $border['color']['blue']);
-            $this->setLineStyle($border['width'], $border['cap'], $border['join']);
-            $this->rectangle($this->ez['leftMargin'] + $pad + $offset, $this->y + $this->getFontHeight($this->ez['fontSize']) - $pad - $height, $width, $height);
-
-        }
-        // move y below image
-        $this->y = $this->y - $pad - $height;
-        //remove tempfile for remote images
-        if ($temp == true)
-            unlink($image);
-    }
-
-    /**
-     * Outputs the PDF content as stream
-     * $options
-     * 	'compress' => 0/1 to enable compression. For compression level please use $this->options['compression'] = <level> at the very first point. Default: 1 
-     *  'download' => 0/1 to display inline (in browser) or as download. Default: 0
-     * 
-     * @param $options
-     * @access public
-     * @return unknown_type
-     */
-    public function ezStream($options=''){
-        $this->cleanUp();
-        $this->stream($options);
-    }
-
-    /**
-     * returns the PDF as "string"
-     * @param $options
-     * @access public
-     * @return unknown_type
-     */
-    public function ezOutput($options=0){
-        $this->cleanUp();
-        return $this->output($options);
-    }
-
-    /**
-     * note that templating code is still considered developmental - have not really figured
-     * out a good way of doing this yet.
-     *
-     * this function will load the requested template ($file includes full or relative pathname)
-     * the code for the template will be modified to make it name safe, and then stored in
-     * an array for later use
-     *
-     * The id of the template will be returned for the user to operate on it later
-     *
-     * @param $templateFile
-     * @access public
-     * @return unknown_type
-     * @deprecated method deprecated in 0.12.0
-     */
-    public function loadTemplate($templateFile){
-        if (!file_exists($templateFile)){
-            return -1;
-        }
-
-        $code = implode('',file($templateFile));
-        if (!strlen($code)){
-            return;
-        }
-
-        $code = trim($code);
-        if (substr($code,0,5)=='<?php'){
-            $code = substr($code,5);
-        }
-        if (substr($code,-2)=='?>'){
-            $code = substr($code,0,strlen($code)-2);
-        }
-        if (isset($this->ez['numTemplates'])){
-            $newNum = $this->ez['numTemplates'];
-            $this->ez['numTemplates']++;
-        } else {
-            $newNum=0;
-            $this->ez['numTemplates']=1;
-            $this->ez['templates']=array();
-        }
-
-        $this->ez['templates'][$newNum]['code']=$code;
-
-        return $newNum;
-    }
-
-    /**
-     * executes the template
-     * @param $id
-     * @param $data
-     * @param $options
-     * @access public
-     * @return unknown_type
-     * @deprecated method deprecated in 0.12.0
-     */
-    public function execTemplate($id,$data=array(),$options=array()){
-        // execute the given template on the current document.
-        if (!isset($this->ez['templates'][$id])){
-            return;
-        }
-        eval($this->ez['templates'][$id]['code']);
-    }
-
-    /**
-     * callback function for internal links
-     * @param $info
-     * @access public
-     * @return unknown_type
-     */
-    public function ilink($info){
-        $this->alink($info,1);
-    }
-
-    /**
-     * callback function for external links 
-     * @param $info
-     * @param $internal
-     * @access public
-     * @return unknown_type
-     */
-    public function alink($info,$internal=0){
-        // a callback function to support the formation of clickable links within the document
-        $lineFactor=0.05; // the thickness of the line as a proportion of the height. also the drop of the line.
-        switch($info['status']){
-            case 'start':
-            case 'sol':
-                // the beginning of the link
-                // this should contain the URl for the link as the 'p' entry, and will also contain the value of 'nCallback'
-                if (!isset($this->ez['links'])){
-                    $this->ez['links']=array();
-                }
-                $i = $info['nCallback'];
-                $this->ez['links'][$i] = array('x'=>$info['x'],'y'=>$info['y'],'angle'=>$info['angle'],'decender'=>$info['decender'],'height'=>$info['height'],'url'=>$info['p']);
-                if ($internal==0){
-                    $this->saveState();
-                    $this->setColor(0,0,1);
-                    $this->setStrokeColor(0,0,1);
-                    $thick = $info['height']*$lineFactor;
-                    $this->setLineStyle($thick);
-                }
-                break;
-            case 'end':
-            case 'eol':
-                // the end of the link
-                // assume that it is the most recent opening which has closed
-                $i = $info['nCallback'];
-                $start = $this->ez['links'][$i];
-                // add underlining
-                if ($internal){
-                    $this->addInternalLink($start['url'],$start['x'],$start['y']+$start['decender'],$info['x'],$start['y']+$start['decender']+$start['height']);
-                } else {
-                    $a = deg2rad((float)$start['angle']-90.0);
-                    $drop = $start['height']*$lineFactor*1.5;
-                    $dropx = cos($a)*$drop;
-                    $dropy = -sin($a)*$drop;
-                    $this->line($start['x']-$dropx,$start['y']-$dropy,$info['x']-$dropx,$info['y']-$dropy);
-                    $this->addLink($start['url'],$start['x'],$start['y']+$start['decender'],$info['x'],$start['y']+$start['decender']+$start['height']);
-                    $this->restoreState();
-                }
-                break;
-        }
-    }
-
-    /**
-     * a callback function to support underlining
-     * @param $info
-     * @access public
-     * @return unknown_type
-     */
-    public function uline($info){
-        $lineFactor=0.05; // the thickness of the line as a proportion of the height. also the drop of the line.
-        switch($info['status']){
-            case 'start':
-            case 'sol':
-
-                // the beginning of the underline zone
-                if (!isset($this->ez['links'])){
-                    $this->ez['links']=array();
-                }
-                $i = $info['nCallback'];
-                $this->ez['links'][$i] = array('x'=>$info['x'],'y'=>$info['y'],'angle'=>$info['angle'],'decender'=>$info['decender'],'height'=>$info['height']);
-                $this->saveState();
-                $thick = $info['height']*$lineFactor;
-                $this->setLineStyle($thick);
-                break;
-            case 'end':
-            case 'eol':
-                // the end of the link
-                // assume that it is the most recent opening which has closed
-                $i = $info['nCallback'];
-                $start = $this->ez['links'][$i];
-                // add underlining
-                $a = deg2rad((float)$start['angle']-90.0);
-                $drop = $start['height']*$lineFactor*1.5;
-                $dropx = cos($a)*$drop;
-                $dropy = -sin($a)*$drop;
-                $this->line($start['x']-$dropx,$start['y']-$dropy,$info['x']-$dropx,$info['y']-$dropy);
-                $this->restoreState();
-                break;
-        }
-    }
-}
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
+
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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

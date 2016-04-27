@@ -1,1201 +1,497 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-
-require_once 'base/fs_cache.php';
-require_once 'base/fs_db2.php';
-require_once 'base/fs_default_items.php';
-require_once 'base/fs_model.php';
-
-require_model('agente.php');
-require_model('divisa.php');
-require_model('empresa.php');
-require_model('fs_access.php');
-require_model('fs_page.php');
-require_model('fs_user.php');
-require_model('fs_extension.php');
-require_model('fs_log.php');
-require_model('fs_var.php');
-
-/**
- * La clase principal de la que deben heredar todos los controladores
- * (las páginas) de el sistema.
- */
-class fs_controller
-{
-   /**
-    * Este objeto permite acceso directo a la base de datos.
-    * @var fs_db2
-    */
-   protected $db;
-   private $uptime;
-   private $errors;
-   private $messages;
-   private $advices;
-   private $last_changes;
-   private $simbolo_divisas;
-   
-   /**
-    * El usuario que ha hecho login
-    * @var fs_user
-    */
-   public $user;
-   
-   /**
-    * El elemento del menú de esta página
-    * @var fs_page
-    */
-   public $page;
-   
-   /**
-    * Contiene el menú de el sistema
-    * @var type 
-    */
-   protected $menu;
-   
-   /**
-    * Indica que archivo HTML hay que cargar
-    * @var type 
-    */
-   public $template;
-   
-   /**
-    * La cadena obtenida del formulario de búsqueda
-    * @var type 
-    */
-   public $query;
-   
-   /**
-    * La empresa
-    * @var empresa
-    */
-   public $empresa;
-   public $default_items;
-   
-   /**
-    * Este objeto permite interactuar con memcache
-    * @var fs_cache
-    */
-   protected $cache;
-   
-   /**
-    * Listado de extensiones de la página
-    */
-   public $extensions;
-   
-   /**
-    * @param type $name sustituir por __CLASS__
-    * @param type $title es el título de la página, y el texto que aparecerá en el menú
-    * @param type $folder es el menú dónde quieres colocar el acceso directo
-    * @param type $admin OBSOLETO
-    * @param type $shmenu debe ser TRUE si quieres añadir el acceso directo en el menú
-    * @param type $important debe ser TRUE si quieres que aparezca en el menú de destacado
-    */
-   public function __construct($name = '', $title = 'home', $folder = '', $admin = FALSE, $shmenu = TRUE, $important = FALSE)
-   {
-      $tiempo = explode(' ', microtime());
-      $this->uptime = $tiempo[1] + $tiempo[0];
-      $this->errors = array();
-      $this->messages = array();
-      $this->advices = array();
-      $this->simbolo_divisas = array();
-      $this->extensions = array();
-      
-      $this->cache = new fs_cache();
-      $this->db = new fs_db2();
-      
-      /// comprobamos la versión de PHP
-      if( floatval( substr(phpversion(), 0, 3) ) < 5.3 )
-      {
-         $this->new_error_msg('el sistema necesita PHP 5.3 o superior, y tú tienes PHP '.phpversion().'.');
-      }
-      
-      if( $this->db->connect() )
-      {
-         $this->user = new fs_user();
-         $this->page = new fs_page(
-                 array(
-                     'name' => $name,
-                     'title' => $title,
-                     'folder' => $folder,
-                     'version' => $this->version(),
-                     'show_on_menu' => $shmenu,
-                     'important' => $important
-                 )
-         );
-         if($name != '')
-         {
-            $this->page->save();
-         }
-         
-         $this->empresa = new empresa();
-         $this->default_items = new fs_default_items();
-         
-         /// cargamos las extensiones
-         $fsext = new fs_extension();
-         foreach($fsext->all() as $ext)
-         {
-            if($ext->to == $name OR ( is_null($ext->to) AND in_array($ext->type,array('head','hidden_iframe')) ) )
-            {
-               $this->extensions[] = $ext;
-            }
-         }
-         
-         if( isset($_GET['logout']) )
-         {
-            $this->template = 'login/default';
-            $this->log_out();
-         }
-         else if( isset($_POST['new_password']) AND isset($_POST['new_password2']) )
-         {
-            $ips = array();
-            
-            if( $this->ip_baneada($ips) )
-            {
-               $this->banear_ip($ips);
-               $this->new_error_msg('Tu IP ha sido baneada. Tendrás que esperar 10 minutos antes de volver a intentar entrar.');
-            }
-            else if($_POST['new_password'] != $_POST['new_password2'])
-            {
-               $this->new_error_msg('Las contraseñas no coinciden.');
-            }
-            else if($_POST['new_password'] == '')
-            {
-               $this->new_error_msg('Tienes que escribir una contraseña nueva.');
-            }
-            else if($_POST['db_password'] != FS_DB_PASS)
-            {
-               $this->banear_ip($ips);
-               $this->new_error_msg('La contraseña de la base de datos es incorrecta.');
-            }
-            else
-            {
-               $suser = $this->user->get($_POST['user']);
-               if($suser)
-               {
-                  $suser->set_password($_POST['new_password']);
-                  if( $suser->save() )
-                  {
-                     $this->new_message('Contraseña cambiada correctamente.');
-                  }
-                  else
-                     $this->new_error_msg('Imposible cambiar la contraseña del usuario.');
-               }
-            }
-            
-            $this->template = 'login/default';
-         }
-         else if( !$this->log_in() )
-         {
-            $this->template = 'login/default';
-            $this->public_core();
-         }
-         else if( $this->user->have_access_to($this->page->name) )
-         {
-            if($name == '')
-            {
-               $this->template = 'index';
-            }
-            else
-            {
-               $this->set_default_items();
-               
-               $this->template = $name;
-               
-               $this->query = '';
-               if( isset($_REQUEST['query']) )
-               {
-                  $this->query = $_REQUEST['query'];
-               }
-               
-               /// quitamos extensiones de páginas a las que el usuario no tenga acceso
-               foreach($this->extensions as $i => $value)
-               {
-                  if($value->type != 'config')
-                  {
-                     if( !$this->user->have_access_to($value->from) )
-                     {
-                        unset($this->extensions[$i]);
-                     }
-                  }
-               }
-               
-               $this->private_core();
-            }
-         }
-         else if($name == '')
-         {
-            $this->template = 'index';
-         }
-         else
-         {
-            $this->template = 'access_denied';
-            $this->user->clean_cache(TRUE);
-            $this->empresa->clean_cache();
-         }
-      }
-      else
-      {
-         $this->template = 'no_db';
-         $this->new_error_msg('¡Imposible conectar con la base de datos <b>'.FS_DB_NAME.'</b>!');
-      }
-   }
-   
-   /**
-    * Devuelve la versión de el sistema
-    * @return type versión de el sistema
-    */
-   public function version()
-   {
-      if( file_exists('VERSION') )
-      {
-         $v = file_get_contents('VERSION');
-         return trim($v);
-      }
-      else
-         return '0';
-   }
-   
-   /**
-    * Cierra la conexión con la base de datos.
-    */
-   public function close()
-   {
-      $this->db->close();
-   }
-   
-   /**
-    * Muestra al usuario un mensaje de error
-    * @param type $msg el mensaje a mostrar
-    */
-   public function new_error_msg($msg = FALSE, $tipo = 'error', $alerta = FALSE)
-   {
-      if($msg)
-      {
-         $this->errors[] = str_replace("\n", ' ', $msg);
-         
-         $fslog = new fs_log();
-         $fslog->tipo = $tipo;
-         $fslog->detalle = $msg;
-         $fslog->ip = $_SERVER['REMOTE_ADDR'];
-         $fslog->alerta = $alerta;
-         
-         if($this->user)
-         {
-            $fslog->usuario = $this->user->nick;
-         }
-         
-         $fslog->save();
-      }
-   }
-   
-   /**
-    * Devuelve la lista de errores
-    * @return type lista de errores
-    */
-   public function get_errors()
-   {
-      $full = array_merge( $this->errors, $this->db->get_errors() );
-      
-      if( isset($this->empresa) )
-      {
-         $full = array_merge( $full, $this->empresa->get_errors() );
-      }
-      
-      return $full;
-   }
-   
-   /**
-    * Muestra un mensaje al usuario
-    * @param type $msg mensaje a mostrar
-    */
-   public function new_message($msg=FALSE, $save=FALSE, $tipo = 'msg')
-   {
-      if($msg)
-      {
-         $this->messages[] = str_replace("\n", ' ', $msg);
-         
-         if($save)
-         {
-            $fslog = new fs_log();
-            $fslog->tipo = $tipo;
-            $fslog->detalle = $msg;
-            $fslog->ip = $_SERVER['REMOTE_ADDR'];
-            
-            if($this->user)
-            {
-               $fslog->usuario = $this->user->nick;
-            }
-            
-            $fslog->save();
-         }
-      }
-   }
-   
-   /**
-    * Devuelve la lista de mensajes
-    * @return type lista de mensajes
-    */
-   public function get_messages()
-   {
-      return $this->messages;
-   }
-   
-   /**
-    * Muestra un consejo al usuario
-    * @param type $msg el consejo a mostrar
-    */
-   public function new_advice($msg=FALSE)
-   {
-      if($msg)
-      {
-         $this->advices[] = str_replace("\n", ' ', $msg);
-      }
-   }
-   
-   /**
-    * Devuelve la lista de consejos
-    * @return type lista de consejos
-    */
-   public function get_advices()
-   {
-      return $this->advices;
-   }
-   
-   /**
-    * Devuelve la URL de esta página (index.php?page=LO-QUE-SEA)
-    * @return type
-    */
-   public function url()
-   {
-      return $this->page->url();
-   }
-   
-   /**
-    * Una IP será baneada si falla más de 5 intentos de login en menos de 10 minutos
-    * @param type $ips es un array de IP;intentos;hora
-    * @return boolean
-    */
-   private function ip_baneada(&$ips)
-   {
-      $baneada = FALSE;
-      
-      if( file_exists('tmp/'.FS_TMP_NAME.'ip.log') )
-      {
-         $file = fopen('tmp/'.FS_TMP_NAME.'ip.log', 'r');
-         if($file)
-         {
-            /// leemos las líneas
-            while( !feof($file) )
-            {
-               $linea = explode(';', trim(fgets($file)));
-               
-               if( intval($linea[2]) > time() )
-               {
-                  if($linea[0] == $_SERVER['REMOTE_ADDR'] AND intval($linea[1]) > 5)
-                  {
-                     $baneada = TRUE;
-                  }
-                  
-                  $ips[] = $linea;
-               }
-            }
-            
-            fclose($file);
-         }
-      }
-      
-      return $baneada;
-   }
-   
-   /**
-    * Baneamos las IPs que fallan más de 5 intentos de login en 10 minutos
-    * @param type $ips es un array de IP;intentos;hora
-    */
-   private function banear_ip(&$ips)
-   {
-      $file = fopen('tmp/'.FS_TMP_NAME.'ip.log', 'w');
-      if($file)
-      {
-         $encontrada = FALSE;
-         
-         foreach($ips as $ip)
-         {
-            if($ip[0] == $_SERVER['REMOTE_ADDR'])
-            {
-               fwrite( $file, $ip[0].';'.( 1+intval($ip[1]) ).';'.( time()+600 ) );
-               $encontrada = TRUE;
-            }
-            else
-               fwrite( $file, join(';', $ip) );
-         }
-         
-         if(!$encontrada)
-         {
-            fwrite( $file, $_SERVER['REMOTE_ADDR'].';1;'.( time()+600 ) );
-         }
-         
-         fclose($file);
-      }
-   }
-   
-   /**
-    * Devuelve TRUE si la IP proporcionada está en la lista de IPs permitidas.
-    * La lista de IPs permitidas están en Admin > Panel de control > Avanzado.
-    * @param type $ip
-    */
-   private function ip_in_whitelist($ip)
-   {
-      if(FS_IP_WHITELIST == '*')
-      {
-         return TRUE;
-      }
-      else
-      {
-         $aux = explode(',', FS_IP_WHITELIST);
-         return in_array($ip, $aux);
-      }
-   }
-   
-   /**
-    * Devuelve TRUE si el usuario realmente tiene acceso a esta página
-    * @return type
-    */
-   private function log_in()
-   {
-      $ips = array();
-      
-      if( $this->ip_baneada($ips) )
-      {
-         $this->banear_ip($ips);
-         $this->new_error_msg('Tu IP ha sido baneada. Tendrás que esperar 10 minutos antes de volver a intentar entrar.', 'login', TRUE);
-      }
-      else if( isset($_POST['user']) AND isset($_POST['password']) )
-      {
-         if( FS_DEMO ) /// en el modo demo nos olvidamos de la contraseña
-         {
-            $user = $this->user->get($_POST['user']);
-            if( !$user )
-            {
-               $user = new fs_user();
-               $user->nick = $_POST['user'];
-               $user->set_password('demo');
-               
-               /// creamos un agente para asociarlo
-               $agente = new agente();
-               $agente->codagente = $agente->get_new_codigo();
-               $agente->nombre = $_POST['user'];
-               $agente->apellidos = 'Demo';
-               if( $agente->save() )
-               {
-                  $user->codagente = $agente->codagente;
-               }
-            }
-            
-            $user->new_logkey();
-            if( $user->save() )
-            {
-               setcookie('user', $user->nick, time()+FS_COOKIES_EXPIRE);
-               setcookie('logkey', $user->log_key, time()+FS_COOKIES_EXPIRE);
-               $this->user = $user;
-               $this->load_menu();
-            }
-         }
-         else
-         {
-            $user = $this->user->get($_POST['user']);
-            $password = $_POST['password'];
-            if($user)
-            {
-               /**
-                * En versiones anteriores se guardaban las contraseñas siempre en
-                * minúsculas, por eso, para dar compatibilidad comprobamos también
-                * en minúsculas.
-                */
-               if( $user->password == sha1($password) OR $user->password == sha1( mb_strtolower($password, 'UTF8') ) )
-               {
-                  $user->new_logkey();
-                  
-                  if( !$user->admin AND !$this->ip_in_whitelist($user->last_ip) )
-                  {
-                     $this->new_error_msg('No puedes acceder desde esta IP.', 'login', TRUE);
-                  }
-                  else if( $user->save() )
-                  {
-                     setcookie('user', $user->nick, time()+FS_COOKIES_EXPIRE);
-                     setcookie('logkey', $user->log_key, time()+FS_COOKIES_EXPIRE);
-                     $this->user = $user;
-                     $this->load_menu();
-                     
-                     /// añadimos el mensaje al log
-                     $fslog = new fs_log();
-                     $fslog->usuario = $user->nick;
-                     $fslog->tipo = 'login';
-                     $fslog->detalle = 'Login correcto.';
-                     $fslog->ip = $user->last_ip;
-                     $fslog->save();
-                  }
-                  else
-                  {
-                     $this->new_error_msg('Imposible guardar los datos de usuario.');
-                     $this->cache->clean();
-                  }
-               }
-               else
-               {
-                  $this->new_error_msg('¡Contraseña incorrecta!');
-                  $this->banear_ip($ips);
-               }
-            }
-            else
-            {
-               $this->new_error_msg('El usuario '.$_POST['user'].' no existe!');
-               $this->user->clean_cache(TRUE);
-               $this->cache->clean();
-            }
-         }
-      }
-      else if( isset($_COOKIE['user']) AND isset($_COOKIE['logkey']) )
-      {
-         $user = $this->user->get($_COOKIE['user']);
-         if($user)
-         {
-            if($user->log_key == $_COOKIE['logkey'])
-            {
-               $user->logged_on = TRUE;
-               $user->update_login();
-               $this->user = $user;
-               $this->load_menu();
-            }
-            else if( !is_null($user->log_key) )
-            {
-               $this->new_message('¡Cookie no válida! Alguien ha accedido a esta cuenta desde otro PC con IP: '
-                       .$user->last_ip.". Si has sido tú, ignora este mensaje.");
-               $this->log_out();
-            }
-         }
-         else
-         {
-            $this->new_error_msg('¡El usuario '.$_COOKIE['user'].' no existe!');
-            $this->log_out();
-            $this->user->clean_cache(TRUE);
-            $this->cache->clean();
-         }
-      }
-      
-      return $this->user->logged_on;
-   }
-   
-   /**
-    * Gestiona el cierre de sesión
-    */
-   private function log_out()
-   {
-      setcookie('logkey', '', time()-FS_COOKIES_EXPIRE);
-      
-      $fslog = new fs_log();
-      
-      if( isset($_COOKIE['user']) )
-      {
-         $fslog->usuario = $_COOKIE['user'];
-      }
-      
-      $fslog->tipo = 'login';
-      $fslog->detalle = 'El usuario ha cerrado la sesión.';
-      $fslog->ip = $_SERVER['REMOTE_ADDR'];
-      $fslog->save();
-   }
-   
-   /**
-    * Devuelve la duración de la ejecución de la página
-    * @return type un string con la duración de la ejecución
-    */
-   public function duration()
-   {
-      $tiempo = explode(" ", microtime());
-      return (number_format($tiempo[1] + $tiempo[0] - $this->uptime, 3) . ' s');
-   }
-   
-   /**
-    * Devuelve el número de consultas SQL (SELECT) que se han ejecutado
-    * @return type
-    */
-   public function selects()
-   {
-      return $this->db->get_selects();
-   }
-   
-   /**
-    * Devuleve el número de transacciones SQL que se han ejecutado
-    * @return type
-    */
-   public function transactions()
-   {
-      return $this->db->get_transactions();
-   }
-   
-   /**
-    * Devuelve el listado de consultas SQL que se han ejecutados
-    * @return type lista de consultas SQL
-    */
-   public function get_db_history()
-   {
-      return $this->db->get_history();
-   }
-   
-   /**
-    * Carga el menú de el sistema
-    * @param type $reload TRUE si quieres recargar
-    */
-   protected function load_menu($reload=FALSE)
-   {
-      $this->menu = $this->user->get_menu($reload);
-   }
-   
-   /**
-    * Devuelve la lista de menús
-    * @return type lista de menús
-    */
-   public function folders()
-   {
-      $folders = array();
-      foreach($this->menu as $m)
-      {
-         if($m->folder!='' AND $m->show_on_menu AND !in_array($m->folder, $folders) )
-         {
-            $folders[] = $m->folder;
-         }
-      }
-      return $folders;
-   }
-   
-   /**
-    * Devuelve la lista de elementos de un menú seleccionado
-    * @param type $f el menú seleccionado
-    * @return type lista de elementos del menú
-    */
-   public function pages($f='')
-   {
-      $pages = array();
-      foreach($this->menu as $p)
-      {
-         if($f == $p->folder AND $p->show_on_menu AND !in_array($p, $pages) )
-         {
-            $pages[] = $p;
-         }
-      }
-      return $pages;
-   }
-   
-   /**
-    * Función que se ejecuta si el usuario no ha hecho login
-    */
-   protected function public_core()
-   {
-      
-   }
-   
-   /**
-    * Esta es la función principal que se ejecuta cuando el usuario ha hecho login
-    */
-   protected function private_core()
-   {
-      
-   }
-   
-   /**
-    * Redirecciona a la página predeterminada para el usuario
-    */
-   public function select_default_page()
-   {
-      if( $this->db->connected() )
-      {
-         if( $this->user->logged_on )
-         {
-            $page = '';
-            if( is_null($this->user->fs_page) )
-            {
-               $page = 'admin_home';
-               
-               /*
-                * Cuando un usuario no tiene asignada una página por defecto,
-                * se selecciona la primera página del menú.
-                */
-               foreach($this->menu as $p)
-               {
-                  if($p->show_on_menu)
-                  {
-                     $page = $p->name;
-                  }
-               }
-            }
-            else
-               $page = $this->user->fs_page;
-            
-            header('Location: index.php?page='.$page);
-         }
-      }
-   }
-   
-   /**
-    * Establecemos los elementos por defecto, pero no se guardan.
-    * Para guardarlos hay que usar las funciones fs_controller::save_lo_que_sea().
-    * La clase fs_default_items sólo se usa para indicar valores
-    * por defecto a los modelos.
-    */
-   private function set_default_items()
-   {
-      /// gestionamos la página de inicio
-      if( isset($_GET['default_page']) )
-      {
-         if($_GET['default_page'] == 'FALSE')
-         {
-            $this->default_items->set_default_page(NULL);
-            $this->user->fs_page = NULL;
-         }
-         else
-         {
-            $this->default_items->set_default_page( $this->page->name );
-            $this->user->fs_page = $this->page->name;
-         }
-         
-         $this->user->save();
-      }
-      else if( is_null($this->default_items->default_page()) )
-      {
-         $this->default_items->set_default_page( $this->user->fs_page );
-      }
-      
-      if( is_null($this->default_items->showing_page()) )
-      {
-         $this->default_items->set_showing_page( $this->page->name );
-      }
-      
-      $this->default_items->set_codejercicio($this->empresa->codejercicio);
-      
-      if( isset($_COOKIE['default_almacen']) )
-      {
-         $this->default_items->set_codalmacen( $_COOKIE['default_almacen'] );
-      }
-      else
-      {
-         $this->default_items->set_codalmacen( $this->empresa->codalmacen );
-      }
-      
-      if( isset($_COOKIE['default_formapago']) )
-      {
-         $this->default_items->set_codpago( $_COOKIE['default_formapago'] );
-      }
-      else
-      {
-         $this->default_items->set_codpago( $this->empresa->codpago );
-      }
-      
-      if( isset($_COOKIE['default_impuesto']) )
-      {
-         $this->default_items->set_codimpuesto( $_COOKIE['default_impuesto'] );
-      }
-      
-      $this->default_items->set_codpais( $this->empresa->codpais );
-      $this->default_items->set_codserie( $this->empresa->codserie );
-      $this->default_items->set_coddivisa( $this->empresa->coddivisa );
-   }
-   
-   /**
-    * Establece un ejercicio como predeterminado para este usuario.
-    * @deprecated since version 2015.039
-    * @param type $cod el código del ejercicio
-    */
-   protected function save_codejercicio($cod)
-   {
-      $this->new_error_msg('fs_controller::save_codejercicio() es una función obsoleta.');
-   }
-   
-   /**
-    * Establece un almacén como predeterminado para este usuario.
-    * @param type $cod el código del almacén
-    */
-   protected function save_codalmacen($cod)
-   {
-      setcookie('default_almacen', $cod, time()+FS_COOKIES_EXPIRE);
-      $this->default_items->set_codalmacen($cod);
-   }
-   
-   /**
-    * Establece un cliente como predeterminado para este usuario.
-    * @deprecated since version 2015.039
-    * @param type $cod el código del cliente
-    */
-   protected function save_codcliente($cod)
-   {
-      $this->new_error_msg('fs_controller::save_codcliente() es una función obsoleta.');
-   }
-   
-   /**
-    * Establece una divisa como predeterminada para este usuario.
-    * @deprecated since version 2015.039
-    * @param type $cod el código de la divisa
-    */
-   protected function save_coddivisa($cod)
-   {
-      $this->new_error_msg('fs_controller::save_coddivisa() es una función obsoleta.');
-   }
-   
-   /**
-    * Establece una familia como predeterminada para este usuario.
-    * @deprecated since version 2015.039
-    * @param type $cod el código de la familia
-    */
-   protected function save_codfamilia($cod)
-   {
-      $this->new_error_msg('fs_controller::save_codfamilia() es una función obsoleta.');
-   }
-   
-   /**
-    * Establece una forma de pago como predeterminada para este usuario.
-    * @param type $cod el código de la forma de pago
-    */
-   protected function save_codpago($cod)
-   {
-      setcookie('default_formapago', $cod, time()+FS_COOKIES_EXPIRE);
-      $this->default_items->set_codpago($cod);
-   }
-   
-   /**
-    * Establece un impuesto (IVA) como predeterminado para este usuario.
-    * @param type $cod el código del impuesto
-    */
-   protected function save_codimpuesto($cod)
-   {
-      setcookie('default_impuesto', $cod, time()+FS_COOKIES_EXPIRE);
-      $this->default_items->set_codimpuesto($cod);
-   }
-   
-   /**
-    * Establece un código de país como predeterminado para este usuario.
-    * @deprecated since version 2015.039
-    * @param type $cod el código del país
-    */
-   protected function save_codpais($cod)
-   {
-      $this->new_error_msg('fs_controller::save_codpais() es una función obsoleta.');
-   }
-   
-   /**
-    * Establece un proveedor como predeterminado para este usuario.
-    * @deprecated since version 2015.039
-    * @param type $cod el código del proveedor
-    */
-   protected function save_codproveedor($cod)
-   {
-      $this->new_error_msg('fs_controller::save_codproveedor() es una función obsoleta.');
-   }
-   
-   /**
-    * Establece una serie como predeterminada para este usuario.
-    * @deprecated since version 2015.039
-    * @param type $cod el código de la serie
-    */
-   protected function save_codserie($cod)
-   {
-      $this->new_error_msg('fs_controller::save_codserie() es una función obsoleta.');
-   }
-   
-   /**
-    * Devuelve la fecha actual
-    * @return type la fecha en formato día-mes-año
-    */
-   public function today()
-   {
-      return date('d-m-Y');
-   }
-   
-   /**
-    * Devuelve la hora actual
-    * @return type la hora en formato hora:minutos:segundos
-    */
-   public function hour()
-   {
-      return Date('H:i:s');
-   }
-   
-   /**
-    * Devuelve un string aleatorio de longitud $length
-    * @param type $length la longitud del string
-    * @return type la cadena aleatoria
-    */
-   public function random_string($length = 30)
-   {
-      return mb_substr(str_shuffle("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"),
-              0, $length);
-   }
-   
-   /**
-    * He detectado que algunos navegadores, en algunos casos, envían varias veces la
-    * misma petición del formulario. En consecuencia se crean varios modelos (asientos,
-    * albaranes, etc...) con los mismos datos, es decir, duplicados.
-    * Para solucionarlo añado al formulario un campo petition_id con una cadena
-    * de texto aleatoria. Al llamar a esta función se comprueba si esa cadena
-    * ya ha sido almacenada, de ser así devuelve TRUE, así no hay que gabar los datos,
-    * si no, se almacena el ID y se devuelve FALSE.
-    * @param type $id el identificador de la petición
-    * @return boolean TRUE si la petición está duplicada
-    */
-   protected function duplicated_petition($id)
-   {
-      $ids = $this->cache->get_array('petition_ids');
-      if( in_array($id, $ids) )
-      {
-         return TRUE;
-      }
-      else
-      {
-         $ids[] = $id;
-         $this->cache->set('petition_ids', $ids, 300);
-         return FALSE;
-      }
-   }
-   
-   /**
-    * Devuelve información del sistema para el informe de errores
-    * @return type la información del sistema
-    */
-   public function system_info()
-   {
-      $txt = 'el sistema: '.$this->version()."\n";
-      
-      if($this->user->logged_on)
-      {
-         $txt .= 'os: '.php_uname()."\n";
-         $txt .= 'php: '.phpversion()."\n";
-         $txt .= 'database type: '.FS_DB_TYPE."\n";
-         $txt .= 'database version: '.$this->db->version()."\n";
-         
-         if( $this->cache->connected() )
-         {
-            $txt .= "memcache: YES\n";
-            $txt .= 'memcache version: '.$this->cache->version()."\n";
-         }
-         else
-            $txt .= "memcache: NO\n";
-         
-         if( function_exists('curl_init') )
-         {
-            $txt .= "curl: YES\n";
-         }
-         else
-            $txt .= "curl: NO\n";
-         
-         $txt .= 'plugins: '.join(',', $GLOBALS['plugins'])."\n";
-         
-         if( isset($_SERVER['REQUEST_URI']) )
-         {
-            $txt .= 'url: '.$_SERVER['REQUEST_URI']."\n------";
-         }
-      }
-      
-      foreach($this->get_errors() as $e)
-      {
-         $txt .= "\n" . $e;
-      }
-      
-      return str_replace('"', "'", $txt);
-   }
-   
-   /**
-    * Devuelve el símbolo de divisa predeterminado
-    * o bien el símbolo de la divisa seleccionada.
-    * @param type $coddivisa
-    * @return string
-    */
-   public function simbolo_divisa($coddivisa = FALSE)
-   {
-      if(!$coddivisa)
-      {
-         $coddivisa = $this->empresa->coddivisa;
-      }
-      
-      if( isset($this->simbolo_divisas[$coddivisa]) )
-      {
-         return $this->simbolo_divisas[$coddivisa];
-      }
-      else
-      {
-         $divisa = new divisa();
-         $divi0 = $divisa->get($coddivisa);
-         if($divi0)
-         {
-            $this->simbolo_divisas[$coddivisa] = $divi0->simbolo;
-            return $divi0->simbolo;
-         }
-         else
-            return '?';
-      }
-   }
-   
-   /**
-    * Devuelve un string con el precio en el formato predefinido y con la
-    * divisa seleccionada (o la predeterminada).
-    * @param type $precio
-    * @param type $coddivisa
-    * @param type $simbolo
-    * @param type $dec nº de decimales
-    * @return type
-    */
-   public function show_precio($precio=0, $coddivisa=FALSE, $simbolo=TRUE, $dec=FS_NF0)
-   {
-      if($coddivisa === FALSE)
-      {
-         $coddivisa = $this->empresa->coddivisa;
-      }
-      
-      if(FS_POS_DIVISA == 'right')
-      {
-         if($simbolo)
-         {
-            return number_format($precio, $dec, FS_NF1, FS_NF2).' '.$this->simbolo_divisa($coddivisa);
-         }
-         else
-            return number_format($precio, $dec, FS_NF1, FS_NF2).' '.$coddivisa;
-      }
-      else
-      {
-         if($simbolo)
-         {
-            return $this->simbolo_divisa($coddivisa).number_format($precio, $dec, FS_NF1, FS_NF2);
-         }
-         else
-            return $coddivisa.' '.number_format($precio, $dec, FS_NF1, FS_NF2);
-      }
-   }
-   
-   /**
-    * Devuelve un string con el número en el formato de número predeterminado.
-    * @param type $num
-    * @param type $decimales
-    * @param type $js
-    * @return type
-    */
-   public function show_numero($num=0, $decimales=FS_NF0, $js=FALSE)
-   {
-      if($js)
-      {
-         return number_format($num, $decimales, '.', '');
-      }
-      else
-         return number_format($num, $decimales, FS_NF1, FS_NF2);
-   }
-   
-   /**
-    * Añade un elemento a la lista de cambios del usuario.
-    * @param type $txt texto descriptivo.
-    * @param type $url URL del elemento (albarán, factura, artículos...).
-    * @param type $nuevo TRUE si el elemento es nuevo, FALSE si se ha modificado.
-    */
-   public function new_change($txt, $url, $nuevo=FALSE)
-   {
-      $this->get_last_changes();
-      if( count($this->last_changes) > 0 )
-      {
-         if($this->last_changes[0]['url'] == $url)
-         {
-            $this->last_changes[0]['nuevo'] = $nuevo;
-         }
-         else
-            array_unshift($this->last_changes, array('texto' => ucfirst($txt), 'url' => $url, 'nuevo' => $nuevo, 'cambio' => date('d-m-Y H:i:s')) );
-      }
-      else
-         array_unshift($this->last_changes, array('texto' => ucfirst($txt), 'url' => $url, 'nuevo' => $nuevo, 'cambio' => date('d-m-Y H:i:s')) );
-      
-      /// sólo queremos 10 elementos
-      $num = 10;
-      foreach($this->last_changes as $i => $value)
-      {
-         if($num > 0)
-         {
-            $num--;
-         }
-         else
-         {
-            unset($this->last_changes[$i]);
-         }
-      }
-      
-      $this->cache->set('last_changes_'.$this->user->nick, $this->last_changes);
-   }
-   
-   /**
-    * Devuelve la lista con los últimos cambios del usuario.
-    */
-   public function get_last_changes()
-   {
-      if( !isset($this->last_changes) )
-      {
-         $this->last_changes = $this->cache->get_array('last_changes_'.$this->user->nick);
-      }
-      
-      return $this->last_changes;
-   }
-   
-   /**
-    * Elimina la lista con los últimos cambios del usuario.
-    */
-   public function clean_last_changes()
-   {
-      $this->last_changes = array();
-      $this->cache->delete('last_changes_'.$this->user->nick);
-   }
-   
-   /**
-    * Devuelve TRUE si hay actualizaciones pendientes (sólo si eres admin).
-    * @return boolean
-    */
-   public function check_for_updates()
-   {
-      if($this->user->admin)
-      {
-         $fsvar = new fs_var();
-         return $fsvar->simple_get('updates');
-      }
-      else
-         return FALSE;
-   }
-   
-   /**
-    * Busca en la lista de plugins activos, en orden inverso de prioridad
-    * (el último plugin activo tiene más prioridad que el primero)
-    * y nos devuelve la ruta del archivo javascript que le solicitamos.
-    * Así usamos el archivo del plugin con mayor prioridad.
-    * @param type $filename
-    * @return type
-    */
-   public function get_js_location($filename)
-   {
-      $found = FALSE;
-      foreach($GLOBALS['plugins'] as $plugin)
-      {
-         if( file_exists('plugins/'.$plugin.'/view/js/'.$filename) )
-         {
-            return 'plugins/'.$plugin.'/view/js/'.$filename;
-         }
-      }
-      
-      /// si no está en los plugins estará en el núcleo
-      return 'view/js/'.$filename;
-   }
-   
-   /**
-    * Devuelve el tamaño máximo permitido para subir archivos.
-    * @return type
-    */
-   public function get_max_file_upload()
-   {
-      $max = intval( ini_get('post_max_size') );
-      
-      if( intval(ini_get('upload_max_filesize')) > $max )
-      {
-         $max = intval(ini_get('upload_max_filesize'));
-      }
-      
-      return $max;
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+qNvM7j95n0y8OVl217lW1be9BBTDg+CT

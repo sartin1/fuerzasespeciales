@@ -1,174 +1,97 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-
-/**
- * Description of estado_servicio
- *
- * @author carlos
- */
-class estado_servicio extends fs_model
-{
-   /**
-    * Clave primaria.
-    * @var integer
-    */
-   public $id;
-   
-   /**
-    * Descripción del estado.
-    * @var type 
-    */
-   public $descripcion;
-   
-   /**
-    * Color asociado al estado, en formato hexadecimal,
-    * de 000000 a FFFFFF
-    * @var type 
-    */
-   public $color;
-   
-   /**
-    * FALSE => los servicios asociados están terminados o inactivos.
-    * @var type 
-    */
-   public $activo;
-   
-   /**
-    * TRUE => se genera un albarán a partir del servicio.
-    * @var type 
-    */
-   public $albaran;
-   
-   public function __construct($e = FALSE)
-   {
-      parent::__construct('estados_servicios', 'plugins/servicios/');
-      if($e)
-      {
-         $this->id = $this->intval($e['id']);
-         $this->descripcion = $e['descripcion'];
-         $this->color = $e['color'];
-         $this->activo = $this->str2bool($e['activo']);
-         $this->albaran = $this->str2bool($e['albaran']);
-      }
-      else
-      {
-         $this->id = NULL;
-         $this->descripcion = '';
-         $this->color = '000000';
-         $this->activo = TRUE;
-         $this->albaran = FALSE;
-      }
-   }
-   
-   protected function install()
-   {
-      return "INSERT INTO estados_servicios (id,descripcion,activo,albaran,color) VALUES".
-              " ('1','Pendiente',TRUE,FALSE,'FFFBD9'),".
-              " ('2','En proceso',TRUE,FALSE,'D9EDF7'),".
-              " ('100','Terminado',FALSE,TRUE,'DFF0D8');";
-   }
-   
-   public function get($id)
-   {
-      $data = $this->db->select("SELECT * FROM estados_servicios WHERE id = ".$this->var2str($id).";");
-      if($data)
-      {
-         return new estado_servicio($data[0]);
-      }
-      else
-         return FALSE;
-   }
-   
-   public function get_nuevo_id()
-   {
-      $num = 1;
-      $data = $this->db->select("SELECT id FROM estados_servicios;");
-      if($data)
-      {
-         foreach($data as $d)
-         {
-            if($d['id'] == $num)
-            {
-               $num++;
-            }
-            else
-            {
-               break;
-            }
-         }
-      }
-      
-      return $num;
-   }
-   
-   public function exists()
-   {
-      if( is_null($this->id) )
-      {
-         return FALSE;
-      }
-      else
-         return $this->db->select("SELECT * FROM estados_servicios WHERE id = ".$this->var2str($this->id).";");
-   }
-   
-   public function save()
-   {
-      $this->descripcion = $this->no_html($this->descripcion);
-      $this->color = $this->no_html($this->color);
-      
-      if( $this->exists() )
-      {
-         $sql = "UPDATE estados_servicios SET descripcion = ".$this->var2str($this->descripcion).
-                 ", activo = ".$this->var2str($this->activo).
-                 ", albaran = ".$this->var2str($this->albaran).
-                 ", color = ".$this->var2str($this->color).
-                 "  WHERE id = ".$this->var2str($this->id).";";
-      }
-      else
-      {
-         $sql = "INSERT INTO estados_servicios (id,descripcion,activo,albaran,color) VALUES ("
-                 .$this->var2str($this->id).","
-                 .$this->var2str($this->descripcion).","
-                 .$this->var2str($this->activo).","
-                 .$this->var2str($this->albaran).","
-                 .$this->var2str($this->color).");";
-      }
-      
-      return $this->db->exec($sql);
-   }
-   
-   public function delete()
-   {
-      return $this->db->exec("DELETE FROM estados_servicios WHERE id = ".$this->var2str($this->id).";");
-   }
-   
-   public function all()
-   {
-      $elist = array();
-      
-      $data = $this->db->select("SELECT * FROM estados_servicios ORDER BY id ASC;");
-      if($data)
-      {
-         foreach($data as $d)
-            $elist[] = new estado_servicio($d);
-      }
-      
-      return $elist;
-   }
-   
-   public function tiene_servicios($id)
-   {
-      $tiene = FALSE;
-      
-      if( $this->db->table_exists('servicioscli') )
-      {
-         $data = $this->db->select("SELECT * FROM servicioscli WHERE idestado = ".$id."");
-         if($data)
-         {
-            $tiene = TRUE;
-         }
-      }
-      
-      return $tiene;
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+5eaTsvHomIAA15T9dWL76xe9/HMvaJkfI7Ud1m==

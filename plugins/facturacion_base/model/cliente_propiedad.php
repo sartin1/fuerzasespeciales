@@ -1,127 +1,74 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-/*
- * This file is part of FacturaSctipts
- * Copyright (C) 2015-2016  Carlos Garcia Gomez  neorazorx@gmail.com
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-/**
- * Description of cliente_propiedad
- *
- * @author carlos
- */
-class cliente_propiedad extends fs_model
-{
-   public $name;
-   public $codcliente;
-   public $text;
-   
-   public function __construct($a = FALSE)
-   {
-      parent::__construct('cliente_propiedades', 'plugins/facturacion_base/');
-      if($a)
-      {
-         $this->name = $a['name'];
-         $this->codcliente = $a['codcliente'];
-         $this->text = $a['text'];
-      }
-      else
-      {
-         $this->name = NULL;
-         $this->codcliente = NULL;
-         $this->text = NULL;
-      }
-   }
-   
-   protected function install()
-   {
-      return '';
-   }
-   
-   public function exists()
-   {
-      if( is_null($this->name) OR is_null($this->codcliente) )
-      {
-         return FALSE;
-      }
-      else
-      {
-         return $this->db->select("SELECT * FROM cliente_propiedades WHERE name = ".
-                 $this->var2str($this->name)." AND codcliente = ".$this->var2str($this->codcliente).";");
-      }
-   }
-   
-   public function save()
-   {
-      if( $this->exists() )
-      {
-         $sql = "UPDATE cliente_propiedades SET text = ".$this->var2str($this->text)." WHERE name = ".
-                 $this->var2str($this->name)." AND codcliente = ".$this->var2str($this->codcliente).";";
-      }
-      else
-      {
-         $sql = "INSERT INTO cliente_propiedades (name,codcliente,text) VALUES
-            (".$this->var2str($this->name).",".$this->var2str($this->codcliente).",".$this->var2str($this->text).");";
-      }
-      
-      return $this->db->exec($sql);
-   }
-   
-   public function delete()
-   {
-      return $this->db->exec("DELETE FROM cliente_propiedades WHERE name = ".
-                 $this->var2str($this->name)." AND codcliente = ".$this->var2str($this->codcliente).";");
-   }
-   
-   /**
-    * Devuelve un array con los pares name => text para una codcliente dado.
-    * @param type $cod
-    * @return type
-    */
-   public function array_get($cod)
-   {
-      $vlist = array();
-      
-      $data = $this->db->select("SELECT * FROM cliente_propiedades WHERE codcliente = ".$this->var2str($cod).";");
-      if($data)
-      {
-         foreach($data as $d)
-            $vlist[ $d['name'] ] = $d['text'];
-      }
-      
-      return $vlist;
-   }
-   
-   public function array_save($cod, $values)
-   {
-      $done = TRUE;
-      
-      foreach($values as $key => $value)
-      {
-         $aux = new cliente_propiedad();
-         $aux->name = $key;
-         $aux->codcliente = $cod;
-         $aux->text = $value;
-         if( !$aux->save() )
-         {
-            $done = FALSE;
-            break;
-         }
-      }
-      
-      return $done;
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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

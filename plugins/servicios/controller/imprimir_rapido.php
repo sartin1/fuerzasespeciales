@@ -1,125 +1,84 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-
-require_model('servicio_cliente.php');
-
-/**
- * Description of imprimir_rapido
- *
- * @author carlos
- */
-class imprimir_rapido extends fs_controller
-{
-   public $agente;
-   public $servicio;
-   public $servicios_setup;
-   public $st;
-   public $cliente;
-   
-   public function __construct()
-   {
-      parent::__construct(__CLASS__, 'Imprimir Rápido', 'Servicio', FALSE, FALSE);
-   }
-   
-   protected function private_core()
-   {
-      //cargamos configuración de servicios
-      $fsvar = new fs_var();
-      $this->servicios_setup = $fsvar->array_get(
-         array(
-            'servicios_diasfin' => 10,
-            'servicios_material' => 0,
-            'servicios_mostrar_material' => 0,
-            'servicios_material_estado' => 0,
-            'servicios_mostrar_material_estado' => 0,             
-            'servicios_accesorios' => 0,
-            'servicios_mostrar_accesorios' => 0,             
-            'servicios_descripcion' => 0,
-            'servicios_mostrar_descripcion' => 0,            
-            'servicios_solucion' => 0,
-            'servicios_mostrar_solucion' => 0,             
-            'servicios_fechafin' => 0,
-            'servicios_mostrar_fechafin' => 0,             
-            'servicios_fechainicio' => 0,
-            'servicios_mostrar_fechainicio' => 0,
-            'servicios_mostrar_garantia' => 0,
-            'servicios_garantia' => 0,
-            'servicios_condiciones' => "Condiciones del deposito:\nLos presupuestos realizados tienen una".
-               " validez de 15 días.\nUna vez avisado al cliente para que recoja el producto este dispondrá".
-               " de un plazo máximo de 2 meses para recogerlo, de no ser así y no haber aviso por parte del".
-               " cliente se empezará a cobrar 1 euro al día por gastos de almacenaje.\nLos accesorios y".
-               " productos externos al equipo no especificados en este documento no podrán ser reclamados en".
-               " caso de disconformidad con el técnico.", 
-         ),
-         FALSE
-      );
-      
-      /*Cargamos traduccion*/
-      $this->st = $fsvar->array_get(
-         array(
-            'st_servicio' => "Servicio",
-            'st_servicios' => "Servicios",
-            'st_material' => "Material",
-            'st_material_estado' => "Estado del material entregado",
-            'st_accesorios' => "Accesorios que entrega",
-            'st_descripcion' => "Descripción de la averia",
-            'st_solucion' => "Solución",
-            'st_fechainicio' => "Fecha de Inicio",
-            'st_fechafin' => "Fecha de finalización",
-            'st_garantía' => "Garantía"
-         ),
-         FALSE
-      );
-      $this->cliente = FALSE;
-      $this->servicio = FALSE;
-      if( isset($_REQUEST['id']) )
-      {
-         $serv = new servicio_cliente();
-         $this->servicio = $serv->get($_REQUEST['id']);
-         if($this->servicio)
-         {
-            $cliente = new cliente();
-            $this->cliente = $cliente->get($this->servicio->codcliente);
-         }
-      }
-      
-      if($this->servicio)
-      {
-         $this->agente = $this->user->get_agente();
-      }
-      $this->share_extensions();
-   }
-   
-   public function listar_prioridad()
-   {
-      $prioridad = array();
-
-      /**
-       * En servicio_servicio::prioridad() nos devuelve un array con todos los prioridades,
-       * pero como queremos también el id, pues hay que hacer este bucle para sacarlos.
-       */
-      foreach ($this->servicio->prioridad() as $i => $value)
-         $prioridad[] = array('id_prioridad' => $i, 'nombre_prioridad' => $value);
-
-      return $prioridad;
-   }
-   
-   public function condiciones()
-   {
-      return nl2br($this->servicios_setup['servicios_condiciones']);
-   }
-     private function share_extensions()
-  {
-      $extensiones = array(
-    
-     );
-      foreach($extensiones as $ext)
-      {
-         $fsext = new fs_extension($ext);
-         if( !$fsext->save() )
-         {
-            $this->new_error_msg('Error al guardar la extensión '.$ext['name']);
-         }
-      }
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+BOwf9kISLjprkx2GCBHutnIe

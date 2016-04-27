@@ -1,297 +1,169 @@
-<?php
-/*
- * This file is part of FacturaSctipts
- * Copyright (C) 2013-2016  Carlos Garcia Gomez  neorazorx@gmail.com
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-require_once 'plugins/facturacion_base/extras/fs_pdf.php';
-require_model('ejercicio.php');
-require_model('empresa.php');
-require_model('partida.php');
-require_model('subcuenta.php');
-
-class libro_mayor
-{
-   private $ejercicio;
-   private $empresa;
-   private $subcuenta;
-   
-   public function __construct()
-   {
-      $this->ejercicio = new ejercicio();
-      $this->empresa = new empresa();
-      $this->subcuenta = new subcuenta();
-   }
-   
-   public function cron_job()
-   {
-      /**
-       * Como es un proceso que tarda mucho, solamente comprobamos los dos primeros
-       * ejercicios de la lista (los más nuevos), más uno aleatorio.
-       */
-      $ejercicios = $this->ejercicio->all();
-      $random = mt_rand( 0, count($ejercicios)-1 );
-      foreach($ejercicios as $num => $eje)
-      {
-         if($num < 2 OR $num == $random)
-         {
-            foreach($this->subcuenta->all_from_ejercicio($eje->codejercicio, TRUE, 200) as $sc)
-            {
-               /**
-                * Recalcular los saldos de las subcuentas es un proceso lento,
-                * por eso lo hacemos de una muestra aleatoria de subcuentas.
-                */
-               $sc->save();
-               
-               if(FS_LIBROS_CONTABLES)
-               {
-                  $this->libro_mayor($sc, TRUE);
-               }
-               else
-               {
-                  echo '.';
-               }
-            }
-            
-            if(FS_LIBROS_CONTABLES)
-            {
-               $this->libro_diario($eje);
-            }
-         }
-      }
-   }
-   
-   public function libro_mayor(&$subc, $echos = FALSE)
-   {
-      if($subc)
-      {
-         if( !file_exists('tmp/'.FS_TMP_NAME.'libro_mayor') )
-         {
-            mkdir('tmp/'.FS_TMP_NAME.'libro_mayor');
-         }
-         
-         if( !file_exists('tmp/'.FS_TMP_NAME.'libro_mayor/'.$subc->idsubcuenta.'.pdf') )
-         {
-            if($echos)
-            {
-               echo '.';
-            }
-            
-            $pdf_doc = new fs_pdf();
-            $pdf_doc->pdf->addInfo('Title', 'Libro mayor de ' . $subc->codsubcuenta);
-            $pdf_doc->pdf->addInfo('Subject', 'Libro mayor de ' . $subc->codsubcuenta);
-            $pdf_doc->pdf->addInfo('Author', $this->empresa->nombre);
-            $pdf_doc->pdf->ezStartPageNumbers(590, 10, 10, 'left', '{PAGENUM} de {TOTALPAGENUM}');
-            
-            $partidas = $subc->get_partidas_full();
-            if($partidas)
-            {
-               $lineasfact = count($partidas);
-               $linea_actual = 0;
-               $lppag = 49;
-               
-               // Imprimimos las páginas necesarias
-               while($linea_actual < $lineasfact)
-               {
-                  /// salto de página
-                  if($linea_actual > 0)
-                  {
-                     $pdf_doc->pdf->ezNewPage();
-                  }
-                  
-                  /// Creamos la tabla del encabezado
-                  $pdf_doc->new_table();
-                  $pdf_doc->add_table_row(
-                     array(
-                         'campos' => "<b>Empresa:</b>\n<b>Subcuenta:</b>\n<b>Fecha:</b>",
-                         'factura' => $this->empresa->nombre."\n".$subc->codsubcuenta."\n".Date('d-m-Y')
-                     )
-                  );
-                  $pdf_doc->save_table(
-                     array(
-                         'cols' => array(
-                             'campos' => array('justification' => 'right', 'width' => 70),
-                             'factura' => array('justification' => 'left')
-                         ),
-                         'showLines' => 0,
-                         'width' => 540
-                     )
-                  );
-                  $pdf_doc->pdf->ezText("\n", 10);
-                  
-                  
-                  /// Creamos la tabla con las lineas
-                  $pdf_doc->new_table();
-                  $pdf_doc->add_table_header(
-                     array(
-                         'asiento' => '<b>Asiento</b>',
-                         'fecha' => '<b>Fecha</b>',
-                         'concepto' => '<b>Concepto</b>',
-                         'debe' => '<b>Debe</b>',
-                         'haber' => '<b>Haber</b>',
-                         'saldo' => '<b>Saldo</b>'
-                     )
-                  );
-                  for($i = $linea_actual; (($linea_actual < ($lppag + $i)) AND ($linea_actual < $lineasfact));)
-                  {
-                     $pdf_doc->add_table_row(
-                        array(
-                            'asiento' => $partidas[$linea_actual]->numero,
-                            'fecha' => $partidas[$linea_actual]->fecha,
-                            'concepto' => substr($partidas[$linea_actual]->concepto, 0, 60),
-                            'debe' => $this->show_numero($partidas[$linea_actual]->debe),
-                            'haber' => $this->show_numero($partidas[$linea_actual]->haber),
-                            'saldo' => $this->show_numero($partidas[$linea_actual]->saldo)
-                        )
-                     );
-                     
-                     $linea_actual++;
-                  }
-                  /// añadimos las sumas de la línea actual
-                  $pdf_doc->add_table_row(
-                        array(
-                            'asiento' => '',
-                            'fecha' => '',
-                            'concepto' => '',
-                            'debe' => '<b>'.$this->show_numero($partidas[$linea_actual-1]->sum_debe).'</b>',
-                            'haber' => '<b>'.$this->show_numero($partidas[$linea_actual-1]->sum_haber).'</b>',
-                            'saldo' => ''
-                        )
-                  );
-                  $pdf_doc->save_table(
-                     array(
-                         'fontSize' => 8,
-                         'cols' => array(
-                             'debe' => array('justification' => 'right'),
-                             'haber' => array('justification' => 'right'),
-                             'saldo' => array('justification' => 'right')
-                         ),
-                         'width' => 540,
-                         'shaded' => 0
-                     )
-                  );
-               }
-            }
-            
-            $pdf_doc->save('tmp/'.FS_TMP_NAME.'libro_mayor/'.$subc->idsubcuenta.'.pdf');
-         }
-      }
-   }
-   
-   private function libro_diario(&$eje)
-   {
-      if($eje)
-      {
-         if( !file_exists('tmp/'.FS_TMP_NAME.'libro_diario') )
-         {
-            mkdir('tmp/'.FS_TMP_NAME.'libro_diario');
-         }
-         
-         if( !file_exists('tmp/'.FS_TMP_NAME.'libro_diario/'.$eje->codejercicio.'.pdf') )
-         {
-            echo ' '.$eje->codejercicio;
-            
-            $pdf_doc = new fs_pdf('a4', 'landscape', 'Courier');
-            $pdf_doc->pdf->addInfo('Title', 'Libro diario de ' . $eje->codejercicio);
-            $pdf_doc->pdf->addInfo('Subject', 'Libro mayor de ' . $eje->codejercicio);
-            $pdf_doc->pdf->addInfo('Author', $this->empresa->nombre);
-            $pdf_doc->pdf->ezStartPageNumbers(800, 10, 10, 'left', '{PAGENUM} de {TOTALPAGENUM}');
-            
-            $partida = new partida();
-            $sum_debe = 0;
-            $sum_haber = 0;
-            
-            /// leemos todas las partidas del ejercicio
-            $lppag = 33;
-            $lactual = 0;
-            $lineas = $partida->full_from_ejercicio($eje->codejercicio, $lactual, $lppag);
-            while( count($lineas) > 0 )
-            {
-               if($lactual > 0)
-               {
-                  $pdf_doc->pdf->ezNewPage();
-                  echo '+';
-               }
-               
-               $pdf_doc->pdf->ezText($this->empresa->nombre." - libro diario ".$eje->year()."\n\n", 12);
-               
-               /// Creamos la tabla con las lineas
-               $pdf_doc->new_table();
-               $pdf_doc->add_table_header(
-                  array(
-                      'asiento' => '<b>Asiento</b>',
-                      'fecha' => '<b>Fecha</b>',
-                      'subcuenta' => '<b>Subcuenta</b>',
-                      'concepto' => '<b>Concepto</b>',
-                      'debe' => '<b>Debe</b>',
-                      'haber' => '<b>Haber</b>'
-                  )
-               );
-               
-               foreach($lineas as $linea)
-               {
-                  $pdf_doc->add_table_row(
-                     array(
-                         'asiento' => $linea['numero'],
-                         'fecha' => $linea['fecha'],
-                         'subcuenta' => $linea['codsubcuenta'].' '.substr($linea['descripcion'], 0, 35),
-                         'concepto' => substr($linea['concepto'], 0, 45),
-                         'debe' => $this->show_numero($linea['debe']),
-                         'haber' => $this->show_numero($linea['haber'])
-                     )
-                  );
-                  
-                  $sum_debe += floatval($linea['debe']);
-                  $sum_haber += floatval($linea['haber']);
-                  $lactual++;
-               }
-               
-               /// añadimos las sumas de la línea actual
-               $pdf_doc->add_table_row(
-                  array(
-                      'asiento' => '',
-                      'fecha' => '',
-                      'subcuenta' => '',
-                      'concepto' => '',
-                      'debe' => '<b>'.$this->show_numero($sum_debe).'</b>',
-                      'haber' => '<b>'.$this->show_numero($sum_haber).'</b>'
-                  )
-               );
-               $pdf_doc->save_table(
-                  array(
-                      'fontSize' => 9,
-                      'cols' => array(
-                          'debe' => array('justification' => 'right'),
-                          'haber' => array('justification' => 'right')
-                      ),
-                      'width' => 780,
-                      'shaded' => 0
-                  )
-               );
-               
-               $lineas = $partida->full_from_ejercicio($eje->codejercicio, $lactual, $lppag);
-            }
-            
-            $pdf_doc->save('tmp/'.FS_TMP_NAME.'libro_diario/'.$eje->codejercicio.'.pdf');
-         }
-      }
-   }
-   
-   private function show_numero($num)
-   {
-      return number_format($num, FS_NF0, FS_NF1, FS_NF2);
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+e04nInVVa8KNakB1OE6rTu8Clm==

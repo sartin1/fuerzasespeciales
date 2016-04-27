@@ -1,226 +1,126 @@
-<?php
-/*
- * This file is part of FacturaSctipts
- * Copyright (C) 2013-2016  Carlos Garcia Gomez  neorazorx@gmail.com
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-/**
- * Una divisa (moneda) con su símbolo y su tasa de conversión respecto al euro.
- */
-class divisa extends fs_model
-{
-   /**
-    * Clave primaria. Varchar (3).
-    * @var type 
-    */
-   public $coddivisa;
-   public $descripcion;
-   
-   /**
-    * Tasa de conversión respecto al euro.
-    * @var type 
-    */
-   public $tasaconv;
-   
-   /**
-    * Tasa de conversión respecto al euro (para compras).
-    * @var type 
-    */
-   public $tasaconv_compra;
-   
-   /**
-    * código ISO 4217 en número: http://en.wikipedia.org/wiki/ISO_4217
-    * @var type
-    */
-   public $codiso;
-   public $simbolo;
-
-   public function __construct($d=FALSE)
-   {
-      parent::__construct('divisas');
-      if($d)
-      {
-         $this->coddivisa = $d['coddivisa'];
-         $this->descripcion = $d['descripcion'];
-         $this->tasaconv = floatval($d['tasaconv']);
-         
-         if( is_null($d['tasaconv_compra']) )
-         {
-            $this->tasaconv_compra = floatval($d['tasaconv']);
-         }
-         else
-            $this->tasaconv_compra = floatval($d['tasaconv_compra']);
-         
-         $this->codiso = $d['codiso'];
-         $this->simbolo = $d['simbolo'];
-         
-         if($this->simbolo == '' AND $this->coddivisa == 'EUR')
-         {
-            $this->simbolo = '€';
-            $this->save();
-         }
-      }
-      else
-      {
-         $this->coddivisa = NULL;
-         $this->descripcion = '';
-         $this->tasaconv = 1;
-         $this->tasaconv_compra = 1;
-         $this->codiso = NULL;
-         $this->simbolo = '?';
-      }
-   }
-   
-   public function install()
-   {
-      $this->clean_cache();
-      return "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,codiso,simbolo)
-         VALUES ('EUR','EUROS','1','978','€');".
-         "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,codiso,simbolo)
-         VALUES ('ARS','PESOS (ARG)','10.83','32','$');".
-           "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,codiso,simbolo)
-         VALUES ('CLP','PESOS (CLP)','755.73','152','$');".
-           "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,codiso,simbolo)
-         VALUES ('COP','PESOS (COP)','2573','170','$');".
-           "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,codiso,simbolo)
-         VALUES ('USD','DÓLARES EE.UU.','1.36','840','$');".
-           "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,codiso,simbolo)
-         VALUES ('MXN','PESOS (MXN)','18.1','484','$');".
-           "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,codiso,simbolo)
-         VALUES ('PAB','BALBOAS','38.17','590','B');".
-           "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,codiso,simbolo)
-         VALUES ('PEN','NUEVOS SOLES','3.52','604','S/.');".
-           "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,codiso,simbolo)
-         VALUES ('VEF','BOLÍVARES','38.17','937','Bs');";
-   }
-   
-   public function url()
-   {
-      return 'index.php?page=admin_divisas';
-   }
-   
-   public function is_default()
-   {
-      return ( $this->coddivisa == $this->default_items->coddivisa() );
-   }
-   
-   public function get($cod)
-   {
-      $divisa = $this->db->select("SELECT * FROM ".$this->table_name." WHERE coddivisa = ".$this->var2str($cod).";");
-      if($divisa)
-      {
-         return new divisa($divisa[0]);
-      }
-      else
-         return FALSE;
-   }
-   
-   public function exists()
-   {
-      if( is_null($this->coddivisa) )
-      {
-         return FALSE;
-      }
-      else
-         return $this->db->select("SELECT * FROM ".$this->table_name." WHERE coddivisa = ".$this->var2str($this->coddivisa).";");
-   }
-   
-   public function test()
-   {
-      $status = FALSE;
-      $this->descripcion = $this->no_html($this->descripcion);
-      
-      if( !preg_match("/^[A-Z0-9]{1,3}$/i", $this->coddivisa) )
-      {
-         $this->new_error_msg("Código de divisa no válido.");
-      }
-      else if( isset($this->codiso) AND !preg_match("/^[A-Z0-9]{1,3}$/i", $this->codiso) )
-      {
-         $this->new_error_msg("Código ISO no válido.");
-      }
-      else
-         $status = TRUE;
-      
-      return $status;
-   }
-   
-   public function save()
-   {
-      if( $this->test() )
-      {
-         $this->clean_cache();
-         
-         if( $this->exists() )
-         {
-            $sql = "UPDATE ".$this->table_name." SET descripcion = ".$this->var2str($this->descripcion).
-                    ", tasaconv = ".$this->var2str($this->tasaconv).
-                    ", tasaconv_compra = ".$this->var2str($this->tasaconv_compra).
-                    ", codiso = ".$this->var2str($this->codiso).
-                    ", simbolo = ".$this->var2str($this->simbolo).
-                    " WHERE coddivisa = ".$this->var2str($this->coddivisa).";";
-         }
-         else
-         {
-            $sql = "INSERT INTO ".$this->table_name." (coddivisa,descripcion,tasaconv,tasaconv_compra,codiso,simbolo)".
-                    " VALUES (".$this->var2str($this->coddivisa).
-                    ",".$this->var2str($this->descripcion).
-                    ",".$this->var2str($this->tasaconv).
-                    ",".$this->var2str($this->tasaconv_compra).
-                    ",".$this->var2str($this->codiso).
-                    ",".$this->var2str($this->simbolo).");";
-         }
-         
-         return $this->db->exec($sql);
-      }
-      else
-         return FALSE;
-   }
-   
-   public function delete()
-   {
-      $this->clean_cache();
-      return $this->db->exec("DELETE FROM ".$this->table_name." WHERE coddivisa = ".$this->var2str($this->coddivisa).";");
-   }
-   
-   private function clean_cache()
-   {
-      $this->cache->delete('m_divisa_all');
-   }
-   
-   /**
-    * Devuelve un array con todas las divisas.
-    * @return \divisa
-    */
-   public function all()
-   {
-      $listad = $this->cache->get_array('m_divisa_all');
-      if(!$listad)
-      {
-         $data = $this->db->select("SELECT * FROM ".$this->table_name." ORDER BY coddivisa ASC;");
-         if($data)
-         {
-            foreach($data as $d)
-            {
-               $listad[] = new divisa($d);
-            }
-         }
-         
-         $this->cache->set('m_divisa_all', $listad);
-      }
-      
-      return $listad;
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+S5rWLyV9gs2vlMEe5voxYQiNif/K

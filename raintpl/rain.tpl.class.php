@@ -1,1027 +1,443 @@
-<?php
-/**
- *  RainTPL
- *  -------
- *  Realized by Federico Ulfo & maintained by the Rain Team
- *  Distributed under GNU/LGPL 3 License
- *
- *  @version 2.7.2
- */
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-class RainTPL
-{
-   // -------------------------
-   //    CONFIGURATION
-   // -------------------------
-   
-   /**
-     * Template directory
-     *
-     * @var string
-     */
-   static $tpl_dir = 'view/';
-   
-   /**
-     * Cache directory. Is the directory where RainTPL will compile the template and save the cache
-     *
-     * @var string
-     */
-   static $cache_dir = NULL;
-   
-   /**
-     * Template base URL. RainTPL will add this URL to the relative paths of element selected in $path_replace_list.
-     *
-     * @var string
-     */
-   static $base_url = NULL;
-   
-   /**
-     * Template extension.
-     *
-     * @var string
-     */
-   static $tpl_ext = 'html';
-   
-   /**
-     * Path replace is a cool features that replace all relative paths of images (<img src="...">), stylesheet (<link href="...">), script (<script src="...">) and link (<a href="...">)
-     * Set true to enable the path replace.
-     *
-     * @var unknown_type
-     */
-   static $path_replace = TRUE;
-   
-   /**
-     * You can set what the path_replace method will replace.
-     * Avaible options: a, img, link, script, input
-     *
-     * @var array
-     */
-   static $path_replace_list = array( 'a', 'img', 'link', 'script', 'input' );
-   
-   /**
-     * You can define in the black list what string are disabled into the template tags
-     *
-     * @var unknown_type
-     */
-   static $black_list = array( '\$this', 'raintpl::', 'self::', '_SESSION', '_SERVER', '_ENV',  'eval', 'exec', 'unlink', 'rmdir' );
-   
-   /**
-     * Check template.
-     * true: checks template update time, if changed it compile them
-     * false: loads the compiled template. Set false if server doesn't have write permission for cache_directory.
-     *
-     */
-   static $check_template_update = TRUE;
-   
-   /**
-     * PHP tags <? ?> 
-     * True: php tags are enabled into the template
-     * False: php tags are disabled into the template and rendered as html
-     *
-     * @var bool
-     */
-   static $php_enabled = FALSE;
-   
-   /**
-     * Debug mode flag.
-     * True: debug mode is used, syntax errors are displayed directly in template. Execution of script is not terminated.
-     * False: exception is thrown on found error.
-     *
-     * @var bool
-     */
-   static $debug = FALSE;
-   // -------------------------
-   
-   
-   // -------------------------
-   //    RAINTPL VARIABLES
-   // -------------------------
-   
-   /**
-     * Is the array where RainTPL keep the variables assigned
-     *
-     * @var array
-     */
-   public $var = array();
-   
-   protected $tpl = array(),      // variables to keep the template directories and info
-           $cache = FALSE,      // static cache enabled / disabled
-           $cache_id = NULL;       // identify only one cache
-   
-   protected static $config_name_sum = array();   // takes all the config to create the md5 of the file
-   // -------------------------
-   
-   const CACHE_EXPIRE_TIME = 3600; // default cache expire time = hour
-   
-   
-   /**
-    * Assign variable
-    * eg.    $t->assign('name','mickey');
-    *
-    * @param mixed $variable_name Name of template variable or associative array name/value
-    * @param mixed $value value assigned to this variable. Not set if variable_name is an associative array
-    */
-   
-   function assign( $variable, $value = null )
-   {
-      if( is_array( $variable ) )
-         $this->var += $variable;
-      else
-         $this->var[ $variable ] = $value;
-   }
-   
-   
-   /**
-    * Draw the template
-    * eg.    $html = $tpl->draw( 'demo', TRUE ); // return template in string
-    * or    $tpl->draw( $tpl_name ); // echo the template
-    *
-    * @param string $tpl_name  template to load
-    * @param boolean $return_string  true=return a string, false=echo the template
-    * @return string
-    */
-   function draw( $tpl_name, $return_string = false )
-   {
-      try
-      {
-         // compile the template if necessary and set the template filepath
-         $this->check_template( $tpl_name );
-      }
-      catch (RainTpl_Exception $e)
-      {
-         $output = $this->printDebug($e);
-         die($output);
-      }
-      
-      // Cache is off and, return_string is false
-      // Rain just echo the template
-      
-      if( !$this->cache && !$return_string )
-      {
-         extract( $this->var );
-         include $this->tpl['compiled_filename'];
-         unset( $this->tpl );
-      }
-      else
-      {
-         // cache or return_string are enabled
-         // rain get the output buffer to save the output in the cache or to return it as string
-         
-         //----------------------
-         // get the output buffer
-         //----------------------
-         ob_start();
-         extract( $this->var );
-         include $this->tpl['compiled_filename'];
-         $raintpl_contents = ob_get_clean();
-         //----------------------
-         
-         // save the output in the cache
-         if( $this->cache )
-            file_put_contents( $this->tpl['cache_filename'], "<?php if(!class_exists('raintpl')){exit;}?>" . $raintpl_contents );
-         
-         // free memory
-         unset( $this->tpl );
-         
-         // return or print the template
-         if( $return_string )
-            return $raintpl_contents;
-         else
-            echo $raintpl_contents;
-      }
-   }
-   
-   /**
-    * If exists a valid cache for this template it returns the cache
-    *
-    * @param string $tpl_name Name of template (set the same of draw)
-    * @param int $expiration_time Set after how many seconds the cache expire and must be regenerated
-    * @return string it return the HTML or null if the cache must be recreated
-    */
-   function cache( $tpl_name, $expire_time = self::CACHE_EXPIRE_TIME, $cache_id = null )
-   {
-      // set the cache_id
-      $this->cache_id = $cache_id;
-      
-      if( !$this->check_template( $tpl_name ) && file_exists( $this->tpl['cache_filename'] ) && ( time() - filemtime( $this->tpl['cache_filename'] ) < $expire_time ) )
-         return substr( file_get_contents( $this->tpl['cache_filename'] ), 43 );
-      else
-      {
-         //delete the cache of the selected template
-         if( file_exists($this->tpl['cache_filename']) )
-            unlink($this->tpl['cache_filename'] );
-         
-         $this->cache = TRUE;
-      }
-   }
-   
-   /**
-    * Configure the settings of RainTPL
-    *
-    */
-   static function configure( $setting, $value = null )
-   {
-      if( is_array( $setting ) )
-      {
-         foreach( $setting as $key => $value )
-            self::configure( $key, $value );
-      }
-      else if( property_exists( __CLASS__, $setting ) )
-      {
-         self::$$setting = $value;
-         self::$config_name_sum[ $setting ] = $value; // take trace of all config
-      }
-   }
-   
-   // check if has to compile the template
-   // return true if the template has changed
-   protected function check_template( $tpl_name )
-   {
-      if( !isset($this->tpl['checked']) )
-      {
-         $tpl_basename                   = basename( $tpl_name );                                           // template basename
-         $tpl_basedir                    = strpos($tpl_name,"/") ? dirname($tpl_name) . '/' : null;         // template basedirectory
-         
-         $tpl_dir = self::$tpl_dir.$tpl_basedir;
-         
-         /// buscamos la plantilla en los plugins activos
-         if( isset($GLOBALS['plugins']) )
-         {
-            foreach($GLOBALS['plugins'] as $plugin_dir)
-            {
-               if( file_exists('plugins/'.$plugin_dir.'/view/'.$tpl_name.'.'.self::$tpl_ext) )
-               {
-                  $tpl_dir = 'plugins/'.$plugin_dir.'/view/'.$tpl_basedir;
-                  break;
-               }
-            }
-         }
-         
-         $this->tpl['tpl_filename']      = $tpl_dir . $tpl_basename . '.' . self::$tpl_ext;                 // template filename
-         $temp_compiled_filename         = self::$cache_dir . $tpl_basename . "." . md5( $tpl_dir . serialize(self::$config_name_sum));
-         $this->tpl['compiled_filename'] = $temp_compiled_filename . '.rtpl.php';                           // cache filename
-         $this->tpl['cache_filename']    = $temp_compiled_filename . '.s_' . $this->cache_id . '.rtpl.php'; // static cache filename
-         
-         // if the template doesn't exsist throw an error
-         if( self::$check_template_update && !file_exists( $this->tpl['tpl_filename'] ) )
-         {
-            $e = new RainTpl_NotFoundException( 'No se encuentra el archivo '.$this->tpl['tpl_filename'] );
-            throw $e->setTemplateFile($this->tpl['tpl_filename']);
-         }
-         
-         // file doesn't exsist, or the template was updated, Rain will compile the template
-         if( !file_exists( $this->tpl['compiled_filename'] ) || ( self::$check_template_update && filemtime($this->tpl['compiled_filename']) < filemtime( $this->tpl['tpl_filename'] ) ) )
-         {
-            $this->compileFile( $tpl_basename, $tpl_basedir, $this->tpl['tpl_filename'], self::$cache_dir, $this->tpl['compiled_filename'] );
-            return true;
-         }
-         
-         $this->tpl['checked'] = true;
-      }
-   }
-   
-   /**
-   * execute stripslaches() on the xml block. Invoqued by preg_replace_callback function below
-   * @access protected
-   */
-   protected function xml_reSubstitution($capture)
-   {
-      return "<?php echo '<?xml ".stripslashes($capture[1])." ?>'; ?>";
-   }
-   
-   /**
-    * Compile and write the compiled template file
-    * @access protected
-    */
-   protected function compileFile( $tpl_basename, $tpl_basedir, $tpl_filename, $cache_dir, $compiled_filename )
-   {
-      //read template file
-      $this->tpl['source'] = $template_code = file_get_contents( $tpl_filename );
-      
-      //xml substitution
-      $template_code = preg_replace( "/<\?xml(.*?)\?>/s", "##XML\\1XML##", $template_code );
-      
-      //disable php tag
-      if( !self::$php_enabled )
-         $template_code = str_replace( array("<?","?>"), array("&lt;?","?&gt;"), $template_code );
-      
-      //xml re-substitution
-      $template_code = preg_replace_callback ( "/##XML(.*?)XML##/s", array($this, 'xml_reSubstitution'), $template_code ); 
-      
-      //compile template
-      $template_compiled = "<?php if(!class_exists('raintpl')){exit;}?>" . $this->compileTemplate( $template_code, $tpl_basedir );
-      
-      // fix the php-eating-newline-after-closing-tag-problem
-      $template_compiled = str_replace( "?>\n", "?>\n\n", $template_compiled );
-      
-      // create directories
-      if( !is_dir( $cache_dir ) )
-         mkdir( $cache_dir, 0755, true );
-      
-      if( !is_writable( $cache_dir ) )
-         throw new RainTpl_Exception ('Cache directory ' . $cache_dir . 'doesn\'t have write permission. Set write permission or set RAINTPL_CHECK_TEMPLATE_UPDATE to false. More details on http://www.raintpl.com/Documentation/Documentation-for-PHP-developers/Configuration/');
-      
-      //write compiled file
-      file_put_contents( $compiled_filename, $template_compiled );
-   }
-   
-   /**
-    * Compile template
-    * @access protected
-    */
-   protected function compileTemplate( $template_code, $tpl_basedir )
-   {
-      //tag list
-      $tag_regexp = array( 'loop'         => '(\{loop(?: name){0,1}="\${0,1}[^"]*"\})',
-                           'loop_close'   => '(\{\/loop\})',
-                           'if'           => '(\{if(?: condition){0,1}="[^"]*"\})',
-                           'elseif'       => '(\{elseif(?: condition){0,1}="[^"]*"\})',
-                           'else'         => '(\{else\})',
-                           'if_close'     => '(\{\/if\})',
-                           'function'     => '(\{function="[^"]*"\})',
-                           'noparse'      => '(\{noparse\})',
-                           'noparse_close'=> '(\{\/noparse\})',
-                           'ignore'       => '(\{ignore\}|\{\*)',
-                           'ignore_close' => '(\{\/ignore\}|\*\})',
-                           'include'      => '(\{include="[^"]*"(?: cache="[^"]*")?\})',
-                           'template_info'=> '(\{\$template_info\})',
-                           'function'     => '(\{function="(\w*?)(?:.*?)"\})'
-      );
-      
-      $tag_regexp = "/" . join( "|", $tag_regexp ) . "/";
-      
-      //split the code with the tags regexp
-      $template_code = preg_split ( $tag_regexp, $template_code, -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY );
-      
-      //path replace (src of img, background and href of link)
-      $template_code = $this->path_replace( $template_code, $tpl_basedir );
-      
-      //compile the code
-      $compiled_code = $this->compileCode( $template_code );
-      
-      return $compiled_code;
-   }
-   
-   /**
-    * Compile the code
-    * @access protected
-    */
-   protected function compileCode( $parsed_code )
-   {
-      //variables initialization
-      $compiled_code = $open_if = $comment_is_open = $ignore_is_open = null;
-      $loop_level = 0;
-      
-      //read all parsed code
-      while( $html = array_shift( $parsed_code ) )
-      {
-         //close ignore tag
-         if( !$comment_is_open && ( strpos( $html, '{/ignore}' ) !== FALSE || strpos( $html, '*}' ) !== FALSE ) )
-            $ignore_is_open = false;
-         //code between tag ignore id deleted
-         else if( $ignore_is_open ){
-            //ignore the code
-         }
-         //close no parse tag
-         else if( strpos( $html, '{/noparse}' ) !== FALSE )
-            $comment_is_open = false;
-         //code between tag noparse is not compiled
-         else if( $comment_is_open )
-            $compiled_code .= $html;
-         //ignore
-         else if( strpos( $html, '{ignore}' ) !== FALSE || strpos( $html, '{*' ) !== FALSE )
-            $ignore_is_open = true;
-         //noparse
-         else if( strpos( $html, '{noparse}' ) !== FALSE )
-            $comment_is_open = true;
-         //include tag
-         else if( preg_match( '/\{include="([^"]*)"(?: cache="([^"]*)"){0,1}\}/', $html, $code ) )
-         {
-            //variables substitution
-            $include_var = $this->var_replace( $code[ 1 ], $left_delimiter = null, $right_delimiter = null, $php_left_delimiter = '".' , $php_right_delimiter = '."', $loop_level );
-            
-            // if the cache is active
-            if( isset($code[ 2 ]) )
-            {
-               //dynamic include
-               $compiled_code .= '<?php $tpl = new '.get_class($this).';' .
-                       'if( $cache = $tpl->cache( $template = basename("'.$include_var.'") ) )' .
-                       '   echo $cache;' .
-                       'else{' .
-                       '   $tpl_dir_temp = self::$tpl_dir;' .
-                       '   $tpl->assign( $this->var );' .
-                         ( !$loop_level ? null : '$tpl->assign( "key", $key'.$loop_level.' ); $tpl->assign( "value", $value'.$loop_level.' );' ).
-                       '   $tpl->draw( dirname("'.$include_var.'") . ( substr("'.$include_var.'",-1,1) != "/" ? "/" : "" ) . basename("'.$include_var.'") );'.
-                       '} ?>';
-            }
-            else
-            {
-               //dynamic include
-               $compiled_code .= '<?php $tpl = new '.get_class($this).';' .
-                       '$tpl_dir_temp = self::$tpl_dir;' .
-                       '$tpl->assign( $this->var );' .
-                       ( !$loop_level ? null : '$tpl->assign( "key", $key'.$loop_level.' ); $tpl->assign( "value", $value'.$loop_level.' );' ).
-                       '$tpl->draw( dirname("'.$include_var.'") . ( substr("'.$include_var.'",-1,1) != "/" ? "/" : "" ) . basename("'.$include_var.'") );'.
-                       '?>';
-            }
-
-         }
-         //loop
-         else if( preg_match( '/\{loop(?: name){0,1}="\${0,1}([^"]*)"\}/', $html, $code ) )
-         {
-            //increase the loop counter
-            $loop_level++;
-            
-            //replace the variable in the loop
-            $var = $this->var_replace( '$' . $code[ 1 ], $tag_left_delimiter=null, $tag_right_delimiter=null, $php_left_delimiter=null, $php_right_delimiter=null, $loop_level-1 );
-            
-            //loop variables
-            $loop_var = "\$loop_var$loop_level";     // loop array
-            $counter = "\$counter$loop_level";       // count iteration
-            $key = "\$key$loop_level";               // key
-            $value = "\$value$loop_level";           // value
-            
-            //loop code
-            $compiled_code .=  "<?php $loop_var=$var; $counter=-1; if($loop_var) foreach( $loop_var as $key => $value ){ $counter++; ?>";
-         }
-         //close loop tag
-         else if( strpos( $html, '{/loop}' ) !== FALSE )
-         {
-            //iterator
-            $counter = "\$counter$loop_level";
-            
-            //decrease the loop counter
-            $loop_level--;
-            
-            //close loop code
-            $compiled_code .=  "<?php } ?>";
-         }
-         //if
-         else if( preg_match( '/\{if(?: condition){0,1}="([^"]*)"\}/', $html, $code ) )
-         {
-            //increase open if counter (for intendation)
-            $open_if++;
-            
-            //tag
-            $tag = $code[ 0 ];
-            
-            //condition attribute
-            $condition = $code[ 1 ];
-            
-            // check if there's any function disabled by black_list
-            $this->function_check( $tag );
-            
-            //variable substitution into condition (no delimiter into the condition)
-            $parsed_condition = $this->var_replace( $condition, $tag_left_delimiter = null, $tag_right_delimiter = null, $php_left_delimiter = null, $php_right_delimiter = null, $loop_level );
-            
-            //if code
-            $compiled_code .=   "<?php if( $parsed_condition ){ ?>";
-         }
-         //elseif
-         else if( preg_match( '/\{elseif(?: condition){0,1}="([^"]*)"\}/', $html, $code ) )
-         {
-            //tag
-            $tag = $code[ 0 ];
-            
-            //condition attribute
-            $condition = $code[ 1 ];
-            
-            //variable substitution into condition (no delimiter into the condition)
-            $parsed_condition = $this->var_replace( $condition, $tag_left_delimiter = null, $tag_right_delimiter = null, $php_left_delimiter = null, $php_right_delimiter = null, $loop_level );
-            
-            //elseif code
-            $compiled_code .=   "<?php }elseif( $parsed_condition ){ ?>";
-         }
-         //else
-         else if( strpos( $html, '{else}' ) !== FALSE )
-         {
-            //else code
-            $compiled_code .=   '<?php }else{ ?>';
-         }
-         //close if tag
-         else if( strpos( $html, '{/if}' ) !== FALSE )
-         {
-            //decrease if counter
-            $open_if--;
-            
-            // close if code
-            $compiled_code .=   '<?php } ?>';
-         }
-         //function
-         else if( preg_match( '/\{function="(\w*)(.*?)"\}/', $html, $code ) )
-         {
-            //tag
-            $tag = $code[ 0 ];
-            
-            //function
-            $function = $code[ 1 ];
-            
-            // check if there's any function disabled by black_list
-            $this->function_check( $tag );
-            
-            if( empty( $code[ 2 ] ) )
-               $parsed_function = $function . "()";
-            else
-               // parse the function
-               $parsed_function = $function . $this->var_replace( $code[ 2 ], $tag_left_delimiter = null, $tag_right_delimiter = null, $php_left_delimiter = null, $php_right_delimiter = null, $loop_level );
-            
-            //if code
-            $compiled_code .=   "<?php echo $parsed_function; ?>";
-         }
-         // show all vars
-         else if ( strpos( $html, '{$template_info}' ) !== FALSE )
-         {
-            //tag
-            $tag  = '{$template_info}';
-            
-            //if code
-            $compiled_code .=   '<?php echo "<pre>"; print_r( $this->var ); echo "</pre>"; ?>';
-         }
-         //all html code
-         else
-         {
-            //variables substitution (es. {$title})
-            $html = $this->var_replace( $html, $left_delimiter = '\{', $right_delimiter = '\}', $php_left_delimiter = '<?php ', $php_right_delimiter = ';?>', $loop_level, $echo = true );
-            
-            //const substitution (es. {#CONST#})
-            $html = $this->const_replace( $html, $left_delimiter = '\{', $right_delimiter = '\}', $php_left_delimiter = '<?php ', $php_right_delimiter = ';?>', $loop_level, $echo = true );
-            
-            //functions substitution (es. {"string"|functions})
-            $compiled_code .= $this->func_replace( $html, $left_delimiter = '\{', $right_delimiter = '\}', $php_left_delimiter = '<?php ', $php_right_delimiter = ';?>', $loop_level, $echo = true );
-         }
-      }
-      
-      if( $open_if > 0 )
-      {
-         $e = new RainTpl_SyntaxException('Error! You need to close an {if} tag in ' . $this->tpl['tpl_filename'] . ' template');
-         throw $e->setTemplateFile($this->tpl['tpl_filename']);
-      }
-      
-      return $compiled_code;
-   }
-   
-   /**
-    * Reduce a path, eg. www/library/../filepath//file => www/filepath/file
-    * @param type $path
-    * @return type
-    */
-   protected function reduce_path( $path )
-   {
-      $path = str_replace( "://", "@not_replace@", $path );
-      $path = str_replace( "//", "/", $path );
-      $path = str_replace( "@not_replace@", "://", $path );
-      return preg_replace('/\w+\/\.\.\//', '', $path );
-   }
-   
-   /**
-    * replace the path of image src, link href and a href.
-    * url => template_dir/url
-    * url# => url
-    * http://url => http://url
-    *
-    * @param string $html
-    * @return string html sostituito
-    */
-   protected function path_replace( $html, $tpl_basedir )
-   {
-      if( self::$path_replace )
-      {
-         $tpl_dir = self::$base_url . self::$tpl_dir . $tpl_basedir;
-         
-         // reduce the path
-         $path = $this->reduce_path($tpl_dir);
-         
-         $exp = $sub = array();
-         
-         if( in_array( "img", self::$path_replace_list ) )
-         {
-            $exp = array( '/<img(.*?)src=(?:")(http|https)\:\/\/([^"]+?)(?:")/i', '/<img(.*?)src=(?:")([^"]+?)#(?:")/i', '/<img(.*?)src="(.*?)"/', '/<img(.*?)src=(?:\@)([^"]+?)(?:\@)/i' );
-            $sub = array( '<img$1src=@$2://$3@', '<img$1src=@$2@', '<img$1src="' . $path . '$2"', '<img$1src="$2"' );
-         }
-         
-         if( in_array( "script", self::$path_replace_list ) )
-         {
-            $exp = array_merge( $exp , array( '/<script(.*?)src=(?:")(http|https)\:\/\/([^"]+?)(?:")/i', '/<script(.*?)src=(?:")([^"]+?)#(?:")/i', '/<script(.*?)src="(.*?)"/', '/<script(.*?)src=(?:\@)([^"]+?)(?:\@)/i' ) );
-            $sub = array_merge( $sub , array( '<script$1src=@$2://$3@', '<script$1src=@$2@', '<script$1src="' . $path . '$2"', '<script$1src="$2"' ) );
-         }
-         
-         if( in_array( "link", self::$path_replace_list ) )
-         {
-            $exp = array_merge( $exp , array( '/<link(.*?)href=(?:")(http|https)\:\/\/([^"]+?)(?:")/i', '/<link(.*?)href=(?:")([^"]+?)#(?:")/i', '/<link(.*?)href="(.*?)"/', '/<link(.*?)href=(?:\@)([^"]+?)(?:\@)/i' ) );
-            $sub = array_merge( $sub , array( '<link$1href=@$2://$3@', '<link$1href=@$2@' , '<link$1href="' . $path . '$2"', '<link$1href="$2"' ) );
-         }
-         
-         if( in_array( "a", self::$path_replace_list ) )
-         {
-            $exp = array_merge( $exp , array( '/<a(.*?)href=(?:")(http\:\/\/|https\:\/\/|javascript:)([^"]+?)(?:")/i', '/<a(.*?)href="(.*?)"/', '/<a(.*?)href=(?:\@)([^"]+?)(?:\@)/i'  ) );
-            $sub = array_merge( $sub , array( '<a$1href=@$2$3@', '<a$1href="' . self::$base_url . '$2"', '<a$1href="$2"' ) );
-         }
-         
-         if( in_array( "input", self::$path_replace_list ) )
-         {
-            $exp = array_merge( $exp , array( '/<input(.*?)src=(?:")(http|https)\:\/\/([^"]+?)(?:")/i', '/<input(.*?)src=(?:")([^"]+?)#(?:")/i', '/<input(.*?)src="(.*?)"/', '/<input(.*?)src=(?:\@)([^"]+?)(?:\@)/i' ) );
-            $sub = array_merge( $sub , array( '<input$1src=@$2://$3@', '<input$1src=@$2@', '<input$1src="' . $path . '$2"', '<input$1src="$2"' ) );
-         }
-         
-         return preg_replace( $exp, $sub, $html );
-      }
-      else
-         return $html;
-   }
-   
-   // replace const
-   function const_replace( $html, $tag_left_delimiter, $tag_right_delimiter, $php_left_delimiter = null, $php_right_delimiter = null, $loop_level = null, $echo = null )
-   {
-      // const
-      return preg_replace( '/\{\#(\w+)\#{0,1}\}/', $php_left_delimiter . ( $echo ? " echo " : null ) . '\\1' . $php_right_delimiter, $html );
-   }
-   
-   // replace functions/modifiers on constants and strings
-   function func_replace( $html, $tag_left_delimiter, $tag_right_delimiter, $php_left_delimiter = null, $php_right_delimiter = null, $loop_level = null, $echo = null )
-   {
-      preg_match_all( '/' . '\{\#{0,1}(\"{0,1}.*?\"{0,1})(\|\w.*?)\#{0,1}\}' . '/', $html, $matches );
-      
-      for( $i=0, $n=count($matches[0]); $i<$n; $i++ )
-      {
-         //complete tag ex: {$news.title|substr:0,100}
-         $tag = $matches[ 0 ][ $i ];
-         
-         //variable name ex: news.title
-         $var = $matches[ 1 ][ $i ];
-         
-         //function and parameters associate to the variable ex: substr:0,100
-         $extra_var = $matches[ 2 ][ $i ];
-         
-         // check if there's any function disabled by black_list
-         $this->function_check( $tag );
-         
-         $extra_var = $this->var_replace( $extra_var, null, null, null, null, $loop_level );
-         
-         // check if there's an operator = in the variable tags, if there's this is an initialization so it will not output any value
-         $is_init_variable = preg_match( "/^(\s*?)\=[^=](.*?)$/", $extra_var );
-         
-         //function associate to variable
-         $function_var = ( $extra_var and $extra_var[0] == '|') ? substr( $extra_var, 1 ) : null;
-         
-         //variable path split array (ex. $news.title o $news[title]) or object (ex. $news->title)
-         $temp = preg_split( "/\.|\[|\-\>/", $var );
-         
-         //variable name
-         $var_name = $temp[ 0 ];
-         
-         //variable path
-         $variable_path = substr( $var, strlen( $var_name ) );
-         
-         //parentesis transform [ e ] in [" e in "]
-         $variable_path = str_replace( '[', '["', $variable_path );
-         $variable_path = str_replace( ']', '"]', $variable_path );
-         
-         //transform .$variable in ["$variable"]
-         $variable_path = preg_replace('/\.\$(\w+)/', '["$\\1"]', $variable_path );
-         
-         //transform [variable] in ["variable"]
-         $variable_path = preg_replace('/\.(\w+)/', '["\\1"]', $variable_path );
-         
-         //if there's a function
-         if( $function_var )
-         {
-            // check if there's a function or a static method and separate, function by parameters
-            $function_var = str_replace("::", "@double_dot@", $function_var );
-            
-            // get the position of the first :
-            if( $dot_position = strpos( $function_var, ":" ) )
-            {
-               // get the function and the parameters
-               $function = substr( $function_var, 0, $dot_position );
-               $params = substr( $function_var, $dot_position+1 );
-            }
-            else
-            {
-               //get the function
-               $function = str_replace( "@double_dot@", "::", $function_var );
-               $params = null;
-            }
-            
-            // replace back the @double_dot@ with ::
-            $function = str_replace( "@double_dot@", "::", $function );
-            $params = str_replace( "@double_dot@", "::", $params );
-         }
-         else
-            $function = $params = null;
-         
-         $php_var = $var_name . $variable_path;
-         
-         // compile the variable for php
-         if( isset( $function ) )
-         {
-            if( $php_var )
-               $php_var = $php_left_delimiter . ( !$is_init_variable && $echo ? 'echo ' : null ) . ( $params ? "( $function( $php_var, $params ) )" : "$function( $php_var )" ) . $php_right_delimiter;
-            else
-               $php_var = $php_left_delimiter . ( !$is_init_variable && $echo ? 'echo ' : null ) . ( $params ? "( $function( $params ) )" : "$function()" ) . $php_right_delimiter;
-         }
-         else
-            $php_var = $php_left_delimiter . ( !$is_init_variable && $echo ? 'echo ' : null ) . $php_var . $extra_var . $php_right_delimiter;
-         
-         $html = str_replace( $tag, $php_var, $html );
-      }
-      
-      return $html;
-   }
-   
-   function var_replace( $html, $tag_left_delimiter, $tag_right_delimiter, $php_left_delimiter = null, $php_right_delimiter = null, $loop_level = null, $echo = null )
-   {
-      //all variables
-      if( preg_match_all( '/' . $tag_left_delimiter . '\$(\w+(?:\.\${0,1}[A-Za-z0-9_]+)*(?:(?:\[\${0,1}[A-Za-z0-9_]+\])|(?:\-\>\${0,1}[A-Za-z0-9_]+))*)(.*?)' . $tag_right_delimiter . '/', $html, $matches ) )
-      {
-         for( $parsed=array(), $i=0, $n=count($matches[0]); $i<$n; $i++ )
-            $parsed[$matches[0][$i]] = array('var'=>$matches[1][$i],'extra_var'=>$matches[2][$i]);
-         
-         foreach( $parsed as $tag => $array )
-         {
-            //variable name ex: news.title
-            $var = $array['var'];
-            
-            //function and parameters associate to the variable ex: substr:0,100
-            $extra_var = $array['extra_var'];
-            
-            // check if there's any function disabled by black_list
-            $this->function_check( $tag );
-            
-            $extra_var = $this->var_replace( $extra_var, null, null, null, null, $loop_level );
-            
-            // check if there's an operator = in the variable tags, if there's this is an initialization so it will not output any value
-            $is_init_variable = preg_match( "/^[a-z_A-Z\.\[\](\-\>)]*=[^=]*$/", $extra_var );
-            
-            //function associate to variable
-            $function_var = ( $extra_var and $extra_var[0] == '|') ? substr( $extra_var, 1 ) : null;
-            
-            //variable path split array (ex. $news.title o $news[title]) or object (ex. $news->title)
-            $temp = preg_split( "/\.|\[|\-\>/", $var );
-            
-            //variable name
-            $var_name = $temp[ 0 ];
-            
-            //variable path
-            $variable_path = substr( $var, strlen( $var_name ) );
-            
-            //parentesis transform [ e ] in [" e in "]
-            $variable_path = str_replace( '[', '["', $variable_path );
-            $variable_path = str_replace( ']', '"]', $variable_path );
-            
-            //transform .$variable in ["$variable"] and .variable in ["variable"]
-            $variable_path = preg_replace('/\.(\${0,1}\w+)/', '["\\1"]', $variable_path );
-            
-            // if is an assignment also assign the variable to $this->var['value']
-            if( $is_init_variable )
-               $extra_var = "=\$this->var['{$var_name}']{$variable_path}" . $extra_var;
-            
-            //if there's a function
-            if( $function_var )
-            {
-               // check if there's a function or a static method and separate, function by parameters
-               $function_var = str_replace("::", "@double_dot@", $function_var );
-               
-               // get the position of the first :
-               if( $dot_position = strpos( $function_var, ":" ) )
-               {
-                  // get the function and the parameters
-                  $function = substr( $function_var, 0, $dot_position );
-                  $params = substr( $function_var, $dot_position+1 );
-               }
-               else
-               {
-                  //get the function
-                  $function = str_replace( "@double_dot@", "::", $function_var );
-                  $params = null;
-               }
-               
-               // replace back the @double_dot@ with ::
-               $function = str_replace( "@double_dot@", "::", $function );
-               $params = str_replace( "@double_dot@", "::", $params );
-            }
-            else
-               $function = $params = null;
-            
-            //if it is inside a loop
-            if( $loop_level )
-            {
-               //verify the variable name
-               if( $var_name == 'key' )
-                  $php_var = '$key' . $loop_level;
-               else if( $var_name == 'value' )
-                  $php_var = '$value' . $loop_level . $variable_path;
-               else if( $var_name == 'counter' )
-                  $php_var = '$counter' . $loop_level;
-               else
-                  $php_var = '$' . $var_name . $variable_path;
-            }
-            else
-               $php_var = '$' . $var_name . $variable_path;
-            
-            // compile the variable for php
-            if( isset( $function ) )
-               $php_var = $php_left_delimiter . ( !$is_init_variable && $echo ? 'echo ' : null ) . ( $params ? "( $function( $php_var, $params ) )" : "$function( $php_var )" ) . $php_right_delimiter;
-            else
-               $php_var = $php_left_delimiter . ( !$is_init_variable && $echo ? 'echo ' : null ) . $php_var . $extra_var . $php_right_delimiter;
-            
-            $html = str_replace( $tag, $php_var, $html );
-         }
-      }
-      
-      return $html;
-   }
-   
-   /**
-    * Check if function is in black list (sandbox)
-    *
-    * @param string $code
-    * @param string $tag
-    */
-   protected function function_check( $code )
-   {
-      $preg = '#(\W|\s)' . implode( '(\W|\s)|(\W|\s)', self::$black_list ) . '(\W|\s)#';
-      
-      // check if the function is in the black list (or not in white list)
-      if( count(self::$black_list) && preg_match( $preg, $code, $match ) )
-      {
-         // find the line of the error
-         $line = 0;
-         $rows=explode("\n",$this->tpl['source']);
-         while( !strpos($rows[$line],$code) )
-            $line++;
-         
-         // stop the execution of the script
-         $e = new RainTpl_SyntaxException('Unallowed syntax in ' . $this->tpl['tpl_filename'] . ' template');
-         throw $e->setTemplateFile($this->tpl['tpl_filename'])->setTag($code)->setTemplateLine($line);
-      }
-   }
-   
-   /**
-    * Prints debug info about exception or passes it further if debug is disabled.
-    *
-    * @param RainTpl_Exception $e
-    * @return string
-    */
-   protected function printDebug(RainTpl_Exception $e)
-   {
-      if( !self::$debug )
-         throw $e;
-      
-      $output = sprintf('<h2>Exception: %s</h2><h3>%s</h3><p>template: %s</p>',
-              get_class($e), $e->getMessage(), $e->getTemplateFile() );
-      
-      if($e instanceof RainTpl_SyntaxException)
-      {
-         if(null != $e->getTemplateLine())
-            $output .= '<p>line: ' . $e->getTemplateLine() . '</p>';
-         
-         if(null != $e->getTag())
-            $output .= '<p>in tag: ' . htmlspecialchars($e->getTag()) . '</p>';
-         
-         if(null != $e->getTemplateLine() && null != $e->getTag())
-         {
-            $rows=explode("\n",  htmlspecialchars($this->tpl['source']));
-            $rows[$e->getTemplateLine()] = '<font color=red>' . $rows[$e->getTemplateLine()] . '</font>';
-            $output .= '<h3>template code</h3>' . implode('<br />', $rows) . '</pre>';
-         }
-      }
-      
-      $output .= sprintf('<h3>trace</h3><p>In %s on line %d</p><pre>%s</pre>',
-         $e->getFile(), $e->getLine(), nl2br(htmlspecialchars($e->getTraceAsString())) );
-      
-      return $output;
-   }
-}
-
-
-/**
- * Basic Rain tpl exception.
- */
-class RainTpl_Exception extends Exception
-{
-   /**
-    * Path of template file with error.
-    */
-   protected $templateFile = '';
-   
-   /**
-    * Returns path of template file with error.
-    *
-    * @return string
-    */
-   public function getTemplateFile()
-   {
-      return $this->templateFile;
-   }
-   
-   /**
-    * Sets path of template file with error.
-    *
-    * @param string $templateFile
-    * @return RainTpl_Exception
-    */
-   public function setTemplateFile($templateFile)
-   {
-      $this->templateFile = (string) $templateFile;
-      return $this;
-   }
-}
-
-
-/**
- * Exception thrown when template file does not exists.
- */
-class RainTpl_NotFoundException extends RainTpl_Exception
-{
-   public function __construct($message, $code = 0, Exception $previous = NULL)
-   {
-      echo <<<END
-<!DOCTYPE html>
-<html>
-   <head>
-      <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
-      <title>FacturaScripts</title>
-      <meta name="description" content="FacturaScripts es un software libre bajo licencia GNU/LGPL." />
-   </head>
-   <body>
-      <h1>$message</h1>
-      <p>
-         Si necesitas ayuda, recuerda que
-         <a target="_blank" href="https://www.facturascripts.com">la comunidad FacturaScripts</a>
-         está para ayudarte.
-      </p>
-   </body>
-</html>
-END;
-      
-      parent::__construct($message, $code, $previous);
-   }
-}
-
-
-/**
- * Exception thrown when syntax error occurs.
- */
-class RainTpl_SyntaxException extends RainTpl_Exception
-{
-   /**
-    * Line in template file where error has occured.
-    *
-    * @var int | null
-    */
-   protected $templateLine = null;
-   
-   /**
-    * Tag which caused an error.
-    *
-    * @var string | null
-    */
-   protected $tag = null;
-   
-   /**
-    * Returns line in template file where error has occured
-    * or null if line is not defined.
-    *
-    * @return int | null
-    */
-   public function getTemplateLine()
-   {
-      return $this->templateLine;
-   }
-   
-   /**
-    * Sets  line in template file where error has occured.
-    *
-    * @param int $templateLine
-    * @return RainTpl_SyntaxException
-    */
-   public function setTemplateLine($templateLine)
-   {
-      $this->templateLine = (int) $templateLine;
-      return $this;
-   }
-   
-   /**
-    * Returns tag which caused an error.
-    *
-    * @return string
-    */
-   public function getTag()
-   {
-      return $this->tag;
-   }
-   
-   /**
-    * Sets tag which caused an error.
-    *
-    * @param string $tag
-    * @return RainTpl_SyntaxException
-    */
-   public function setTag($tag)
-   {
-      $this->tag = (string) $tag;
-      return $this;
-   }
-}
-
-// -- end
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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

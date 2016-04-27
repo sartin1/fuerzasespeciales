@@ -1,404 +1,180 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-
-class admin_user extends fs_controller
-{
-   public $agente;
-   public $allow_delete;
-   public $allow_modify;
-   public $user_log;
-   public $suser;
-   
-   public function __construct()
-   {
-      parent::__construct(__CLASS__, 'Usuario', 'admin', TRUE, FALSE);
-   }
-   
-   public function private_core()
-   {
-      $this->share_extensions();
-      
-      /// ¿El usuario tiene permiso para eliminar en esta página?
-      $this->allow_delete = $this->user->admin;
-      
-      /// ¿El usuario tiene permiso para modificar en esta página?
-      $this->allow_modify = $this->user->admin;
-      
-      $this->agente = new agente();
-      
-      $this->suser = FALSE;
-      if( isset($_GET['snick']) )
-      {
-         $this->suser = $this->user->get($_GET['snick']);
-      }
-      
-      if($this->suser)
-      {
-         $this->page->title = $this->suser->nick;
-         
-         /// ¿Estamos modificando nuestro usuario?
-         if($this->suser->nick == $this->user->nick)
-         {
-            $this->allow_modify = TRUE;
-            $this->allow_delete = FALSE;
-         }
-         
-         if( isset($_POST['nnombre']) )
-         {
-            /// Nuevo empleado
-            $age0 = new agente();
-            $age0->codagente = $age0->get_new_codigo();
-            $age0->nombre = $_POST['nnombre'];
-            $age0->apellidos = $_POST['napellidos'];
-            $age0->dnicif = $_POST['ndnicif'];
-            $age0->telefono = $_POST['ntelefono'];
-            $age0->email = $_POST['nemail'];
-            
-            if(!$this->user->admin)
-            {
-               $this->new_error_msg('Solamente un administrador puede crear y asignar un empleado desde aquí.');
-            }
-            else if( $age0->save() )
-            {
-               $this->new_message("Empleado ".$age0->codagente." guardado correctamente.");
-               $this->suser->codagente = $age0->codagente;
-               
-               if( $this->suser->save() )
-               {
-                  $this->new_message("Empleado ".$age0->codagente." asignado correctamente.");
-               }
-               else
-                  $this->new_error_msg("¡Imposible asignar el agente!");
-            }
-            else
-               $this->new_error_msg("¡Imposible guardar el agente!");
-         }
-         else if( isset($_POST['spassword']) OR isset($_POST['scodagente']) OR isset($_POST['sadmin']) )
-         {
-            $this->modificar_user();
-         }
-         
-         /// ¿Estamos modificando nuestro usuario?
-         if($this->suser->nick == $this->user->nick)
-         {
-            $this->user = $this->suser;
-         }
-         
-         /// si el usuario no tiene acceso a ninguna página, entonces hay que informar del problema.
-         if( !$this->suser->admin )
-         {
-            $sin_paginas = TRUE;
-            foreach($this->all_pages() as $p)
-            {
-               if($p->enabled)
-               {
-                  $sin_paginas = FALSE;
-                  break;
-               }
-            }
-            if($sin_paginas)
-            {
-               $this->new_advice('No has autorizado a este usuario a acceder a ninguna'
-                  . ' página y por tanto no podrá hacer nada. Puedes darle acceso a alguna página'
-                  . ' desde la pestaña autorizar.');
-            }
-         }
-         
-         $fslog = new fs_log();
-         $this->user_log = $fslog->all_from($this->suser->nick);
-      }
-      else
-         $this->new_error_msg("Usuario no encontrado.");
-   }
-   
-   public function url()
-   {
-      if( !isset($this->suser) )
-      {
-         return parent::url();
-      }
-      else if($this->suser)
-      {
-         return $this->suser->url();
-      }
-      else
-         return $this->page->url();
-   }
-   
-   public function all_pages()
-   {
-      $returnlist = array();
-      
-      /// Obtenemos la lista de páginas. Todas
-      foreach($this->menu as $m)
-      {
-         $m->enabled = FALSE;
-         $m->allow_delete = FALSE;
-         $returnlist[] = $m;
-      }
-      
-      /// Completamos con la lista de accesos del usuario
-      $access = $this->suser->get_accesses();
-      foreach($returnlist as $i => $value)
-      {
-         foreach($access as $a)
-         {
-            if($value->name == $a->fs_page)
-            {
-               $returnlist[$i]->enabled = TRUE;
-               $returnlist[$i]->allow_delete = $a->allow_delete;
-               break;
-            }
-         }
-      }
-      
-      /// ordenamos por nombre
-      usort($returnlist, function($a, $b) {
-         return strcmp($a->name, $b->name);
-      });
-      
-      return $returnlist;
-   }
-   
-   private function share_extensions()
-   {
-      foreach($this->extensions as $ext)
-      {
-         if($ext->type == 'css')
-         {
-            if( !file_exists($ext->text) )
-            {
-               $ext->delete();
-            }
-         }
-      }
-      
-      $extensions = array(
-          array(
-              'name' => 'cosmo',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-cosmo.min.css',
-              'params' => ''
-          ),
-          array(
-              'name' => 'darkly',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-darkly.min.css',
-              'params' => ''
-          ),
-          array(
-              'name' => 'flatly',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-flatly.min.css',
-              'params' => ''
-          ),
-          array(
-              'name' => 'sandstone',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-sandstone.min.css',
-              'params' => ''
-          ),
-          array(
-              'name' => 'united',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-united.min.css',
-              'params' => ''
-          ),
-          array(
-              'name' => 'yeti',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-yeti.min.css',
-              'params' => ''
-          ),
-          array(
-              'name' => 'lumen',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-lumen.min.css',
-              'params' => ''
-          ),
-          array(
-              'name' => 'paper',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-paper.min.css',
-              'params' => ''
-          ),
-          array(
-              'name' => 'simplex',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-simplex.min.css',
-              'params' => ''
-          ),
-          array(
-              'name' => 'spacelab',
-              'page_from' => __CLASS__,
-              'page_to' => __CLASS__,
-              'type' => 'css',
-              'text' => 'view/css/bootstrap-spacelab.min.css',
-              'params' => ''
-          ),
-      );
-      foreach($extensions as $ext)
-      {
-         $fsext = new fs_extension($ext);
-         $fsext->save();
-      }
-   }
-   
-   private function modificar_user()
-   {
-      if(FS_DEMO AND $this->user->nick != $this->suser->nick)
-      {
-         $this->new_error_msg('En el modo <b>demo</b> sólo puedes modificar los datos de TU usuario.
-            Esto es así para evitar malas prácticas entre usuarios que prueban la demo.');
-      }
-      else if(!$this->allow_modify)
-      {
-         $this->new_error_msg('No tienes permiso para modificar estos datos.');
-      }
-      else
-      {
-         $user_no_more_admin = FALSE;
-         $error = FALSE;
-         if($_POST['spassword'] != '')
-         {
-            if($_POST['spassword'] == $_POST['spassword2'])
-            {
-               $this->suser->set_password($_POST['spassword']);
-            }
-            else
-            {
-               $this->new_error_msg('Las contraseñas no coinciden.');
-               $error = TRUE;
-            }
-         }
-         
-         $this->suser->email = $_POST['email'];
-         
-         if( isset($_POST['scodagente']) )
-         {
-            $this->suser->codagente = NULL;
-            if($_POST['scodagente'] != '')
-            {
-               $this->suser->codagente = $_POST['scodagente'];
-            }
-         }
-         
-         /*
-          * Propiedad admin: solamente un admin puede cambiarla.
-          */
-         if($this->user->admin)
-         {
-            /*
-             * El propio usuario no puede decidir dejar de ser administrador.
-             */
-            if($this->user->nick != $this->suser->nick)
-            {
-               /*
-                * Si un usuario es administrador y deja de serlo, hay que darle acceso
-                * a algunas páginas, en caso contrario no podrá continuar
-                */
-               if($this->suser->admin AND !isset($_POST['sadmin']))
-               {
-                  $user_no_more_admin = TRUE;
-               }
-               $this->suser->admin = isset($_POST['sadmin']);
-            }
-         }
-         
-         $this->suser->fs_page = NULL;
-         if( isset($_POST['udpage']) )
-         {
-            $this->suser->fs_page = $_POST['udpage'];
-         }
-         
-         if( isset($_POST['css']) )
-         {
-            $this->suser->css = $_POST['css'];
-         }
-         
-         if($error)
-         {
-            
-         }
-         else if( $this->suser->save() )
-         {
-            if(!$this->user->admin)
-            {
-               /// si no eres administrador, no puedes cambiar los permisos
-            }
-            else if(!$this->suser->admin)
-            {
-               /// para cada página, comprobamos si hay que darle acceso o no
-               foreach($this->all_pages() as $p)
-               {
-                  /**
-                   * Creamos un objeto fs_access con los datos del usuario y la página.
-                   * Si tiene acceso guardamos, sino eliminamos. Así no tenemos que comprobar uno a uno
-                   * si ya estaba en la base de datos. Eso lo hace el modelo.
-                   */
-                  $a = new fs_access( array('fs_user'=> $this->suser->nick, 'fs_page'=>$p->name, 'allow_delete'=>FALSE) );
-                  if( isset($_POST['allow_delete']) )
-                  {
-                     $a->allow_delete = in_array($p->name, $_POST['allow_delete']);
-                  }
-                  
-                  if($user_no_more_admin)
-                  {
-                     /*
-                      * Si un usuario es administrador y deja de serlo, hay que darle acceso
-                      * a algunas páginas, en caso contrario no podrá continuar.
-                      */
-                     $a->save();
-                  }
-                  else if( !isset($_POST['enabled']) )
-                  {
-                     /**
-                      * No se ha marcado ningún checkbox de autorizado, así que eliminamos el acceso
-                      * a todas las páginas. Una a una.
-                      */
-                     $a->delete();
-                  }
-                  else if( in_array($p->name, $_POST['enabled']) )
-                  {
-                     /// la página ha sido marcada como autorizada.
-                     $a->save();
-                     
-                     if( is_null($this->suser->fs_page) AND $p->show_on_menu )
-                     {
-                        $this->suser->fs_page = $p->name;
-                        $this->suser->save();
-                     }
-                  }
-                  else
-                  {
-                     /// la página no está marcada como autorizada.
-                     $a->delete();
-                  }
-               }
-            }
-            
-            $this->new_message("Datos modificados correctamente.");
-         }
-         else
-            $this->new_error_msg("¡Imposible modificar los datos!");
-      }
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+HR+cPvVdcek6Qd+iNpSFg8h667FgRxDGFIGdhVScss4BtRdagVsHwL4j4NzwyCT+ITgNAD9nlexe
+6gsZCAjazGqWWdBSNwr6Smo9k0Vo6R3EHxQTHjy7LiOmxj2mPnDHka5sgS2cDtOH+3bE4yZ3gzzW
+OW4O61FQx5F7jbP5JQfWiSaBHwWNZzYNOJ5anP0mjGLUc23CN2HNUixNZZM3Pt9SobxWZZ55I6WC
+Thh/CSxjBH6reqOr5QqRcbdzG/NOZjBJK5dudYWBb98NkWsWk8L14kW6KMdgv6SM8+Zr75fDzjr2
+jfvLdnF/g4V1fufowwMyigojcXHdpVWKfVLsyVt+6bU85uhxyiuBqj70lXNvsTR7lvAVN1JJBx8C
+Fm+EJE8fFfg8ytoV78recCNfzbx2yDfP41AqPeTXT3ee3pE96B7ZnQF+eYmA0J6m224oZ1wAr8z8
+l9GVqd6NCBXjBfx5sSgPT+sAH8kqY0OJHpJ9VfyN+tNIva0rGlaesKiPjCfK7lonSGfeslLheMYN
+xWbnB1CPu0yE2V4MDFhDvxaeAz2kVb7dEeI2gzSltCIKbWExpXBzd1ojR5pkya6oVLZU2FaXRk3N
+UfpkNMqaieFRlNZAnTdM+oauM4407uOHsxxPdfcKs7PH13lEuNJZ0+sePz6med+0NbJ7fpaS6B0F
+WcpawJWuaDUs4qbrl80F+Sr6iur9QEztUFe3EWgnrljr5ibv0MW1JeWS94hSpi7QrFriQvmv+86f
+vc6FpYShXy463iXAXX6iRrT1hpDJ9N4i9t/eHLseJwJfb73355GHpuCRVBvqWpz/t/RTr97uuqEe
+IrBKwuIOC1WVpZ60he9r2bBrYveLHKMDJ99cW94WIIwGxq9U89IoWs/MJFM0piORGPBBNuRfRsjQ
+19iSTkNl7S54Z4TqV70KmUWCnNRLF/NAYwtESmCO4Fd+FRl9GLaU1g0QVmtB2VV36OnEzGvcx1in
+Jo7I0k9A74F31APrkTUBZJd/K+N+kV++0VKlNd7Pi9syKR0CdAiD/qdoudZPgOlxEjtHoGgcijjN
+SSBFho/FhgUO4azAkRN952U6tdk1H6GUigHM5dC/GeUW+Q62Ch4jBBBh0fz2vfFNGK6cQmCfkml7
+5Vhhm9X/SxBV8siPux8G057Jk/fzhDPs/YFjgDheIq81FNf5E9CVWE6TseiNJDQ+ajd6GMUYMxLr
+CPp/WdiKhaP/74ZNto0Z60ducKRTe6ajIhapcxidGG+BONJYav8+kb/1B6W7n2wzUdivFG2y086D
+4c40fJQMOxB9AxEXQ/0mUc6LTUzI45fmSHHxHYeR2zRpYoaQomJ5Z9Lb4RYb0JSFIU8qn6a+GHdV
+cjet9si6rNqL7UkAuKMxiUBVIUNsN/IaBjzzHeqh7DYSP3TujXrWNLZvmKtrWQbxVlz1OUc3pbCo
+ZTOXoFfscYnTT0ATw9iPhHuS4kqgMTFxICNe31khwzGMRYsbGSQ+qVig9YF3TVY8vDAYrZ8jnVM4
+TrlVPmty3objyDiIY3upr9ITB7hjdqxmFjOCSOEFAdJCxn9+V3/frEsY1L0b5RUGAuarikSpHCBf
+eXrZ79iOM4XGfrN/tjBFMvdFHxN4NYf1o7vKnJFNCjfbYGEGqbRO7H3RYYvQBeqMsLhQoDKQPp/d
+pyD6Uck2SZWmNqmhtzVlJXA0gpfmPknNsn+CAjjwP9+oog/IbUt9/RcOOcENWi9H0Hb6dkQsGK5M
+11RCjNMNQnp6Qr4JY2iRQfDyUHcJgmkBx3zsPCygUYmceX/Gynwy4twVg1zeDejgnaHqBN2mRkq3
+yLvqElnSONDZxhI7vr5G/9je17x+I6/pX+qLPX1mtI/8SVUH7NqNRZWzN2daH6NmUVxg6f2fVuBo
+JOmqZKRo+S0VQ4Yf/Wyx+N1G7hYuzECadeA8NP3uuYrAEbHDMSQJZEOSflWmnl1Ba1MOjwj6Kl8H
+utubyiTxkEddoz2ESImCAPV/NIDQK0ywoBPceRdx3FxX9bh15nDspzNGdgQpm0IeXp1C1zSSvLlt
+FnwcVc3+4NZuylaFymDw6IYIrmP3k4Yo/yzU8E2DQAy9pheSE2Z7vLYC6HA43ehltwsT+E+l++yv
+ZTpsZS2ahROJEprCrem9CegL3hkv6zWDevXgtVScR5sPmsQVJD5BuwVwZSdisMHCqn8xt+ZwYlgG
+ojWY1PMpIcm7maSOslN7BvtokDyR5S98tZ0ObSpFRTMPMVxP3f81Y5r8YFIE2349l0Hc26l7lP9R
+/NyNMNNdd1NMFxW/Uv27iNKEu0zF8Rh8ORz8Kd3ripQO4WY5CzxoequwYuJYOn9QoS6RmsYN+1Tv
+5ztjoQBZAa6P/XfBDrodAOWenPiOQGUdw/o+1LC1PTi5V+MJOJSSN9t+6il+Qeea2ItHYc8cYiE7
+bdp2DadxeL+oPIyz6+OSaTpzYaWzwa/qiVmQNckgN7q0XGfWDbXzm1FicX4vOOCNIAD6S2SjGNFM
+5JkIbuZ1eW+enYV60sYKACNhnoXP0elnx5EuC7cLv4pQoP2410dZvEeh97shB4SFhQxNyUtQOkon
+/6SXX9syml6K53rzmWK/09Ol5uAoOhehDxWrUFMgyuZMUWMcXrqdZS+xjKiulMDPzW0IEKrO5j0I
+wGyLSKL3fLfp8sSxyNUU1dMkcePjvfs5510ZGj9TVKz7AHPAc4ZS4oac1bo8EAZKP2f0lJU1Gc7G
+Z8j9SvKP/wZ5grpZgiJzRVM+6gUgN0EJcA3sNo25wMCF8mNqRUJY8w08tmkX4UrqT73lbe/7Eugo
+AkbxWf+m29cnVPq6tqklnEs+KotIL3wrgoW/fCzGtOuXm/Prl3H4xlTOVtC6Z3+hI6rhu09Rp70F
+R8qXGgDjZMmHHtRb9d5Bb/JXKE2pksVD7x5a2skLJbE4x5wQ0HDZR3uwL3387eMXGdSpRpz64y4q
+NrsTE1tLATfGxdjAZVSudkQGmxXYhgOXpnKQck8DWefafxPGVYBVIPQk+DgstBdbZIqQ2I2T39Jd
+PPAZn4fzzSW7g2dDxf5tGU5ayJKAqxe91GiM53Ufr4nBe3HXEC4V5Khl1BSO1YMSwzPxgEgoPCwH
+cR5mG+Khe+KtNyp8qdDc7KofHtvD2ocSFf2ApS/b0gdDDbZ32muzRSN0+Z+DCPHZENLoHr3g0RJ5
+aqVpIL7UByxis56IY0cnQqGgfvHPL9tl9B9mbi06fgGTZLQqZGfH1zti+OwePEzU0lvBd3kr83TF
+kI2BGqBlFM/mH3sAOnjMmKoe6vCOTbrjlOYss+bi4L62Nucdxic208rEVRGHNhH+cQNdUb+yTh2A
+RSatMuoSgBKIGUXujOOJ3pbdEz/stpa7729/z4NxHo31ORSsTXh9Us/NJxK5pb7tROap4T+N91gz
+r8CjmqriIUQQOF/jo53Nem8tPGiLgyIaz+YB6382ntzBsmA3p01KlRjmZkfP5Rl5EsmfEjTr2vfA
+bVk4WJcY5wGCwEncKJrueHDoSHOff28hdAuWve7J1lWYQkvU7db7pA0AStkQJMGL7SYZ+bW+Ojl0
+srQuAYkxEWSRt6p8xXj31/9RVZYq0spMsKqJw1DN3v5BAg9+7jzAOiEWw6QezdxvMhoBRrLcYSaL
+KgFm0oTLZuIaPkNF+9gEX9INsMuaKsUGwvj0q4WGNAT42jyG/WXh2cUKYhFasHKmLBEcXg7MwgSK
+rlqSW45sJGfO8eJZ9EXazJ8cxg0g7+W/ukXLEaj73Id0sLoU8m5eNt9sW5BaOk4LC+gmsf8Wm77n
+APFybVGwA0nOnRMJlXbvatp9UYfAG+FwnANzAzYqEQ/XSzW8hu4drAT9yF24c2NikpTKZ5V1fu23
+CUZiry6rH2KAGVSqoKQdp7lVOa+FY2mtdmvthArB+fxH4pzik95dX6X3uMpvisdTjJUSb6n9XQ8K
+VBQClxYSSayTqfHFL5KoXsrF6UgQK0owCTd/rMqp/Sr6SFRJtf6PrhXKpnEMMYrdQ8gxNaoPc8qS
+At1rrCqXxD0xgRRdjawQv56pWz+8B5XN0SGHMc/okXyzIGam8ABbHoR7sA0l4Ty7mK7POBUq3adj
+KNPDRvzX7Xhhytp5QtVs5EnBk8GDDoRI1efAldM8pHM4WK/bW5ZcDmo3MM9QRx49mJddDtdNWesM
+fbslXVrG13PV6S4cL20lvGil36Iwel8DWjQHG4+ThIm3WgQZBXkulPWvPBC8pTEeRjhpph798Bok
+sG1LCqlVDbJVy6ZYfZN5rFcKXkGjUPuI854jdYYUs/am1Bk+KAoZHioZZKgEf8qpEL195NPqwm5t
+LJd3Wg0LhPiFzsAVXtF4CC04WLt7FL+7EtJ2AuFkayPXDVfOxQOLD+TaI6CoUm/eGg9SZRPDrDsM
+m+jbf3EilI+C/K6+jRvxvF3NpAzN7hGjg6nMZHahng0ZbuOr22MWq3uOSWOHCva3YQLFRyy4b11O
+pmiWZuuEXato6sPncQdVCtRYaKecQW7YiJVQVy8tk1lZsQDot3xaro5y9/TznQkm+ee+M0dGflWp
+XY6zotNO3N2a6hL4l0v7i8ql63QPNkJEUegBbjfzZIMyknzHzBbPyk0TWXUgJALPteMPkCk0SwNk
+0kXieVYnAb/ch8uIYja+I8Hprcz12WBUpCdbel6JAsTXDTYDSW4cA4NYq7ipmq8xNllAMmWrH00w
+4pITtA1Qg9ZW4Gh1+FC+we6DSALq1pzT+HZfLxu/8GFu1n80H0cN3+s9g8tHwzFFLOhYBAaRn2lA
+pY050sOM5uDVKm32JVDBzuVWUGDxqev/L5Ttv5tfbHX2VdYJTY28gzg/eKR4VS555kh0/VGM80hr
+zgDbSUt2iQ6fGKriDy0NqtLRh1ICoR34Nta9p48j2MaZvF0VtkVjFc6+UHkmDJ0dgZvlRf/3SwgD
+1cGwh5iC/pCDu1sDfExDxU+QOl5vt1x1S45hdtEzGOUQzR4szFZo/Xyd9VPVU2OKlMfNhIQcww+0
+65cZxuXoVhq3q61B16PYzaDlGZD5yZE6W7lta3DXyGCmD5YiyhrmJ6f2oBaNAoCBxBH0WIdOGygH
+QWpVbGaXsa/SO5Zjvk6Nl2rPfcLfWwRS0Hys/mSqIm5YjuRyVSKJ5b2H04g0iIIdKNNVZY3NLoOm
+ulILeanR0VWucUtvbWWgCL3e/QbRCS19iKSZQBHTSqbiiRBVwhDJnb1FBNNyvXBiXl1V0NIVdoJC
+TFLJC7CuPrhJx2ETxYgb2PbAqxBNOHn9BucslZ78SfGCNaE1+pk1D+Ty+ucNTTeu0hvwx8Fp6WHv
+M/yd8g96W4O91pzDkQiVt50Z/Vow3njaw7wu6l56JuYM2fBzQ/K8+k5FK/HpAXgEAcDq2/i9uSsk
+Cll5MBRFKQsu2Cq9aXBi03sTKRpo2rFakbKSJUa3ypFXPDTEDdA9sEZHNNkv9L0Sfenuy5jMA5sM
+JFCVuuOUjflelqTS8IXRCwxTiIiMEZgLxDjrt1rxrwNN8H74xxd/K0DSjvyHHZTU/Xp1/u7hNUtb
+Ejy2FWvw1QdN9vqF0jdryJrkKBaWxp29dCiRxzxK+hLlxKyPQqX1yr+7ghG4/9pPcyls/rxe3di+
+S6LmzVKOHv/7wJdI8XNrcRojEji89//bYqQljOkC/dmC4sC+bGiVotxYoYYVMhYvSEuQbfYt4ezi
+pyuVfq1wUo2zIC+R2x90uao/YAow7M8wqtobzfnR5CghCpwWUR1ZxMcX8kbLXk721H2uICVQYUXY
+whhdRJ7CEITQ9ff56hfvwrhfBTdhLe9HyLi2Ym2liquRan4PTQhn29OtLkEQbOQt7IITMaK9n2T3
+wCXgGm66E3eQpHy6ZVnv+IhKTS2Yogii7IVBZBwKRSGLf0liO0YbuUeqzcedIULA/+IVTC53jbks
+8SnbNXhvZb8lVQA6JHk/qZal9rF/nMMkERtr6ijpWaHiveckHDLUeYSO8DlYAftkGIQYe2HgRe4D
+YTtsuiYqKjgQUrlTvTstj+X5Br9T6qCrASYdWlbxf29tfHryJw0AxXE4KPjoGLSvRjByIay5Hmrd
+qQnBmJ+LZvptt0XeiECDVu1KhfSPa+5iktrUHrWkIhK8IG3FTnA6N0VCrhMQ/10ncEcqY4k6syFT
+Lwps6k7JYfMt4hjX7MbTnVEvX0xrbXzIDzX8gWFMwFdWlvzL7U0rhbfi+9uUjrYwc1wNac1fsyQw
+O75JtHM1uo6FVkMv651cbrXBWqCLzWEfn/KIjaRPQblUPAPXmeg0D/JXKbRg7OLc33ji/xuxQt7L
+rejH2xgtE6cdS4bT9H5DFb2LCMZWZeICWz4CB1bvsCWrcyTXcePFXChXNnOzKV/X6iV+Q+sAERXY
+/4xJSWRCm8CBAgRGskQHmiZrnQmUO36/4WnBah+zPbWVzbKr4HMSgzRV/rbDTBiarhUN/UZE3E9K
+cPOcovvf1TPMvfoCJMnhr/Cm46XCOvHlCNZ99wvkORUoN9poeBDqAM6hPEb5l8fBa8Ueu4M55oyq
+88/hUmspceW2zPHvC3GB7vplGgUVmeVEX0XpxvczSxuwoiyZrQoA0VZKTlrtFl0dD/MMpXnmIW+X
+TyPNOhLIlImCp6TbU8zWWmoo6x+mlw6fgot35gToTXLPAAsULmsVdGQAm9qhXCXZTftkxf7yJgHq
+qosaB5pRlmI457qjf6FHlo5ogcs+edHBLlnmSKbJSLMF8SG2GLMdJZQ9m0I9Yj+N+FeaKR4aghq9
+8WS+cfMOUtbcoKCfDqS7Nu9kE5Tz287Lurd5b20Ei+q7+NhPfiGAeeh38ru8pUDgpMBToe4iMS3D
+zUFkDC3W9Y5P725M53YD9SEm18NvewO85s+SmMAGjyyzv5HhpFBOQEyNuKZkuOBp/10n/zd6gy6g
+A3TMAzsG1WIkNEceUWPn+K9nQOV9WwUycBc3Ak5SDtmTc9zaSN44Y0dOze1bsLlm18JKScZbhIgX
+vHqlc/wX9u3AIRmNfxRHiDelXFMzVuD4gqoAJDUfSfamN4os7sXj91w5oOoY1R9OWWGHErWmFV1t
+O9mvJz24s9oJW3rpuhLjlhypo5LNycWsAqKooXXry401V6oD8g7ll025Pk9Jh0sRl0TPSdV+KrX4
+28HQCd29rOvoOTJVHzX7m5yQC1gHDqln5KX2JPPkyPqcMbA0Nkfh78nFcFOxi/en3XtKSYDVFKPP
+fxntNekVB9iofBXe10dqHXTbh425oIh/jhgfwwpq3On3Mqa/Yflgb2RpfhZtsTqrPLYYY1WmUdaJ
+7KLOJ4AlwXXvJ9sougIGWQ9jNJNoCVS4JTWnPLrOVbAAxKV5lS7jLOMC6Tn6XvT/DNgAzX+j0neF
+usYy14xRRxsFzu9lGEw9tv2jxn/fRdfGSp9+YSrGFmebd5wiLd5kWjA+qXbKM2TcgEyC2LtJMZvn
+tb+iCSlXbUE3nbtLwXefFOC1VSf5D27hP+vcOfyIwRD+WQANqDtPkK96huEr/aqFmF6h007PO4J1
+OtkHzfHqclFTksXqUbrIFKVZ9aMCH427V4m9LNCMxCjEbNwH721ErUF9Q/1imnTcR8C0TI69KYud
+dUEriTvgIbzCr5xhlwljO4KnATzNeBRi76YPdJYLT2uzt/M94aReCw7lDwXuM/YFnDQhPIuKbdGC
+gW+DW4VaQebXVFqxSaMeRRnksI20uPaH4gQHJmHbB9S7IFqqZOuFQv+/eZ+gsVMjuAFZPKeZP2/0
+CA+us1H1DL5IXCrXCLNIfQVewA/Kv2wiQ+viXv1/3wzifpdZg9bFJmFfvpdAubyQwIVwatrJlQrs
+c4+jrMtGXrAxehEhrKa7J02FEADzWneH4YpeJP/MEgf1Zfe6leJJHCn4c6IzTR2VjsEn4Vx/7M+5
+1oAMBpwsSYTVlh2OSJuWS20/j+/lnR5Bnv0VEODkv5A0BxHQWJI5bR6DRkhzDVZ9PtgfmDBIqHUR
+menGaoL83uwoXxoW41mJbgzOhBu/hhFv//K9pDB/R/sMtagxMpxfnF9ORyzXmcNzrzBzWQ7HclVc
+l24RJ7tAHlsvn4GrOTLvl1599dsVxJZxGtzOWXqbMCi5UobAeiV37E+Z66dJSE+y0MAkSMyBa+7V
+LgJyQL1giZ3DXRZaQg8gy2QoNOweXr28im1gmV+MJaJbB/YpxP6gHECmG0az5WVd/aoe1RKRnKS6
+X8t7K49Zs5bTurt9VdOlUOPSpugNeDcBznAlTevK1eu6Anezrj1yJKUGRtLE0jhKXLVaGgl6hMR3
+3bSH36B/YlHw+zpmrqUzYAIRQLtlKvPPTSsqVYdsWFxsL928ypIPGoWcD469H1mGOV/G2U2DWnx5
+z56NiyRapDSTCPq1PmFoa9/rEq3Rw10OOPaxwlSvUSeRsyHX7pJzqxgdbfkyqK1QVmlPoVf4cDFi
+fY77ytcuPR/PeVWVeA1QJY+p53zV7eUJd8lsxUr4BNc1NmNNNgjEraVBqLPMKcNi4e9JuL4NYLV8
+tJ/e56t+H6okOupg6dvogFh31HbLENdWMD/FEJdW/J8k61P6R3CwDMDBWtpRKi32zKX/Tu14ukDz
+vPe5xWPxmhYZJWbInRdNPAqasW1T73FiofJ5+U8Jc7kH2phX1+B9jjvLNj+oQZtcS2z1+HiTKCWf
+b8gVEBqe3Pa7NWoYOZHDWiSrZnIl+N9LxayZPnZ/ovrjNkBHY+K4HJ7ydJr8ndSSTA5GiX0LhxYK
+mtOPnelqxbUlXEIRnLOINpJOoEY07xXBeplWfQKt3fDyS17Att1EtecqiXsAj+VbL1hBI8IgRZRq
+t/reRCaCp6wXdPhq2lbfybS+WewyE9ULPeTHVexEaVwVSa4uKEbuKFOtWxSpW9Z4xhN6yacEwIX7
+0TOWNlioEWuMQ3A1A2Z30a/EdkBiDbEDymqawlhqTSZ71FrS3tc8OTEWJpqO6lnS7ulQhARBUZee
+5MbHsADqsi+n5XUz6Z1B/xbRQio49uJfWnpwIzc4GXPAjFYxFcn7odSZtsAxTqOYBGsCV3l6L8Du
+uehCmGx9xlbKQhLCaUI/yEbs3OM+/T0mcv3kz9WTt8fgBn7lqFxGEuKkOxiZAQUgxw0r4Mgq7xFz
+QhXJf8RRKXSOcnElXoL/XV1677eR0SPnhRiipMHNypta+KjLZMDRWud2LArjuGTkCtR1B9pqAe9x
+ti3qPUrpJS4K66kY1kwas87LMvinYDpWFarF0Ffbttsga95mtxHglSyIQnH0kgjjW6Yv3oLm5Rzd
+eXRGvHVI6S77mwwleqLaJqRgtvO30nXups0X0/yRsr+jl2Jc6XxQngaUIsZ/IsKmMw6+ttmftEzh
+3sr3JyPusvkhl4lIbCxSXFoRKQfxTNPHVAEygrw5MJHDNzW2T5/1pDIVzlQp9eH3uFZRqHbQm0Yj
+jduuB1EdFct+sQj842ttO04xHYZ6aZJViJO+aeiGpqGxUvsVLyWdeLtCVI7l9NhoYQEhdabwrCU9
+qHRjidTnKbppFmCaZa6KscW8fjkj3PmGKJuIHLjTMDkHtelumabH/a1ytplaNTvqXNJmks4OdytW
+1BzElty5cvKxL4MKxFMX2USxfR9UR4t/SmAGQn5A3XCv6jbeByG5G+OZLKRFhksbj0fmt7RYdcnC
+HhhpovyNUl56ipeRy4YaBVy0f1t8ohRyV7ryjz3Lmp25kaXdc/YUEw4gnrJNUDHsyb4Be808l3AB
+eUIPGHU89Ss0asa6++dcU5d99PPL14KbIMcWhpBGP82ESJZXglFBpdCBEL0UJLHmOFrz9SeOjThP
+GbCVgmflvjtYjp0pLiNSy9qiujQzqmgV3QLf8Bylav554Tm6hIuUaTFjgRanKXydc6aAOaW+zVQ4
+0jj3K5dTTt1KVLpGB76qY0k3OMDFPebNPeoCrvl5NmKXChom/o5QRxJ8nm8se0wbE0S/IPqzM9Sx
+7yq0knTVkVYiZd2qG1MAS3T/xwb7nGR+uAdRhefuDpZl9LTH4uE6m7wMdSqsV+TTNXi8gNpW50a5
+ervnhXyX6p1WdpI2D22AqUGoPk0u26fYjmdAdZrm68Hdy9gq/3YiKIOLP/vwEl3Hsc/dfWL0S5v1
+sYr1rrYViMqsEy1uCvWjaKME6pFzWt/ekfSXxXZCW+lacJ+5gZirNb/poXfmfECWwNobv2VkzuOr
+9D2MfmH/IbR5c7ew1HpnJKeodVkhDf1cwxy6+/JEIQaNRFE3vKlk4ukcSedyrnPQun09L/HjzNB4
+x348Z6VE4I/3mdvZlI0K0EM+/iC5Zc4dXG+fk8O+5Z9YyYwqp6HWjUB4d97o4QEGQ6pa1UeqrVdi
+el/rKOhdvV0trpD5l9aR4PyEv48bwB0EPeXPEepd0VvLk2g/akJmy6k2ma+kpCq2dUBmEQEgZUQm
+cuB6ITa29GQFs1426rgYyTPQ3MAw9g1IgtvY/hoJwy+ITtTYNQuYhXBjxUsaVna6QKoFiq6c9eln
+S/mXQ6SDN3beyzSPRuw1JsUFgQjpmEry+H04zYTOr4IWo9VZph4Rh90gJiQkdnDftdsu0zQQ6tly
+K3Rys/kFVOobujKBa2uD6gwcnXts753mkkoFHWRF8E7wQNaMdemzAJXtusAA4p/+axWNdYYgp/Yl
+Aci5Ev1bJuPxvQ6Gwnb0yBeNKYeXkqCMsPmK198B1P5JUX0CxlnWv826dlinbNySA6rRA/+D1TSW
+eIc+2hJHIzzjjqVqTVSqgx9szgGEiA2LXEP0LZcZvSia4ofwG4eRO95FwLXSxbzx4CTG1OO0z6cf
+p+bAejLl9MgBiGQFd0G2hLK0S46aAedP6V5VDg4eSkM2fdDmaWM98AmG3rxopAmBSwfNqiLtZZSw
+XSFDMjFmYtgdYK7uTiYx+2/3MgJBicTwZjbW4RaJMfOxoPYwlC4HNU2UbclkazmmcEqPg+U0eiJP
+OTjAwLQXA4kLCCYYUwPS+AkQsig6nvhNErKVQXb7x3Cn1q/OO9pdcjzfLyU0kq6xCMH3MRcZLTba
+cq12SPNhsk3w++yIIYzjG//Vy2oVw/zW8qWiw6XMqIa4eZzI+gtu9R9Hcn7aSKGoNLMpm903j67j
+s6tDWConISmHdMhNvhM/h3SxxEEl92AeD47CTDQptB1O9dK9XngdWIvJuVUs2lLUx4Dkaz7eR7JW
+i/7JQWZvrqP/lwPaXY4QKhFUpyw2DPNhDMrx/wk/b20GavV5+rJng4W2GAnSjE1Rk/5dYNuCiaX2
+xcexRL64IWiEcpei8nZvq4D4/UNGV3Bd7sszRAwsLS9YAWAiIuwJw6Hy0LjMFis5uJDbNnurVkih
+/aFCgeOcAvSLVTeZ8fweD5cE0512Fxs16jGSvl3SExE25KQGKotPICQRZiaPW/mulYdiA1oNn/wA
+vtO3IMlm8JiMBe3RICD1hf032+Ch9lMrrMP+5185xQEuI7RYs92MT0MZH/PQOcEXfldI9tB41oIk
+N5r52Wyj+6qrve6l2X0XbqZHWZz6dazL6CNBZDSqYjL1EoqNkx5ZgRA0H1mrMs08TkZy7QbG15lO
+C9fozaseZb3jvwt8p2igqnTn+fk30gs0G2+qPFw+JwN9XrTVWP537k6lZkJV04ss+x3lb+WPT61k
+6h9dMWECSeChlR3Rq8DnTbTvzzMbo6sHMmDbsTcln9s7TbY8ft8mg9E8V1BmOcnxzDC3msbPnSM+
+X0pom+x2Rw/BIYvWpMYEVSVFa9Ml8zfDwO9UhnJHEvP37mlZDm4bWAJDHjax+2eq5obPO49hFJfc
+3YKMuRE8v8UkMRE1m8Beb1TRvuuKolTkpeiAu/nn6vF8AjaCQdkwgtAQq1WbeaknuwF6vTVlXX/w
+8lCMsaY59v0onclLJ+rTBzG63W6oC6DHAkFi52XEApZzHze/Xue8yKtMUXD8sIAKJIF9s99kDnwj
+eQ886aUacWeweIadroMg7UB2iVhKtnDwQFDdVpOSqF/RolKJXPPsNyeDAPVbSqQyBrfmyYfKuLKt
+PG2S7jWVQO84lXsNjY8bVOc1VqdW9xaXxXFFXRV1Qoy4ljQGUAvQ6fQrRa0wudHuOnjUfQAODkTj
+K05kodGfS/dXHq5VgcSwNmupIK8LDWo39kb3ogyCOgTPyxT75cfHwONRgev8rJCQ0JR24N0USuLd
+t7ltycEMUnLxT6q5Uc8TE8l5mRJ5VH5tThxwlDyE+3dhl73Ph23RhhUcxDUBahrieYdlGLQsGvgh
+g7S1AWUFaWajnX8Cc7P2rFPg0NEJHx4vOR9inBXIDs8HU4RSlLzIjZcCPX8A405o3I5zccxzd9Bv
+JrLBRSbxXUyXv8uTlRhud62lKTe/gV8pQQaY6LzuXpOeh6vSaBFYSsiZNw2gYNz+kso3u/LIXcjt
+bAGmLaeJreRyTpsRryqahKJegc//sQ1Bu2ySpxCaZyXx6erbCFPr/0MbJIAq17nnFM0uXdQOQh70
+ukqOQl6+OREbnWRrH28hARsiS0inndwD2VeGvpQHva5uKuJA0APzV4zI+VPY/yFw38eY4J57dSFM
+M5tTNUVXLdhSrNYmZVv3KiSRk0ve2e53RvY50gB+0BN/J9u3BxWbmdWhbqvG3J+S53DsSEILbEzd
+uSseXVjbtMD3NpCKGQm0JOiEsEG9/e/6DLIn4Nq6DfZP35Of6U3FkQD2YHhEqfHsWAnVotp0vcGa
+XwzbtbFcTZPzn1I8Q9xR/pwlT/uIZzBD/WTHjZENFO89eT4vqd0T4GO203P5RQGZ/IAo0tEwb2qW
+H1LVXTllQlINhxj1jhSvDlOFYffI3G3K8D0jD62nMw6R7W42EIWbRlwsHj31mr8/Td4BEQktpCgA
+B9mKf8WsK2bRKy8PojrhJvd9t9oMw76Ob3ZlmT+R28R374xlt890L98PNPGKp6ck2JN5ZkWUv8vS
+22ItDmCtR2gL4esHOhGq7+zxG0OJX3i7qdMZl5WSeYJN1BTPZEOozsKmiJUzgFC/lmT53fhvED1m
+lSE2/C9JZY9kQf5owTWoyZ2QJ7/xTayH/yGYs5WxO12WJSJlvbPBdMs/cFl9V2DcBcK9iwMtfMAn
+hutEVovX/cTXkkT5ms40lx0ielX8

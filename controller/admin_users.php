@@ -1,142 +1,89 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-
-class admin_users extends fs_controller
-{
-   public $agente;
-   public $historial;
-   
-   public function __construct()
-   {
-      parent::__construct(__CLASS__, 'Usuarios', 'admin', TRUE, TRUE);
-   }
-   
-   protected function private_core()
-   {
-      $this->agente = new agente();
-      
-      $fslog = new fs_log();
-      $this->historial = $fslog->all_by('login');
-      
-      if( isset($_POST['nnick']) )
-      {
-         $nu = $this->user->get($_POST['nnick']);
-         if($nu)
-         {
-            $this->new_error_msg('El usuario <a href="'.$nu->url().'">ya existe</a>.');
-         }
-         else if(!$this->user->admin)
-         {
-            $this->new_error_msg('Solamente un administrador puede crear usuarios.');
-         }
-         else
-         {
-            $nu = new fs_user();
-            $nu->nick = $_POST['nnick'];
-            $nu->email = $_POST['nemail'];
-            
-            if( $nu->set_password($_POST['npassword']) )
-            {
-               $nu->admin = isset($_POST['nadmin']);
-               if( isset($_POST['ncodagente']) )
-               {
-                  if($_POST['ncodagente'] != '')
-                  {
-                     $nu->codagente = $_POST['ncodagente'];
-                  }
-               }
-               
-               if( $nu->save() )
-               {
-                  Header('location: index.php?page=admin_user&snick=' . $nu->nick);
-               }
-               else
-                  $this->new_error_msg("¡Imposible guardar el usuario!");
-            }
-         }
-      }
-      else if( isset($_GET['delete']) )
-      {
-         $nu = $this->user->get($_GET['delete']);
-         if($nu)
-         {
-            if(FS_DEMO)
-            {
-               $this->new_error_msg('En el modo <b>demo</b> no se pueden eliminar usuarios.
-                  Esto es así para evitar malas prácticas entre usuarios que prueban la demo.');
-            }
-            else if(!$this->user->admin)
-            {
-               $this->new_error_msg("Solamente un administrador puede eliminar usuarios.");
-            }
-            else if( $nu->delete() )
-            {
-               $this->new_message("Usuario ".$nu->nick." eliminado correctamente.");
-            }
-            else
-               $this->new_error_msg("¡Imposible eliminar al usuario!");
-         }
-         else
-            $this->new_error_msg("¡Usuario no encontrado!");
-      }
-   }
-   
-   public function all_pages()
-   {
-      $returnlist = array();
-      
-      /// Obtenemos la lista de páginas. Todas
-      foreach($this->menu as $m)
-      {
-         $m->enabled = FALSE;
-         $m->allow_delete = FALSE;
-         $m->users = array();
-         $returnlist[] = $m;
-      }
-      
-      /// completamos con los permisos de los usuarios
-      foreach($this->user->all() as $user)
-      {
-         if($user->admin)
-         {
-            foreach($returnlist as $i => $value)
-            {
-               $returnlist[$i]->users[$user->nick] = array(
-                   'modify' => TRUE,
-                   'delete' => TRUE,
-               );
-            }
-         }
-         else
-         {
-            foreach($returnlist as $i => $value)
-            {
-               $returnlist[$i]->users[$user->nick] = array(
-                   'modify' => FALSE,
-                   'delete' => FALSE,
-               );
-            }
-            
-            foreach($user->get_accesses() as $a)
-            {
-               foreach($returnlist as $i => $value)
-               {
-                  if($a->fs_page == $value->name)
-                  {
-                     $returnlist[$i]->users[$user->nick]['modify'] = TRUE;
-                     $returnlist[$i]->users[$user->nick]['delete'] = $a->allow_delete;
-                     break;
-                  }
-               }
-            }
-         }
-      }
-      
-      /// ordenamos por nombre
-      usort($returnlist, function($a, $b) {
-         return strcmp($a->name, $b->name);
-      });
-      
-      return $returnlist;
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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

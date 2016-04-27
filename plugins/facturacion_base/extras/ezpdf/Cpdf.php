@@ -1,3919 +1,1846 @@
-<?php
-/**
- * Create pdf documents without additional modules
- *
- * Note that the companion class Document_CezPdf can be used to extend this class and
- * simplify the creation of documents.
- *
- * @category Documents
- * @package	 Document_Cpdf
- * @author   Wayne Munro (inactive) <pdf@ros.co.nz>
- * @author   Lars Olesen <lars@legestue.net>
- * @author   Sune Jensen <sj@sunet.dk>
- * @author   Ole K <ole1986@users.sourceforge.net>
- * @copyright 2007 - 2013 The authors
- * @license   GPL http://www.opensource.org/licenses/gpl-license.php
- * @version  0.11.6
- * @link     http://pdf-php.sf.net
- */
-class Cpdf
-{
-	/**
-	 * allow the programmer to output debug messages on serveral places
-	 * 'none' = no debug output at all
-	 * 'error_log' = use error_log
-	 * 'variable' = store in a variable called $this->messages
-	 *
-	 * @default 'error_log'
-	 */
-	public $DEBUG = 'error_log';
-	
-	/**
-	 * Set the debug level
-	 * E_USER_ERROR = only errors
-	 * E_USER_WARNING = errors and warning
-	 * E_USER_NOTICE =  nearly everything
-	 *
-	 * @default E_USER_WARNING
-	 */
-	public $DEBUGLEVEL = E_USER_WARNING;
-	/**
-	 * Reversed char string to allow arabic or Hebrew
-	 */
-	public $rtl = false;
-	
-	/**
-	 * flag to validate the output and if output method has be executed
-	 */
-	protected $valid = false;
-	
-	/**
-	 * global defined temporary path used on several places
-	 */
-	public $tempPath = 'tmp/pdf';
-    /**
-     * the current number of pdf objects in the document
-     *
-     * @var integer
-     */
-    private $numObj=0;
-
-    /**
-      * this array contains all of the pdf objects, ready for final assembly
-      *
-      * @var array
-      */
-    private $objects = array();
-
-    /**
-     * allows object being hashed (affect images only)
-     */
-    public $hashed = true;
-    /**
-     * Object hash used to free pdf from redundacies (primary images)
-     */
-    private $objectHashes = array();
-    
-    /**
-      * the objectId (number within the objects array) of the document catalog
-      *
-      * @var integer
-      */
-    private $catalogId;
-
-
-	public $targetEncoding = 'iso-8859-1';
-	/**
-	 * @var boolean Whether the text passed in should be treated as Unicode or just local character set.
-	 */
-	public $isUnicode = false;
-
-	/**
-	 * @var boolean used to either embed or not embed ttf/pfb fonts.
-	 */
-	protected $embedFont = true;
-
-	/**
-     * store the information about the relationship between font families
-     * this used so that the code knows which font is the bold version of another font, etc.
-     * the value of this array is initialised in the constuctor function.
-     *
-     * @var array
-     */
-    private $fontFamilies = array(
-    		'Helvetica' => array(
-    				'b'=>'Helvetica-Bold',
-    				'i'=>'Helvetica-Oblique',
-    				'bi'=>'Helvetica-BoldOblique',
-    				'ib'=>'Helvetica-BoldOblique',
-    			),
-    		'Courier' => array(
-    				'b'=>'Courier-Bold',
-    				'i'=>'Courier-Oblique',
-    				'bi'=>'Courier-BoldOblique',
-    				'ib'=>'Courier-BoldOblique',
-    			),
-    		'Times-Roman' => array(
-    				'b'=>'Times-Bold',
-    				'i'=>'Times-Italic',
-    				'bi'=>'Times-BoldItalic',
-    				'ib'=>'Times-BoldItalic',
-    			)
-    );
-
-	/**
-	 * the core fonts to ignore them from unicode
-	 */
-	private $coreFonts = array('courier', 'courier-bold', 'courier-oblique', 'courier-boldoblique',
-    'helvetica', 'helvetica-bold', 'helvetica-oblique', 'helvetica-boldoblique',
-    'times-roman', 'times-bold', 'times-italic', 'times-bolditalic',
-    'symbol', 'zapfdingbats');
-
-    /**
-     * array carrying information about the fonts that the system currently knows about
-     * used to ensure that a font is not loaded twice, among other things
-     *
-     * @var array
-     */
-    private $fonts = array();
-
-    /**
-      * a record of the current font
-      *
-      * @var string
-      */
-    private $currentFont='';
-
-    /**
-     * the current base font
-     *
-     * @var string
-     */
-    private $currentBaseFont='';
-
-    /**
-      * the number of the current font within the font array
-      *
-      * @var integer
-      */
-    private $currentFontNum=0;
-
-    /**
-     * @var integer
-     */
-    private $currentNode;
-
-    /**
-      * object number of the current page
-      *
-      * @var integer
-      */
-    private $currentPage;
-
-    /**
-      * object number of the currently active contents block
-      */
-    private $currentContents;
-
-    /**
-      * number of fonts within the system
-      */
-    private $numFonts = 0;
-
-    /**
-     * current colour for fill operations, defaults to inactive value, all three components should be between 0 and 1 inclusive when active
-     */
-    private $currentColour = array('r' => -1, 'g' => -1, 'b' => -1);
-
-    /**
-     * current colour for stroke operations (lines etc.)
-     */
-    private $currentStrokeColour = array('r' => -1, 'g' => -1, 'b' => -1);
-
-    /**
-      * current style that lines are drawn in
-      */
-    private $currentLineStyle='';
-
-    /**
-      * an array which is used to save the state of the document, mainly the colours and styles
-      * it is used to temporarily change to another state, the change back to what it was before
-      */
-    private $stateStack = array();
-
-    /**
-     * number of elements within the state stack
-     */
-    private $nStateStack = 0;
-
-    /**
-     * number of page objects within the document
-     */
-    private $numPages=0;
-
-    /**
-     * object Id storage stack
-     */
-    private $stack=array();
-
-    /**
-     * number of elements within the object Id storage stack
-     */
-    private $nStack=0;
-
-    /**
-     * an array which contains information about the objects which are not firmly attached to pages
-     * these have been added with the addObject function
-     */
-    private $looseObjects=array();
-
-    /**
-     * array contains infomation about how the loose objects are to be added to the document
-     */
-    private $addLooseObjects=array();
-
-    /**
-      * the objectId of the information object for the document
-      * this contains authorship, title etc.
-      */
-    private $infoObject=0;
-
-    /**
-      * number of images being tracked within the document
-      */
-    private $numImages=0;
-
-    /**
-      * an array containing options about the document
-      * it defaults to turning on the compression of the objects
-      */
-    public $options=array('compression'=>7);
-
-    /**
-      * the objectId of the first page of the document
-      */
-    private $firstPageId;
-
-    /**
-      * used to track the last used value of the inter-word spacing, this is so that it is known
-      * when the spacing is changed.
-      */
-    private $wordSpaceAdjust=0;
-
-    /**
-      * track if the current font is bolded or italicised
-      */
-    private $currentTextState = '';
-
-    /**
-     * messages are stored here during processing, these can be selected afterwards to give some useful debug information
-     */
-    public $messages='';
-
-    /**
-     * the ancryption array for the document encryption is stored here
-     */
-    private $arc4='';
-
-    /**
-     * the object Id of the encryption information
-     */
-    private $arc4_objnum=0;
-
-    /**
-     * the file identifier, used to uniquely identify a pdf document
-     */
-    public $fileIdentifier='';
-
-    /**
-     * a flag to say if a document is to be encrypted or not
-     *
-     * @var boolean
-     */
-    private $encrypted=0;
-
-	/**
-	 * Set the encryption mode 
-	 * 1 = RC40bit
-	 * 2 = RC128bit (since PDF Version 1.4)
-	 */
-	 private $encryptionMode = 1;
-    /**
-     * the encryption key for the encryption of all the document content (structure is not encrypted)
-     *
-     * @var string
-     */
-    private $encryptionKey='';
-	
-	/*
-	 * encryption padding fetched from the Adobe PDF reference
-	 */
-	private $encryptionPad;
-    
-    /**
-     * array which forms a stack to keep track of nested callback functions
-     *
-     * @var array
-     */
-    private $callback = array();
-
-    /**
-     * the number of callback functions in the callback array
-     *
-     * @var integer
-     */
-    private $nCallback = 0;
-
-    /**
-     * store label->id pairs for named destinations, these will be used to replace internal links
-     * done this way so that destinations can be defined after the location that links to them
-     *
-     * @var array
-     */
-    private $destinations = array();
-
-    /**
-     * store the stack for the transaction commands, each item in here is a record of the values of all the
-     * variables within the class, so that the user can rollback at will (from each 'start' command)
-     * note that this includes the objects array, so these can be large.
-     *
-     * @var string
-     */
-    private $checkpoint = '';
-
-    /**
-     * Constructor - starts a new document
-     *
-     * @param array $pageSize Array of 4 numbers, defining the bottom left and upper right corner of the page. first two are normally zero.
-     *
-     * @return void
-     */
-    public function __construct($pageSize = array(0, 0, 612, 792), $isUnicode = false)
-    {
-      $this->tempPath = 'tmp/'.FS_TMP_NAME.'pdf';
-    	$this->isUnicode = $isUnicode;
-    	// set the hardcoded encryption pad
-    	$this->encryptionPad = chr(0x28).chr(0xBF).chr(0x4E).chr(0x5E).chr(0x4E).chr(0x75).chr(0x8A).chr(0x41).chr(0x64).chr(0x00).chr(0x4E).chr(0x56).chr(0xFF).chr(0xFA).chr(0x01).chr(0x08).chr(0x2E).chr(0x2E).chr(0x00).chr(0xB6).chr(0xD0).chr(0x68).chr(0x3E).chr(0x80).chr(0x2F).chr(0x0C).chr(0xA9).chr(0xFE).chr(0x64).chr(0x53).chr(0x69).chr(0x7A);
-        
-        $this->newDocument($pageSize);
-
-		if ( in_array('Windows-1252', mb_list_encodings()) ) {
-      		$this->targetEncoding = 'Windows-1252';
-    	}
-    
-        // font familys are already known in $this->fontFamilies
-        $this->fileIdentifier = md5('ROSPDF');
-    }
-
-    /**
-     * Document object methods (internal use only)
-     *
-     * There is about one object method for each type of object in the pdf document
-     * Each function has the same call list ($id,$action,$options).
-     * $id = the object ID of the object, or what it is to be if it is being created
-     * $action = a string specifying the action to be performed, though ALL must support:
-     *           'new' - create the object with the id $id
-     *           'out' - produce the output for the pdf object
-     * $options = optional, a string or array containing the various parameters for the object
-     *
-     * These, in conjunction with the output function are the ONLY way for output to be produced
-     * within the pdf 'file'.
-     */
-
-    /**
-     * destination object, used to specify the location for the user to jump to, presently on opening
-     * @access private
-     */
-    private function o_destination($id,$action,$options='')
-    {
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch($action){
-            case 'new':
-                 $this->objects[$id]=array('t'=>'destination','info'=>array());
-                 $tmp = '';
-                 switch ($options['type']){
-                     case 'XYZ':
-                     case 'FitR':
-                         $tmp =  ' '.$options['p3'].$tmp;
-                     case 'FitH':
-                     case 'FitV':
-                     case 'FitBH':
-                     case 'FitBV':
-                         $tmp =  ' '.$options['p1'].' '.$options['p2'].$tmp;
-                     case 'Fit':
-                     case 'FitB':
-                         $tmp =  $options['type'].$tmp;
-                         $this->objects[$id]['info']['string']=$tmp;
-                         $this->objects[$id]['info']['page']=$options['page'];
-                 }
-                 break;
-            case 'out':
-                $tmp = $o['info'];
-                $res="\n".$id." 0 obj\n".'['.$tmp['page'].' 0 R /'.$tmp['string']."]\nendobj";
-                return $res;
-                break;
-        }
-    }
-
-    /**
-     * sets the viewer preferences
-     * @access private
-     */
-    private function o_viewerPreferences($id,$action,$options='')
-    {
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-            case 'new':
-                $this->objects[$id]=array('t'=>'viewerPreferences','info'=>array());
-                break;
-            case 'add':
-                foreach($options as $k=>$v){
-                    switch ($k){
-                        case 'HideToolbar':
-                        case 'HideMenubar':
-                        case 'HideWindowUI':
-                        case 'FitWindow':
-                        case 'CenterWindow':
-                        case 'DisplayDocTitle':
-                        case 'NonFullScreenPageMode':
-                        case 'Direction':
-                            $o['info'][$k]=$v;
-                            break;
-                    }
-                }
-                break;
-            case 'out':
-                $res="\n".$id." 0 obj\n".'<< ';
-                foreach($o['info'] as $k=>$v){
-                    $res.="\n/".$k.' '.$v;
-                }
-                $res.="\n>>\n";
-                return $res;
-                break;
-        }
-    }
-
-    /**
-     * define the document catalog, the overall controller for the document
-     * @access private
-     */
-    private function o_catalog($id, $action, $options = '')
-    {
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-            case 'new':
-                $this->objects[$id]=array('t'=>'catalog','info'=>array());
-                $this->catalogId=$id;
-            break;
-            case 'outlines':
-            case 'pages':
-            case 'openHere':
-                $o['info'][$action]=$options;
-                break;
-            case 'viewerPreferences':
-                if (!isset($o['info']['viewerPreferences'])){
-                    $this->numObj++;
-                    $this->o_viewerPreferences($this->numObj,'new');
-                    $o['info']['viewerPreferences']=$this->numObj;
-                }
-                $vp = $o['info']['viewerPreferences'];
-                $this->o_viewerPreferences($vp,'add',$options);
-                break;
-            case 'out':
-                $res="\n".$id." 0 obj\n".'<< /Type /Catalog';
-                foreach($o['info'] as $k=>$v){
-                    switch($k){
-                        case 'outlines':
-                            $res.=' /Outlines '.$v.' 0 R';
-                            break;
-                        case 'pages':
-                            $res.=' /Pages '.$v.' 0 R';
-                            break;
-                        case 'viewerPreferences':
-                            $res.=' /ViewerPreferences '.$o['info']['viewerPreferences'].' 0 R';
-                            break;
-                        case 'openHere':
-                            $res.=' /OpenAction '.$o['info']['openHere'].' 0 R';
-                            break;
-                    }
-                }
-                $res.=" >>\nendobj";
-                return $res;
-                break;
-        }
-    }
-
-    /**
-     * object which is a parent to the pages in the document
-     * @access private
-     */
-    private function o_pages($id,$action,$options='')
-    {
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-            case 'new':
-                $this->objects[$id]=array('t'=>'pages','info'=>array());
-                $this->o_catalog($this->catalogId,'pages',$id);
-                break;
-            case 'page':
-                if (!is_array($options)){
-                    // then it will just be the id of the new page
-                    $o['info']['pages'][]=$options;
-                } else {
-                    // then it should be an array having 'id','rid','pos', where rid=the page to which this one will be placed relative
-                    // and pos is either 'before' or 'after', saying where this page will fit.
-                    if (isset($options['id']) && isset($options['rid']) && isset($options['pos'])){
-                        $i = array_search($options['rid'],$o['info']['pages']);
-                        if (isset($o['info']['pages'][$i]) && $o['info']['pages'][$i]==$options['rid']){
-                            // then there is a match make a space
-                            switch ($options['pos']){
-                                case 'before':
-                                    $k = $i;
-                                    break;
-                                case 'after':
-                                    $k=$i+1;
-                                    break;
-                                default:
-                                    $k=-1;
-                                    break;
-                            }
-                            if ($k>=0){
-                                for ($j=count($o['info']['pages'])-1;$j>=$k;$j--){
-                                    $o['info']['pages'][$j+1]=$o['info']['pages'][$j];
-                                }
-                                $o['info']['pages'][$k]=$options['id'];
-                            }
-                        }
-                    }
-                }
-                break;
-            case 'procset':
-                $o['info']['procset']=$options;
-                break;
-            case 'mediaBox':
-                $o['info']['mediaBox']=$options; // which should be an array of 4 numbers
-                break;
-            case 'font':
-                $o['info']['fonts'][]=array('objNum'=>$options['objNum'],'fontNum'=>$options['fontNum']);
-                break;
-            case 'xObject':
-                $o['info']['xObjects'][]=array('objNum'=>$options['objNum'],'label'=>$options['label']);
-                break;
-            case 'out':
-                if (count($o['info']['pages'])){
-                    $res="\n".$id." 0 obj\n<< /Type /Pages /Kids [";
-                    foreach($o['info']['pages'] as $k=>$v){
-                        $res.=$v." 0 R ";
-                    }
-                    $res.="] /Count ".count($this->objects[$id]['info']['pages']);
-                    if ((isset($o['info']['fonts']) && count($o['info']['fonts'])) || isset($o['info']['procset'])){
-                        $res.=" /Resources <<";
-                        if (isset($o['info']['procset'])){
-                            $res.=" /ProcSet ".$o['info']['procset'];
-                        }
-                        if (isset($o['info']['fonts']) && count($o['info']['fonts'])){
-                            $res.=" /Font << ";
-                            foreach($o['info']['fonts'] as $finfo){
-                                $res.=" /F".$finfo['fontNum']." ".$finfo['objNum']." 0 R";
-                            }
-                            $res.=" >>";
-                        }
-                        if (isset($o['info']['xObjects']) && count($o['info']['xObjects'])){
-                            $res.=" /XObject << ";
-                            foreach($o['info']['xObjects'] as $finfo){
-                                $res.=" /".$finfo['label']." ".$finfo['objNum']." 0 R";
-                            }
-                            $res.=" >>";
-                        }
-                        $res.=" >>";
-                        if (isset($o['info']['mediaBox'])){
-                            $tmp=$o['info']['mediaBox'];
-                            $res.=" /MediaBox [".sprintf('%.3F',$tmp[0]).' '.sprintf('%.3F',$tmp[1]).' '.sprintf('%.3F',$tmp[2]).' '.sprintf('%.3F',$tmp[3]).']';
-                        }
-                    }
-                    $res.=" >>\nendobj";
-                } else {
-                    $res="\n".$id." 0 obj\n<< /Type /Pages\n/Count 0\n>>\nendobj";
-                }
-                return $res;
-                break;
-         }
-    }
-
-    /**
-     * Beta Redirection function
-     * @access private
-     */
-	private function o_redirect($id,$action,$options=''){
-        switch ($action){
-            case 'new':
-                $this->objects[$id]=array('t'=>'redirect','data'=>$options['data'],'info'=>array());
-                $this->o_pages($this->currentNode,'xObject',array('label'=>$options['label'],'objNum'=>$id));
-                break;
-            case 'out':
-                $o =& $this->objects[$id];
-                $tmp=$o['data'];
-                $res= "\n".$id." 0 obj\n<<";
-                $res.="/R".$o['data']." ".$o['data']." 0 R>>\nendobj";
-                return $res;
-                break;
-        }
-    }
-
-    /**
-     * defines the outlines in the doc, empty for now
-     * @access private
-     */
-    private function o_outlines($id,$action,$options='')
-    {
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-            case 'new':
-                $this->objects[$id]=array('t'=>'outlines','info'=>array('outlines'=>array()));
-                $this->o_catalog($this->catalogId,'outlines',$id);
-                break;
-            case 'outline':
-                $o['info']['outlines'][]=$options;
-                break;
-            case 'out':
-                if (count($o['info']['outlines'])){
-                    $res="\n".$id." 0 obj\n<< /Type /Outlines /Kids [";
-                    foreach($o['info']['outlines'] as $k=>$v){
-                        $res.=$v." 0 R ";
-                    }
-                    $res.="] /Count ".count($o['info']['outlines'])." >>\nendobj";
-                } else {
-                    $res="\n".$id." 0 obj\n<< /Type /Outlines /Count 0 >>\nendobj";
-                }
-                return $res;
-                break;
-        }
-    }
-
-    /**
-     * an object to hold the font description
-     * @access private
-     */
-    private function o_font($id,$action,$options=''){
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-            case 'new':
-                $this->objects[$id]=array('t'=>'font','info'=>array('name'=>$options['name'], 'fontFileName' => $options['fontFileName'],'SubType'=>'Type1'));
-                $fontNum=$this->numFonts;
-                $this->objects[$id]['info']['fontNum']=$fontNum;
-                // deal with the encoding and the differences
-                if (isset($options['differences'])){
-                    // then we'll need an encoding dictionary
-                    $this->numObj++;
-                    $this->o_fontEncoding($this->numObj,'new',$options);
-                    $this->objects[$id]['info']['encodingDictionary']=$this->numObj;
-                } else if (isset($options['encoding'])){
-                    // we can specify encoding here
-                    switch($options['encoding']){
-                        case 'WinAnsiEncoding':
-                        case 'MacRomanEncoding':
-                        case 'MacExpertEncoding':
-                            $this->objects[$id]['info']['encoding']=$options['encoding'];
-                            break;
-                        case 'none':
-                            break;
-                        default:
-                            $this->objects[$id]['info']['encoding']='WinAnsiEncoding';
-                            break;
-                    }
-                } else {
-                    $this->objects[$id]['info']['encoding']='WinAnsiEncoding';
-                }
-                
-                if ($this->fonts[$options['fontFileName']]['isUnicode']) {
-			        // For Unicode fonts, we need to incorporate font data into
-			        // sub-sections that are linked from the primary font section.
-			        // Look at o_fontGIDtoCID and o_fontDescendentCID functions
-			        // for more informaiton.
-			        //
-			        // All of this code is adapted from the excellent changes made to
-			        // transform FPDF to TCPDF (http://tcpdf.sourceforge.net/)
-			        $toUnicodeId = ++$this->numObj;
-			        $this->o_contents($toUnicodeId, 'new', 'raw');
-			        $this->objects[$id]['info']['toUnicode'] = $toUnicodeId;
-
-	        		$stream = <<<EOT
-/CIDInit /ProcSet findresource begin
-12 dict begin
-begincmap
-/CIDSystemInfo <</Registry (Adobe) /Ordering (UCS) /Supplement 0 >> def
-/CMapName /Adobe-Identity-UCS def
-/CMapType 2 def
-1 begincodespacerange
-<0000> <FFFF>
-endcodespacerange
-1 beginbfrange
-<0000> <FFFF> <0000>
-endbfrange
-endcmap
-CMapName currentdict /CMap defineresource pop
-end
-end
-EOT;
-
-			        $res = "<</Length " . mb_strlen($stream, '8bit') . " >>\n";
-			        $res .= "stream\n" . $stream . "\nendstream";
-
-			        $this->objects[$toUnicodeId]['c'] = $res;
-
-			        $cidFontId = ++$this->numObj;
-			        $this->o_fontDescendentCID($cidFontId, 'new', $options);
-			        $this->objects[$id]['info']['cidFont'] = $cidFontId;
-				}
-                // also tell the pages node about the new font
-                $this->o_pages($this->currentNode,'font',array('fontNum'=>$fontNum,'objNum'=>$id));
-                break;
-            case 'add':
-                foreach ($options as $k=>$v){
-                    switch ($k){
-                        case 'BaseFont':
-                            $o['info']['name'] = $v;
-                            break;
-                        case 'FirstChar':
-                        case 'LastChar':
-                        case 'Widths':
-                        case 'FontDescriptor':
-                        case 'SubType':
-                            $this->debug('o_font '.$k." : ".$v, E_USER_NOTICE);
-                            $o['info'][$k] = $v;
-                            break;
-                    }
-                }
-                
-                // pass values down to descendent font
-      			if (isset($o['info']['cidFont'])) {
-        			$this->o_fontDescendentCID($o['info']['cidFont'], 'add', $options);
-      			}
-                break;
-            case 'out':
-            	if ($this->fonts[$this->objects[$id]['info']['fontFileName']]['isUnicode']) {
-			        // For Unicode fonts, we need to incorporate font data into
-			        // sub-sections that are linked from the primary font section.
-			        // Look at o_fontGIDtoCID and o_fontDescendentCID functions
-			        // for more informaiton.
-			        //
-			        // All of this code is adapted from the excellent changes made to
-			        // transform FPDF to TCPDF (http://tcpdf.sourceforge.net/)
-
-		        	$res = "\n$id 0 obj\n<</Type /Font /Subtype /Type0 /BaseFont /".$o['info']['name']."";
-		        	// The horizontal identity mapping for 2-byte CIDs; may be used
-		        	// with CIDFonts using any Registry, Ordering, and Supplement values.
-		       		$res.= " /Encoding /Identity-H /DescendantFonts [".$o['info']['cidFont']." 0 R] /ToUnicode ".$o['info']['toUnicode']." 0 R >>\n";
-		        	$res.= "endobj";
-				} else {
-	                $res="\n".$id." 0 obj\n<< /Type /Font /Subtype /".$o['info']['SubType']." ";
-	                $res.="/Name /F".$o['info']['fontNum']." ";
-	                $res.="/BaseFont /".$o['info']['name']." ";
-	                if (isset($o['info']['encodingDictionary'])){
-	                    // then place a reference to the dictionary
-	                    $res.="/Encoding ".$o['info']['encodingDictionary']." 0 R ";
-	                } else if (isset($o['info']['encoding'])){
-	                    // use the specified encoding
-	                    $res.="/Encoding /".$o['info']['encoding']." ";
-	                }
-	                if (isset($o['info']['FirstChar'])){
-	                    $res.="/FirstChar ".$o['info']['FirstChar']." ";
-	                }
-	                if (isset($o['info']['LastChar'])){
-	                    $res.="/LastChar ".$o['info']['LastChar']." ";
-	                }
-	                if (isset($o['info']['Widths'])){
-	                    $res.="/Widths ".$o['info']['Widths']." 0 R ";
-	                }
-	                if (isset($o['info']['FontDescriptor'])){
-	                    $res.="/FontDescriptor ".$o['info']['FontDescriptor']." 0 R ";
-	                }
-	                $res.=">>\nendobj";
-	            }
-                return $res;
-                break;
-        }
-    }
-
-    /**
-     * a font descriptor, needed for including additional fonts
-     * @access private
-     */
-    private function o_fontDescriptor($id, $action, $options = '')
-    {
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-            case 'new':
-                $this->objects[$id]=array('t'=>'fontDescriptor','info'=>$options);
-                break;
-            case 'out':
-                $res="\n".$id." 0 obj\n<< /Type /FontDescriptor ";
-                foreach ($o['info'] as $label => $value){
-                    switch ($label){
-                        case 'Ascent':
-                        case 'CapHeight':
-                        case 'Descent':
-                        case 'Flags':
-                        case 'ItalicAngle':
-                        case 'StemV':
-                        case 'AvgWidth':
-                        case 'Leading':
-                        case 'MaxWidth':
-                        case 'MissingWidth':
-                        case 'StemH':
-                        case 'XHeight':
-                        case 'CharSet':
-                            if (strlen($value)){
-                                $res.='/'.$label.' '.$value." ";
-                            }
-                            break;
-                        case 'FontFile':
-                        case 'FontFile2':
-                        case 'FontFile3':
-                            $res.='/'.$label.' '.$value." 0 R ";
-                            break;
-                        case 'FontBBox':
-                            $res.='/'.$label.' ['.$value[0].' '.$value[1].' '.$value[2].' '.$value[3]."] ";
-                            break;
-                        case 'FontName':
-                            $res.='/'.$label.' /'.$value." ";
-                            break;
-                    }
-                }
-                $res.=">>\nendobj";
-                return $res;
-                break;
-        }
-    }
-
-    /**
-     * the font encoding
-     * @access private
-     */
-    private function o_fontEncoding($id,$action,$options=''){
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-            case 'new':
-                // the options array should contain 'differences' and maybe 'encoding'
-                $this->objects[$id]=array('t'=>'fontEncoding','info'=>$options);
-                break;
-            case 'out':
-                $res="\n".$id." 0 obj\n<< /Type /Encoding ";
-                if (!isset($o['info']['encoding'])){
-                    $o['info']['encoding']='WinAnsiEncoding';
-                }
-                if ($o['info']['encoding']!='none'){
-                    $res.="/BaseEncoding /".$o['info']['encoding']." ";
-                }
-                $res.="/Differences [";
-                $onum=-100;
-                foreach($o['info']['differences'] as $num=>$label){
-                    if ($num!=$onum+1){
-                        // we cannot make use of consecutive numbering
-                        $res.= " ".$num." /".$label;
-                    } else {
-                        $res.= " /".$label;
-                    }
-                    $onum=$num;
-                }
-                $res.="] >>\nendobj";
-                return $res;
-                break;
-        }
-    }
-
-	/**
-	 * a descendent cid font, needed for unicode fonts
-	 * @access private
-	 */
-	private function o_fontDescendentCID($id, $action, $options = '') {
-		if ($action !== 'new') {
-		  $o = & $this->objects[$id];
-		}
-
-		switch ($action) {
-		case 'new':
-		  $this->objects[$id] = array('t' => 'fontDescendentCID', 'info' => $options);
-
-		  // we need a CID system info section
-		  $cidSystemInfoId = ++$this->numObj;
-		  $this->o_contents($cidSystemInfoId, 'new', 'raw');
-		  $this->objects[$id]['info']['cidSystemInfo'] = $cidSystemInfoId;
-		  $res = "<</Registry (Adobe)"; // A string identifying an issuer of character collections
-		  $res.= " /Ordering (UCS)"; // A string that uniquely names a character collection issued by a specific registry
-		  $res.= " /Supplement 0"; // The supplement number of the character collection.
-		  $res.= " >>";
-		  $this->objects[$cidSystemInfoId]['c'] = $res;
-
-		  // and a CID to GID map
-		  if($this->embedFont){
-		  	$cidToGidMapId = ++$this->numObj;
-		  	$this->o_fontGIDtoCIDMap($cidToGidMapId, 'new', $options);
-		  	$this->objects[$id]['info']['cidToGidMap'] = $cidToGidMapId;
-		  }
-		  break;
-
-		case 'add':
-		  foreach ($options as $k => $v) {
-		    switch ($k) {
-		    case 'BaseFont':
-		      $o['info']['name'] = $v;
-		      break;
-
-		    case 'FirstChar':
-		    case 'LastChar':
-		    case 'MissingWidth':
-		    case 'FontDescriptor':
-		    case 'SubType':
-		      $this->debug("o_fontDescendentCID $k : $v", E_USER_NOTICE);
-		      $o['info'][$k] = $v;
-		      break;
-		    }
-		  }
-
-		  // pass values down to cid to gid map
-		  if($this->embedFont){
-		  	$this->o_fontGIDtoCIDMap($o['info']['cidToGidMap'], 'add', $options);
-		  }
-		  break;
-
-		case 'out':
-		  $res = "\n$id 0 obj\n";
-		  $res.= "<</Type /Font /Subtype /CIDFontType2 /BaseFont /".$o['info']['name']." /CIDSystemInfo ".$o['info']['cidSystemInfo']." 0 R";
-		  if (isset($o['info']['FontDescriptor'])) {
-		    $res.= " /FontDescriptor ".$o['info']['FontDescriptor']." 0 R";
-		  }
-
-		  if (isset($o['info']['MissingWidth'])) {
-		    $res.= " /DW ".$o['info']['MissingWidth']."";
-		  }
-
-		  if (isset($o['info']['fontFileName']) && isset($this->fonts[$o['info']['fontFileName']]['CIDWidths'])) {
-		    $cid_widths = &$this->fonts[$o['info']['fontFileName']]['CIDWidths'];
-		    $w = '';
-		    foreach ($cid_widths as $cid => $width) {
-		      $w .= "$cid [$width] ";
-		    }
-		    $res.= " /W [$w]";
-		  }
-		  
-		  if($this->embedFont){
-		  	$res.= " /CIDToGIDMap ".$o['info']['cidToGidMap']." 0 R";
-		  }
-		  $res.= "  >>\n";
-		  $res.= "endobj";
-
-		  return $res;
-		}
-	}
-
-	/**
-	  * a font glyph to character map, needed for unicode fonts
-	  * @access private
-	  */
-	private function o_fontGIDtoCIDMap($id, $action, $options = '') {
-	    if ($action !== 'new') {
-	      $o = & $this->objects[$id];
-	    }
-
-	    switch ($action) {
-	    case 'new':
-	      $this->objects[$id] = array('t' => 'fontGIDtoCIDMap', 'info' => $options);
-	      break;
-
-	    case 'out':
-	      $res = "\n$id 0 obj\n";
-	      $fontFileName = $o['info']['fontFileName'];
-	      $tmp = $this->fonts[$fontFileName]['CIDtoGID'] = base64_decode($this->fonts[$fontFileName]['CIDtoGID']);
-	      
-	      if (isset($o['raw'])) {
-	        $res.= $tmp;
-	      } else {
-	        $res.= "<<";
-	        if (function_exists('gzcompress') && $this->options['compression']) {
-	          // then implement ZLIB based compression on this content stream
-	          $tmp = gzcompress($tmp, $this->options['compression']);
-	          $res.= " /Filter /FlateDecode";
-	        }
-	        
-	        $res.= " /Length ".mb_strlen($tmp, '8bit') .">>\nstream\n$tmp\nendstream";
-	      }
-
-	      $res.= "\nendobj";
-	      return $res;
-	    }
-	}
-
-    /**
-     * define the document information
-     * @access private
-     */
-    private function o_info($id,$action,$options=''){
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-        case 'new':
-            $this->infoObject=$id;
-            $date='D:'.date('Ymd');
-            $this->objects[$id]=array('t'=>'info','info'=>array('Creator'=>'R and OS php pdf writer, http://www.ros.co.nz','CreationDate'=>$date));
-            break;
-        case 'Title':
-        case 'Author':
-        case 'Subject':
-        case 'Keywords':
-        case 'Creator':
-        case 'Producer':
-        case 'CreationDate':
-        case 'ModDate':
-        case 'Trapped':
-            $o['info'][$action]=$options;
-            break;
-        case 'out':
-            if ($this->encrypted){
-                $this->encryptInit($id);
-            }
-            $res="\n".$id." 0 obj\n<< ";
-            foreach ($o['info']  as $k=>$v){
-                $res.='/'.$k.' (';
-                if ($this->encrypted){
-                    $res.=$this->filterText($this->ARC4($v), true, false);
-                } else {
-                    $res.=$this->filterText($v, true, false);
-                }
-                $res.=") ";
-            }
-            $res.=">>\nendobj";
-            return $res;
-            break;
-        }
-    }
-
-    /**
-     * an action object, used to link to URLS initially
-     * @access private
-     */
-    private function o_action($id,$action,$options=''){
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-        case 'new':
-            if (is_array($options)){
-                $this->objects[$id]=array('t'=>'action','info'=>$options,'type'=>$options['type']);
-            } else {
-                // then assume a URI action
-                $this->objects[$id]=array('t'=>'action','info'=>$options,'type'=>'URI');
-            }
-            break;
-        case 'out':
-            if ($this->encrypted){
-                $this->encryptInit($id);
-            }
-            $res="\n".$id." 0 obj\n<< /Type /Action";
-            switch($o['type']){
-            case 'ilink':
-                // there will be an 'label' setting, this is the name of the destination
-                $res.=" /S /GoTo /D ".$this->destinations[(string)$o['info']['label']]." 0 R";
-                break;
-            case 'URI':
-                $res.=" /S /URI /URI (";
-                if ($this->encrypted){
-                    $res.=$this->filterText($this->ARC4($o['info']), true, false);
-                } else {
-                    $res.=$this->filterText($o['info'], true, false);
-                }
-                $res.=")";
-                break;
-            }
-            $res.=" >>\nendobj";
-            return $res;
-            break;
-        }
-    }
-
-    /**
-     * an annotation object, this will add an annotation to the current page.
-     * initially will support just link annotations
-     * @access private
-     */
-    private function o_annotation($id,$action,$options=''){
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-        case 'new':
-            // add the annotation to the current page
-            $pageId = $this->currentPage;
-            $this->o_page($pageId,'annot',$id);
-            // and add the action object which is going to be required
-            switch($options['type']){
-            case 'link':
-                $this->objects[$id]=array('t'=>'annotation','info'=>$options);
-                $this->numObj++;
-                $this->o_action($this->numObj,'new',$options['url']);
-                $this->objects[$id]['info']['actionId']=$this->numObj;
-                break;
-            case 'ilink':
-                // this is to a named internal link
-                $label = $options['label'];
-                $this->objects[$id]=array('t'=>'annotation','info'=>$options);
-                $this->numObj++;
-                $this->o_action($this->numObj,'new',array('type'=>'ilink','label'=>$label));
-                $this->objects[$id]['info']['actionId']=$this->numObj;
-                break;
-            }
-            break;
-        case 'out':
-			$res="\n".$id." 0 obj << /Type /Annot";
-            switch($o['info']['type']){
-                case 'link':
-                case 'ilink':
-                    $res.= " /Subtype /Link";
-                    break;
-            }
-            $res.=" /A ".$o['info']['actionId']." 0 R";
-            $res.=" /Border [0 0 0]";
-            $res.=" /H /I";
-            $res.=" /Rect [ ";
-            foreach($o['info']['rect'] as $v){
-                $res.= sprintf("%.4f ",$v);
-            }
-            $res.="]";
-            $res.=" >>\nendobj";
-            return $res;
-            break;
-        }
-    }
-
-    /**
-     * a page object, it also creates a contents object to hold its contents
-     * @access private
-     */
-    private function o_page($id,$action,$options=''){
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-        case 'new':
-            $this->numPages++;
-            $this->objects[$id]=array('t'=>'page','info'=>array('parent'=>$this->currentNode,'pageNum'=>$this->numPages));
-            if (is_array($options)){
-                // then this must be a page insertion, array shoudl contain 'rid','pos'=[before|after]
-                $options['id']=$id;
-                $this->o_pages($this->currentNode,'page',$options);
-            } else {
-                $this->o_pages($this->currentNode,'page',$id);
-            }
-            $this->currentPage=$id;
-            // make a contents object to go with this page
-            $this->numObj++;
-            $this->o_contents($this->numObj,'new',$id);
-            $this->currentContents=$this->numObj;
-            $this->objects[$id]['info']['contents']=array();
-            $this->objects[$id]['info']['contents'][]=$this->numObj;
-            $match = ($this->numPages%2 ? 'odd' : 'even');
-            foreach($this->addLooseObjects as $oId=>$target){
-                if ($target=='all' || $match==$target){
-                    $this->objects[$id]['info']['contents'][]=$oId;
-                }
-            }
-            break;
-        case 'content':
-            $o['info']['contents'][]=$options;
-            break;
-        case 'annot':
-            // add an annotation to this page
-            if (!isset($o['info']['annot'])){
-                $o['info']['annot']=array();
-            }
-            // $options should contain the id of the annotation dictionary
-            $o['info']['annot'][]=$options;
-            break;
-        case 'out':
-            $res="\n".$id." 0 obj\n<< /Type /Page";
-            $res.=" /Parent ".$o['info']['parent']." 0 R";
-            if (isset($o['info']['annot'])){
-                $res.=" /Annots [";
-                foreach($o['info']['annot'] as $aId){
-                    $res.=" ".$aId." 0 R";
-                }
-                $res.=" ]";
-            }
-            $count = count($o['info']['contents']);
-            if ($count==1){
-                $res.=" /Contents ".$o['info']['contents'][0]." 0 R";
-            } else if ($count>1){
-                $res.=" /Contents [ ";
-                foreach ($o['info']['contents'] as $cId){
-                    $res.=$cId." 0 R ";
-                }
-                $res.="]";
-            }
-            $res.=" >>\nendobj";
-            return $res;
-            break;
-        }
-    }
-
-    /**
-     * the contents objects hold all of the content which appears on pages
-     * @access private
-     */
-    private function o_contents($id,$action,$options=''){
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch ($action){
-        case 'new':
-            $this->objects[$id]=array('t'=>'contents','c'=>'','info'=>array());
-            if (strlen($options) && intval($options)){
-                // then this contents is the primary for a page
-                $this->objects[$id]['onPage']=$options;
-            } else if ($options=='raw'){
-                // then this page contains some other type of system object
-                $this->objects[$id]['raw']=1;
-            }
-            break;
-        case 'add':
-            // add more options to the decleration
-            foreach ($options as $k=>$v){
-                $o['info'][$k]=$v;
-            }
-        case 'out':
-            $tmp=$o['c'];
-            $res= "\n".$id." 0 obj\n";
-            if (isset($this->objects[$id]['raw'])){
-                $res.=$tmp;
-            } else {
-                $res.= "<<";
-                if (function_exists('gzcompress') && $this->options['compression']){
-                    // then implement ZLIB based compression on this content stream
-                    $res.=" /Filter /FlateDecode";
-                    $tmp = gzcompress($tmp, $this->options['compression']);
-                }
-                if ($this->encrypted){
-                    $this->encryptInit($id);
-                   $tmp = $this->ARC4($tmp);
-                }
-                foreach($o['info'] as $k=>$v){
-                    $res .= " /".$k.' '.$v;
-                }
-                $res.=" /Length ".strlen($tmp)." >> stream\n".$tmp."\nendstream";
-            }
-            $res.="\nendobj";
-            return $res;
-            break;
-        }
-    }
-
-    /**
-     * an image object, will be an XObject in the document, includes description and data
-     * @access private
-     */
-    private function o_image($id,$action,$options=''){
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch($action){
-        case 'new':
-    		// make the new object
-            $this->objects[$id]=array('t'=>'image','data'=>$options['data'],'info'=>array());
-            $this->objects[$id]['info']['Type']='/XObject';
-            $this->objects[$id]['info']['Subtype']='/Image';
-            $this->objects[$id]['info']['Width']=$options['iw'];
-            $this->objects[$id]['info']['Height']=$options['ih'];
-            if (!isset($options['type']) || $options['type']=='jpg'){
-                if (!isset($options['channels'])){
-                    $options['channels']=3;
-                }
-                switch($options['channels']){
-                case 1:
-                    $this->objects[$id]['info']['ColorSpace']='/DeviceGray';
-                    break;
-                default:
-                    $this->objects[$id]['info']['ColorSpace']='/DeviceRGB';
-                    break;
-                }
-                $this->objects[$id]['info']['Filter']='/DCTDecode';
-                $this->objects[$id]['info']['BitsPerComponent']=8;
-            } else if ($options['type']=='png'){
-                if (strlen($options['pdata'])){
-                    $this->numObj++;
-                    $this->objects[$this->numObj]=array('t'=>'image','c'=>'','info'=>array());
-                    $this->objects[$this->numObj]['info'] = array('Type'=>'/XObject', 'Subtype'=>'/Image', 'Width'=> $options['iw'], 'Height'=> $options['ih'], 'Filter'=>'/FlateDecode', 'ColorSpace'=>'/DeviceGray', 'BitsPerComponent'=>'8', 'DecodeParms'=>'<< /Predictor 15 /Colors 1 /BitsPerComponent 8 /Columns '.$options['iw'].' >>');
-                    $this->objects[$this->numObj]['data']=$options['pdata'];
-                    if (isset($options['transparency'])){
-                        switch($options['transparency']['type']){
-                        case 'indexed':
-                            $tmp=' [ '.$options['transparency']['data'].' '.$options['transparency']['data'].'] ';
-                            $this->objects[$id]['info']['Mask'] = $tmp;
-                            $this->objects[$id]['info']['ColorSpace'] = ' [ /Indexed /DeviceRGB '.(strlen($options['pdata'])/3-1).' '.$this->numObj.' 0 R ]';
-                            break;
-                        case 'alpha':
-                            $this->objects[$id]['info']['SMask'] = $this->numObj.' 0 R';
-                            $this->objects[$id]['info']['ColorSpace'] = '/'.$options['color'];
-                        	break;
-                        }
-                    }
-                } else {
-                    $this->objects[$id]['info']['ColorSpace']='/'.$options['color'];
-                }
-                $this->objects[$id]['info']['BitsPerComponent']=$options['bitsPerComponent'];
-                $this->objects[$id]['info']['Filter']='/FlateDecode';
-                $this->objects[$id]['data'] = $options['data'];
-                $this->objects[$id]['info']['DecodeParms']='<< /Predictor 15 /Colors '.$options['ncolor'].' /Columns '.$options['iw'].' /BitsPerComponent '.$options['bitsPerComponent'].'>>';
-            }
-            // assign it a place in the named resource dictionary as an external object, according to
-            // the label passed in with it.
-            $this->o_pages($this->currentNode,'xObject',array('label'=>$options['label'],'objNum'=>$id));
-            break;
-        case 'out':
-            $tmp=$o['data'];
-            $res= "\n".$id." 0 obj\n<<";
-            foreach($o['info'] as $k=>$v){
-                $res.=" /".$k.' '.$v;
-            }
-            if ($this->encrypted){
-                $this->encryptInit($id);
-                $tmp = $this->ARC4($tmp);
-            }
-            $res.=" /Length ".strlen($tmp)." >> stream\n".$tmp."\nendstream\nendobj";
-            return $res;
-            break;
-        }
-    }
-
-    /**
-     * encryption object.
-     * @access private
-     */
-    private function o_encryption($id,$action,$options=''){
-        if ($action!='new'){
-            $o =& $this->objects[$id];
-        }
-        switch($action){
-        case 'new':
-            // make the new object
-            $this->objects[$id]=array('t'=>'encryption','info'=>$options);
-            $this->arc4_objnum=$id;
-            
-            // Pad or truncate the owner password
-            $owner = substr($options['owner'].$this->encryptionPad,0,32);
-            $user = substr($options['user'].$this->encryptionPad,0,32);
-            
-            $this->debug("o_encryption: user password (".$options['user'].") / owner password (".$options['owner'].")");
-            
-            // convert permission set into binary string
-            $permissions = sprintf("%c%c%c%c", ($options['p'] & 255),  (($options['p'] >> 8) & 255) , (($options['p'] >> 16) & 255),  (($options['p'] >> 24) & 255));
-            
-            // Algo 3.3 Owner Password being set into /O Dictionary
-            $this->objects[$id]['info']['O'] = $this->encryptOwner($owner, $user); 
-            
-            // Algo 3.5 User Password - START
-            $this->objects[$id]['info']['U'] = $this->encryptUser($user, $this->objects[$id]['info']['O'], $permissions);
-            // encryption key is set in encryptUser function
-            //$this->encryptionKey = $encryptionKey;
-            
-            $this->encrypted=1;
-            break;
-        case 'out':
-            $res= "\n".$id." 0 obj\n<<";
-            $res.=' /Filter /Standard';
-            if($this->encryptionMode > 1){ // RC4 128bit encryption
-            	$res.=' /V 2';
-            	$res.=' /R 3';
-            	$res.=' /Length 128';
-            } else { // RC4 40bit encryption
-            	$res.=' /V 1';
-            	$res.=' /R 2';
-            }
-            // use hex string instead of char code - char codes can make troubles (E.g. CR or LF)
-            $res.=' /O <'.$this->strToHex($o['info']['O']).'>';
-            $res.=' /U <'.$this->strToHex($o['info']['U']).'>';
-            // and the p-value needs to be converted to account for the twos-complement approach
-            //$o['info']['p'] = (($o['info']['p'] ^ 0xFFFFFFFF)+1)*-1;
-            $res.=' /P '.($o['info']['p']);
-            $res.=" >>\nendobj";
-            return $res;
-            break;
-        }
-    }
-	
-    /**
-     * owner part of the encryption
-     * @param $owner - owner password plus padding
-     * @param $user - user password plus padding
-     * @access private
-     */
-	private function encryptOwner($owner, $user){
-		$keylength = 5;
-		if($this->encryptionMode > 1){
-			$keylength = 16;
-		}
-		
-        $ownerHash = $this->md5_16($owner); // PDF 1.4 - repeat this 50 times in revision 3
-        if($this->encryptionMode > 1) { // if it is the RC4 128bit encryption
-        	for($i = 0; $i < 50; $i++){
-        		$ownerHash = $this->md5_16($ownerHash);
-        	}
-        }
-        
-        $ownerKey = substr($ownerHash,0,$keylength); // PDF 1.4 - Create the encryption key (IMPORTANT: need to check Length)
-        
-        $this->ARC4_init($ownerKey); // 5 bytes of the encryption key (hashed 50 times)
-        $ovalue=$this->ARC4($user); // PDF 1.4 - Encrypt the padded user password using RC4
-        
-        if($this->encryptionMode > 1){
-            $len = strlen($ownerKey);
-            for($i = 1;$i<=19; ++$i){
-            	$ek = '';
-            	for($j=0; $j < $len; $j++){
-            		$ek .= chr( ord($ownerKey[$j]) ^ $i );
-            	}
-            	$this->ARC4_init($ek);
-            	$ovalue = $this->ARC4($ovalue);
-            }
-        }
-        return $ovalue;
-	}
-	
-	/**
-	 * 
-	 * user part of the encryption
-	 * @param $user - user password plus padding
-	 * @param $ownerDict - encrypted owner entry
-	 * @param $permissions - permission set (print, copy, modify, ...)
-	 */
-	function encryptUser($user,$ownerDict, $permissions){
-		$keylength = 5;
-		if($this->encryptionMode > 1){
-			$keylength = 16;
-		}
-		// make hash with user, encrypted owner, permission set and fileIdentifier
-        $hash = $this->md5_16($user.$ownerDict.$permissions.$this->hexToStr($this->fileIdentifier));
-        
-        // loop thru the hash process when it is revision 3 of encryption routine (usually RC4 128bit)
-        if($this->encryptionMode > 1) {
-	        for ($i = 0; $i < 50; ++$i) {
-	        	$hash = $this->md5_16(substr($hash, 0, $keylength)); // use only length of encryption key from the previous hash
-			}
-		}
-		
-        $this->encryptionKey = substr($hash,0,$keylength); // PDF 1.4 - Create the encryption key (IMPORTANT: need to check Length)
-        
-        if($this->encryptionMode > 1){ // if it is the RC4 128bit encryption
-        	// make a md5 hash from padding string (hardcoded by Adobe) and the fileIdenfier
-        	$userHash = $this->md5_16($this->encryptionPad.$this->hexToStr($this->fileIdentifier));
-        	
-        	// encrypt the hash from the previous method by using the encryptionKey
-        	$this->ARC4_init($this->encryptionKey);
-        	$uvalue=$this->ARC4($userHash);
-        	
-        	$len = strlen($this->encryptionKey);
-            for($i = 1;$i<=19; ++$i){
-            	$ek = '';
-            	for($j=0; $j< $len; $j++){
-            		$ek .= chr( ord($this->encryptionKey[$j]) ^ $i );
-            	}
-            	$this->ARC4_init($ek);
-            	$uvalue = $this->ARC4($uvalue);
-            }
-            $uvalue .= substr($this->encryptionPad,0,16);
-            
-            //$this->encryptionKey = $encryptionKey;
-        }else{ // if it is the RC4 40bit encryption
-        	$this->ARC4_init($this->encryptionKey);
-        	//$this->encryptionKey = $encryptionKey;
-        	//$this->encrypted=1;
-        	$uvalue=$this->ARC4($this->encryptionPad);
-        }
-        return $uvalue;
-	}
-	
-	/**
-	 * internal method to convert string to hexstring (used for owner and user dictionary)
-	 * @param $string - any string value
-	 * @access protected
-	 */
-	protected function strToHex($string)
-	{
-		$hex = '';
-		for ($i=0; $i < strlen($string); $i++)
-			$hex .= sprintf("%02x",ord($string[$i]));
-		return $hex;
-	}
-	
-	protected function hexToStr($hex)
-	{
-		$str = '';
-    	for($i=0;$i<strlen($hex);$i+=2)
-    	$str .= chr(hexdec(substr($hex,$i,2)));
-    	return $str;
-  	}
-
-    /**
-     * calculate the 16 byte version of the 128 bit md5 digest of the string
-     * @access private
-     */
-    private function md5_16($string){
-        $tmp = md5($string);
-        $out = pack("H*", $tmp);
-        return $out;
-    }
-
-    /**
-     * initialize the encryption for processing a particular object
-     * @access private
-     */
-    private function encryptInit($id){
-        $tmp = $this->encryptionKey;
-        $hex = dechex($id);
-        if (strlen($hex)<6){
-            $hex = substr('000000',0,6-strlen($hex)).$hex;
-        }
-        $tmp.= chr(hexdec(substr($hex,4,2))).chr(hexdec(substr($hex,2,2))).chr(hexdec(substr($hex,0,2))).chr(0).chr(0);
-        $key = $this->md5_16($tmp);
-        if($this->encryptionMode > 1){
-        	$this->ARC4_init(substr($key,0,16)); // use max 16 bytes for RC4 128bit encryption key
-        } else {
-        	$this->ARC4_init(substr($key,0,10)); // use (n + 5 bytes) for RC4 40bit encryption key
-        }
-    }
-
-    /**
-     * initialize the ARC4 encryption
-     * @access private
-     */
-    private function ARC4_init($key=''){
-        $this->arc4 = '';
-        // setup the control array
-        if (strlen($key)==0){
-            return;
-        }
-        $k = '';
-        while(strlen($k)<256){
-            $k.=$key;
-        }
-        $k=substr($k,0,256);
-        for ($i=0;$i<256;$i++){
-            $this->arc4 .= chr($i);
-        }
-        $j=0;
-        for ($i=0;$i<256;$i++){
-            $t = $this->arc4[$i];
-            $j = ($j + ord($t) + ord($k[$i]))%256;
-            $this->arc4[$i]=$this->arc4[$j];
-            $this->arc4[$j]=$t;
-        }
-    }
-
-    /**
-     * ARC4 encrypt a text string
-     * @access private
-     */
-    private function ARC4($text){
-        $len=strlen($text);
-        $a=0;
-        $b=0;
-        $c = $this->arc4;
-        $out='';
-        for ($i=0;$i<$len;$i++){
-            $a = ($a+1)%256;
-            $t= $c[$a];
-            $b = ($b+ord($t))%256;
-            $c[$a]=$c[$b];
-            $c[$b]=$t;
-            $k = ord($c[(ord($c[$a])+ord($c[$b]))%256]);
-            $out.=chr(ord($text[$i]) ^ $k);
-        }
-		return $out;
-    }
-
-    /**
-     * add a link in the document to an external URL
-     * @access public
-     */
-    public function addLink($url,$x0,$y0,$x1,$y1){
-        $this->numObj++;
-        $info = array('type'=>'link','url'=>$url,'rect'=>array($x0,$y0,$x1,$y1));
-        $this->o_annotation($this->numObj,'new',$info);
-    }
-
-    /**
-     * add a link in the document to an internal destination (ie. within the document)
-     * @access public
-     */
-    public function addInternalLink($label,$x0,$y0,$x1,$y1){
-        $this->numObj++;
-        $info = array('type'=>'ilink','label'=>$label,'rect'=>array($x0,$y0,$x1,$y1));
-        $this->o_annotation($this->numObj,'new',$info);
-    }
-
-    /**
-     * set the encryption of the document
-     * can be used to turn it on and/or set the passwords which it will have.
-     * also the functions that the user will have are set here, such as print, modify, add
-     * @access public
-     */
-    public function setEncryption($userPass = '',$ownerPass = '',$pc = array(), $mode = 1){
-    	if($mode > 1){
-        	$p=bindec('01111111111111111111000011000000'); // revision 3 is using bit 3 - 6 AND 9 - 12
-        }else{
-        	$p=bindec('01111111111111111111111111000000'); // while revision 2 is using bit 3 - 6 only
-        }
-        
-        $options = array(
-            'print'=>4
-            ,'modify'=>8
-            ,'copy'=>16
-            ,'add'=>32
-            ,'fill'=>256
-            ,'extract'=>512
-            ,'assemble'=>1024
-            ,'represent'=>2048
-        );
-        foreach($pc as $k=>$v){
-            if ($v && isset($options[$k])){
-                $p+=$options[$k];
-            } else if (isset($options[$v])){
-                $p+=$options[$v];
-            }
-        }
-        
-        // set the encryption mode to either RC4 40bit or RC4 128bit
-        $this->encryptionMode = $mode;
-        
-        // implement encryption on the document
-        if ($this->arc4_objnum == 0){
-            // then the block does not exist already, add it.
-            $this->numObj++;
-            if (strlen($ownerPass)==0){
-                $ownerPass=$userPass;
-            }
-            $this->o_encryption($this->numObj,'new',array('user'=>$userPass,'owner'=>$ownerPass,'p'=>$p));
-        }
-    }
-
-    /**
-     * should be used for internal checks, not implemented as yet
-     * @access public
-     */
-    function checkAllHere() {
-    	// set the validation flag to true when everything is ok.
-    	// currently it only checks if output function has been called
-    	$this->valid = true;
-    }
-
-    /**
-     * return the pdf stream as a string returned from the function
-     * This method is protect to force user to use ezOutput from Cezpdf.php
-     * @access protected
-     */
-    function output($debug=0){
-
-        if ($debug){
-            // turn compression off
-            $this->options['compression']=0;
-        }
-
-        if ($this->arc4_objnum){
-            $this->ARC4_init($this->encryptionKey);
-        }
-        
-		if($this->valid){
-			$this->debug('The output method has been executed again', E_USER_WARNING);
-		}
-
-        $this->checkAllHere();
-
-        $xref=array();
-        $content="%PDF-1.4\n%����";
-        //  $content="%PDF-1.3\n";
-        $pos=strlen($content);
-        foreach($this->objects as $k=>$v){
-            $tmp='o_'.$v['t'];
-            $cont=$this->$tmp($k,'out');
-            $content.=$cont;
-            $xref[]=$pos;
-            $pos+=strlen($cont);
-        }
-        ++$pos;
-        $content.="\nxref\n0 ".(count($xref)+1)."\n0000000000 65535 f \n";
-        foreach($xref as $p){
-            $content.=substr('0000000000',0,10-strlen($p+1)).($p+1)." 00000 n \n";
-        }
-        $content.="trailer\n<< /Size ".(count($xref)+1)." /Root 1 0 R /Info ".$this->infoObject." 0 R";
-        // if encryption has been applied to this document then add the marker for this dictionary
-        if ($this->arc4_objnum > 0){
-            $content .= " /Encrypt ".$this->arc4_objnum." 0 R";
-        }
-        if (strlen($this->fileIdentifier)){
-            $content .= " /ID[<".$this->fileIdentifier."><".$this->fileIdentifier.">]";
-        }
-        $content .= " >>\nstartxref\n".$pos."\n%%EOF\n";
-        return $content;
-    }
-
-    /**
-     * intialize a new document
-     * if this is called on an existing document results may be unpredictable, but the existing document would be lost at minimum
-     * this function is called automatically by the constructor function
-     *
-     * @access protected
-     */
-    protected function newDocument($pageSize=array(0,0,612,792)){
-        $this->numObj=0;
-        $this->objects = array();
-
-        $this->numObj++;
-        $this->o_catalog($this->numObj,'new');
-
-        $this->numObj++;
-        $this->o_outlines($this->numObj,'new');
-
-        $this->numObj++;
-        $this->o_pages($this->numObj,'new');
-
-        $this->o_pages($this->numObj,'mediaBox',$pageSize);
-        $this->currentNode = 3;
-
-        $this->o_pages($this->numObj, 'procset', '[/PDF/TEXT/ImageB/ImageC/ImageI]');
-
-        $this->numObj++;
-        $this->o_info($this->numObj,'new');
-
-        $this->numObj++;
-        $this->o_page($this->numObj,'new');
-
-        // need to store the first page id as there is no way to get it to the user during
-        // startup
-        $this->firstPageId = $this->currentContents;
-    }
-
-    /**
-     * open the font file and return a php structure containing it.
-     * first check if this one has been done before and saved in a form more suited to php
-     * note that if a php serialized version does not exist it will try and make one, but will
-     * require write access to the directory to do it... it is MUCH faster to have these serialized
-     * files.
-     *
-     * @param string $font Font name (can contain both path and extension)
-     *
-     * @return void
-     */
-    protected function openFont($font) {
-        // assume that $font contains both the path and perhaps the extension to the file, split them
-        $pos = strrpos($font, '/');
-        if ($pos === false) {
-            // $dir  = './';
-            $dir  = dirname(__FILE__) . '/fonts/';
-            $name = $font;
-        } else {
-            $dir  = substr($font, 0, $pos + 1);
-            $name = substr($font, $pos + 1);
-        }
-
-        //if (substr($name, -4) == '.afm' || substr($name, -4) == '.ufm') {
-            //$name = substr($name, 0, strlen($name) - 4);
-        //}
-        
-        if(!$this->isUnicode){
-        	$metrics_name = "$name.afm";
-        }else{
-        	$metrics_name = "$name.ufm";
-        }
-        
-        $this->debug('openFont executed: '.$font.' - '.$name.' / IsUnicode: '.$this->isUnicode);
-        
-        $cachedFile = 'cached'.$metrics_name.'.php';
-        
-        // use the temp folder to read/write cached font data
-        if (file_exists($this->tempPath.'/'.$cachedFile)) {
-            $this->debug('openFont: '.$this->tempPath.'/'.$cachedFile.' already exist');
-            //$tmp = file($this->tempPath.'/'.$cachedFile);
-            $this->fonts[$font] = require($this->tempPath.'/'.$cachedFile);
-            if (!isset($this->fonts[$font]['_version_']) || $this->fonts[$font]['_version_']<2) {
-                // if the font file is old, then clear it out and prepare for re-creation
-                $this->debug('openFont: clear out, make way for new version.');
-                unset($this->fonts[$font]);
-            }
-        }
-        if (!isset($this->fonts[$font]) && file_exists($dir.$metrics_name)) {
-            // then rebuild the php_<font>.afm file from the <font>.afm file
-            $this->debug('openFont: (re)create '.$cachedFile);
-            $data = array();
-            // set unicode to true ufm file is used
-            $data['isUnicode'] = (strtolower(substr($metrics_name, -3)) !== 'afm');
-            
-            $cidtogid = '';
-      		if ($data['isUnicode']) {
-        		$cidtogid = str_pad('', 256*256*2, "\x00");
-      		}
-            
-            $file = file($dir.$metrics_name);
-            foreach ($file as $row) {
-                $row=trim($row);
-                $pos=strpos($row,' ');
-                if ($pos) {
-                    // then there must be some keyword
-                    $key = substr($row,0,$pos);
-                    switch ($key) {
-                    case 'FontName':
-                    case 'FullName':
-                    case 'FamilyName':
-                    case 'Weight':
-                    case 'ItalicAngle':
-                    case 'IsFixedPitch':
-                    case 'CharacterSet':
-                    case 'UnderlinePosition':
-                    case 'UnderlineThickness':
-                    case 'Version':
-                    case 'EncodingScheme':
-                    case 'CapHeight':
-                    case 'XHeight':
-                    case 'Ascender':
-                    case 'Descender':
-                    case 'StdHW':
-                    case 'StdVW':
-                    case 'StartCharMetrics':
-                        $data[$key]=trim(substr($row,$pos));
-                        break;
-                    case 'FontBBox':
-                        $data[$key]=explode(' ',trim(substr($row,$pos)));
-                        break;
-                    case 'C':
-                        // C 39 ; WX 222 ; N quoteright ; B 53 463 157 718 ;
-                        // use preg_match instead to improve performace
-                        // IMPORTANT: if "L i fi ; L l fl ;" is required preg_match must be amended
-                        $r = preg_match('/C (-?\d+) ; WX (-?\d+) ; N (\w+) ; B (-?\d+) (-?\d+) (-?\d+) (-?\d+) ;/', $row, $m);
-                        if($r == 1){
-                        	//$dtmp = array('C'=> $m[1],'WX'=> $m[2], 'N' => $m[3], 'B' => array($m[4], $m[5], $m[6], $m[7]));
-                        	$c = (int)$m[1];
-            				$n = $m[3];
-            				$width = floatval($m[2]);
-            
-                        	if($c >= 0){
-                        		if ($c != hexdec($n)) {
-                					$data['codeToName'][$c] = $n;
-              					}
-                        		$data['C'][$c] = $width;
-                        		$data['C'][$n] = $width;
-                        	}else{
-                        		$data['C'][$n] = $width;
-                        	}
-                        	
-                        	if (!isset($data['MissingWidth']) && $c == -1 && $n === '.notdef') {
-			              		$data['MissingWidth'] = $width;
-			            	}
-                        }
-                        break;
-                    // U 827 ; WX 0 ; N squaresubnosp ; G 675 ;
-			        case 'U': // Found in UFM files
-			            if (!$data['isUnicode']) break;
-			            
-			            $r = preg_match('/U (-?\d+) ; WX (-?\d+) ; N (\w+) ; G (-?\d+) ;/', $row, $m);
-			            
-			            if($r == 1){
-			            	//$dtmp = array('U'=> $m[1],'WX'=> $m[2], 'N' => $m[3], 'G' => $m[4]);
-			            	$c = (int)$m[1];
-			            	$n = $m[3];
-			            	$glyph = $m[4];
-			            	$width = floatval($m[2]);
-			            	
-			            	if($c >= 0){
-			            		if ($c >= 0 && $c < 0xFFFF && $glyph) {
-			               			$cidtogid[$c*2] = chr($glyph >> 8);
-			                		$cidtogid[$c*2 + 1] = chr($glyph & 0xFF);
-			              		}
-			              		if ($c != hexdec($n)) {
-                					$data['codeToName'][$c] = $n;
-              					}
-			            		$data['C'][$c] = $width;
-			            	} else{
-			            		$data['C'][$n] = $width;
-			            	}
-			            	
-			            	if (!isset($data['MissingWidth']) && $c == -1 && $n === '.notdef') {
-			              		$data['MissingWidth'] = $width;
-			            	}
-			            }
-			            break;
-                    case 'KPX':
-                    	break;
-                        // KPX Adieresis yacute -40
-                        $bits=explode(' ',$row);
-                        $data['KPX'][$bits[1]][$bits[2]]=$bits[3];
-                        break;
-                    }
-                }
-            }
-            
-            $data['CIDtoGID'] = base64_encode($cidtogid);
-            $data['_version_']=2;
-            
-            $this->fonts[$font]=$data;
-            $fp = fopen($this->tempPath.'/'.$cachedFile,'w'); // use the temp folder to write cached font data
-            fwrite($fp,'<?php /* R&OS php pdf class font cache file */ return '.var_export($data,true).'; ?>');
-            fclose($fp);
-        } else if (!isset($this->fonts[$font])) {
-            $this->debug(sprintf('openFont: no font file found for "'.$font.'" IsUnicode: %b', $font, $this->isUnicode), E_USER_WARNING);
-        }
-    }
-
-    /**
-     * if the font is not loaded then load it and make the required object
-     * else just make it the current font
-     * the encoding array can contain 'encoding'=> 'none','WinAnsiEncoding','MacRomanEncoding' or 'MacExpertEncoding'
-     * note that encoding='none' will need to be used for symbolic fonts
-     * and 'differences' => an array of mappings between numbers 0->255 and character names.
-     *
-     * @param string  $fontName Name of the font
-     * @param string  $encoding Which encoding to use
-     * @param integer $set      What is this
-     *
-     * @return void
-     * @access public
-     */
-    public function selectFont($fontName, $encoding = '', $set = 1)
-    {
-    	$ext = substr($fontName, -4);
-    	if ($ext === '.afm' || $ext === '.ufm') {
-			$fontName = substr($fontName, 0, strlen($fontName)-4);
-    	}
-    	
-    	$pos = strrpos($fontName, '/');
-        if ($pos !== false) {
-            $name = substr($fontName, $pos + 1);
-        } else {
-            $name = $fontName;
-        }
-        
-        if (!isset($this->fonts[$fontName])){
-            // load the file
-            $this->openFont($fontName);
-            if (isset($this->fonts[$fontName])){
-                $this->numObj++;
-                $this->numFonts++;
-                
-                $font = &$this->fonts[$fontName];
-                $options = array('name' => $name, 'fontFileName' => $fontName);
-                
-                if (is_array($encoding)){
-                    // then encoding and differences might be set
-                    if (isset($encoding['encoding'])){
-                        $options['encoding'] = $encoding['encoding'];
-                    }
-                    if (isset($encoding['differences'])){
-                        $options['differences'] = $encoding['differences'];
-                    }
-                } else if (strlen($encoding)){
-                    // then perhaps only the encoding has been set
-                    $options['encoding'] = $encoding;
-                }
-                $fontObj = $this->numObj;
-                $this->o_font($this->numObj, 'new', $options);
-                $font['fontNum'] = $this->numFonts;
-                // if this is a '.afm' font, and there is a '.pfa' file to go with it (as there
-                // should be for all non-basic fonts), then load it into an object and put the
-                // references into the font object
-                
-                $fbtype = '';
-                if (file_exists($fontName.'.pfb')){
-                    $fbtype = 'pfb';
-                } else if (file_exists($fontName.'.ttf')){
-                    $fbtype = 'ttf';
-                }
-                
-                $fbfile = $fontName.'.'.$fbtype;
-                
-                if ($fbtype){
-                    $adobeFontName = $font['FontName'];
-                    // $fontObj = $this->numObj;
-                    $this->debug('selectFont: adding font file "'.$fbfile.'" to pdf');
-                    // find the array of fond widths, and put that into an object.
-                    $firstChar = -1;
-                    $lastChar = 0;
-                    $widths = array();
-                    $cid_widths = array();
-                    
-                    foreach ($font['C'] as $num => $d){
-                        if (intval($num) > 0 || $num == '0'){
-                        	if(!$font['isUnicode']){
-	                            if ($lastChar > 0 && $num > $lastChar + 1){
-	                                for($i = $lastChar + 1; $i < $num; $i++){
-	                                    $widths[] = 0;
-	                                }
-	                            }
-                            }
-                            $widths[] = $d;
-                            
-                            if ($font['isUnicode']) {
-                				$cid_widths[$num] = $d;
-              				}
-                            
-                            if ($firstChar == -1){
-                                $firstChar = $num;
-                            }
-                            $lastChar = $num;
-                        }
-                    }
-                    // also need to adjust the widths for the differences array
-                    if (isset($options['differences'])){
-                        foreach ($options['differences'] as $charNum => $charName){
-                            if ($charNum>$lastChar){
-                                for($i = $lastChar + 1; $i <= $charNum; $i++) {
-                                    $widths[]=0;
-                                }
-                                $lastChar = $charNum;
-                            }
-                            if (isset($font['C'][$charName])){
-                                $widths[$charNum-$firstChar]=$font['C'][$charName];
-                                if($font['isUnicode']){
-                                	$cid_widths[$charName] = $font['C'][$charName];
-                                }
-                            }
-                        }
-                    }
-                    
-                    if($font['isUnicode']){
-                    	$font['CIDWidths'] = $cid_widths;
-                    }
-                    $this->debug('selectFont: FirstChar='.$firstChar);
-                    $this->debug('selectFont: LastChar='.$lastChar);
-                    
-                    $widthid = -1;
-                    
-                    if(!$font['isUnicode']){
-                    	$this->numObj++;
-                    	$this->o_contents($this->numObj, 'new', 'raw');
-                    	$this->objects[$this->numObj]['c'].='['.implode(' ', $widths).']';
-                    	$widthid = $this->numObj;
-                    }
-                    
-                    $missing_width = 500;
-                    $stemV = 70;
-                    
-                    if (isset($font['MissingWidth'])) {
-            			$missing_width = $font['MissingWidth'];
-          			}
-          			if (isset($font['StdVW'])) {
-            			$stemV = $font['StdVW'];
-          			} else if (isset($font['Weight']) && preg_match('!(bold|black)!i', $font['Weight'])) {
-            			$stemV = 120;
-          			}
-
-                    // load the pfb file, and put that into an object too.
-                    // note that pdf supports only binary format type 1 font files, though there is a
-                    // simple utility to convert them from pfa to pfb.
-                    if($this->embedFont){
-	                    if(!$this->isUnicode || $fbtype !== 'ttf'){
-	                    	$data = file_get_contents($fbfile);
-	                    }else{
-	                    	$data = file_get_contents($fbfile);;
-	                    }
-                    }
-
-                    // create the font descriptor
-                    $this->numObj++;
-                    $fontDescriptorId = $this->numObj;
-                    
-                    $this->numObj++;
-                    $pfbid = $this->numObj;
-                    // determine flags (more than a little flakey, hopefully will not matter much)
-                    $flags=0;
-                    if ($font['ItalicAngle']!=0){
-                    	$flags+=pow(2,6);
-                    }
-                    if ($font['IsFixedPitch']=='true'){
-                    	$flags+=1;
-                    }
-                    $flags+=pow(2,5); // assume non-sybolic
-
-                    $list = array('Ascent'=>'Ascender','CapHeight'=>'CapHeight','Descent'=>'Descender','FontBBox'=>'FontBBox','ItalicAngle'=>'ItalicAngle');
-                    $fdopt = array(
-                        'Flags' => $flags,
-                        'FontName' => $adobeFontName,
-                        'StemV' => $stemV
-                    );
-                    foreach($list as $k=>$v){
-                        if (isset($font[$v])){
-                            $fdopt[$k]=$font[$v];
-                        }
-                    }
-
-					if($this->embedFont){
-	                    if ($fbtype=='pfb'){
-	                        $fdopt['FontFile']=$pfbid;
-	                    } else if ($fbtype=='ttf' && $this->embedFont){
-	                        $fdopt['FontFile2']=$pfbid;
-	                    }
-                    }
-                    
-                    $this->o_fontDescriptor($fontDescriptorId,'new',$fdopt);
-
-                    // embed the font program
-                    if($this->embedFont){
-	                    $this->o_contents($this->numObj,'new');
-	                    $this->objects[$pfbid]['c'].= $data;
-	                    // determine the cruicial lengths within this file
-	                    if ($fbtype=='pfb'){
-	                        $l1 = strpos($data,'eexec')+6;
-	                        $l2 = strpos($data,'00000000')-$l1;
-	                        $l3 = strlen($data)-$l2-$l1;
-	                        $this->o_contents($this->numObj,'add',array('Length1'=>$l1,'Length2'=>$l2,'Length3'=>$l3));
-	                    } else if ($fbtype=='ttf'){
-	                    	$l1 = strlen($data);
-	                    	$this->o_contents($this->numObj,'add',array('Length1'=>$l1));
-	                    }
-	                }
-
-                    // tell the font object about all this new stuff
-                    $tmp = array('BaseFont'=>$adobeFontName,'Widths'=>$widthid
-                                      ,'FirstChar'=>$firstChar,'LastChar'=>$lastChar
-                                      ,'FontDescriptor'=>$fontDescriptorId);
-                    if ($fbtype=='ttf'){
-                        $tmp['SubType']='TrueType';
-                    }
-                    $this->debug('selectFont: adding extra info to font.('.$fontObj.')');
-                    foreach($tmp as $fk=>$fv){
-                        $this->debug($fk." : ".$fv);
-                    }
-                    $this->o_font($fontObj,'add',$tmp);
-
-                } else if(!in_array(strtolower($name), $this->coreFonts)) {
-                    $this->debug('selectFont: No pfb/ttf file found for "'.$name.'"', E_USER_WARNING);
-                }
-
-
-                // also set the differences here, note that this means that these will take effect only the
-                // first time that a font is selected, else they are ignored
-                if (isset($options['differences'])){
-                    $font['differences']=$options['differences'];
-                }
-            }
-        }
-        
-        if ($set && isset($this->fonts[$fontName])){
-            // so if for some reason the font was not set in the last one then it will not be selected
-            $this->currentBaseFont=$fontName;
-            // the next line means that if a new font is selected, then the current text state will be
-            // applied to it as well.
-            $this->setCurrentFont();
-        }
-        return $this->currentFontNum;
-    }
-
-    /**
-     * sets up the current font, based on the font families, and the current text state
-     * note that this system is quite flexible, a <b><i> font can be completely different to a
-     * <i><b> font, and even <b><b> will have to be defined within the family to have meaning
-     * This function is to be called whenever the currentTextState is changed, it will update
-     * the currentFont setting to whatever the appropriatte family one is.
-     * If the user calls selectFont themselves then that will reset the currentBaseFont, and the currentFont
-     * This function will change the currentFont to whatever it should be, but will not change the
-     * currentBaseFont.
-     *
-     * @access protected
-     */
-    protected function setCurrentFont(){
-        if (strlen($this->currentBaseFont)==0){
-            // then assume an initial font
-            $this->selectFont(dirname(__FILE__) . '/fonts/Helvetica');
-        }
-        $pos = strrpos($this->currentBaseFont, '/');
-        if ($pos !== false) {
-            $cf = substr($this->currentBaseFont, $pos + 1);
-        } else {
-            $cf = $this->currentBaseFont;
-        }
-        if (strlen($this->currentTextState)
-            && isset($this->fontFamilies[$cf])
-            && isset($this->fontFamilies[$cf][$this->currentTextState])){
-            // then we are in some state or another
-            // and this font has a family, and the current setting exists within it
-            // select the font, then return it
-            if ($pos !== false) {
-                $nf = substr($this->currentBaseFont, 0, strrpos($this->currentBaseFont,'/') + 1).$this->fontFamilies[$cf][$this->currentTextState];
-            } else {
-                $nf = $this->fontFamilies[$cf][$this->currentTextState];
-            }
-            $this->selectFont($nf,'',0);
-            $this->currentFont = $nf;
-            $this->currentFontNum = $this->fonts[$nf]['fontNum'];
-        } else {
-            // the this font must not have the right family member for the current state
-            // simply assume the base font
-            $this->currentFont = $this->currentBaseFont;
-            $this->currentFontNum = $this->fonts[$this->currentFont]['fontNum'];
-        }
-    }
-
-    /**
-     * function for the user to find out what the ID is of the first page that was created during
-     * startup - useful if they wish to add something to it later.
-     * @access protected
-     */
-    protected function getFirstPageId(){
-        return $this->firstPageId;
-    }
-
-    /**
-     * add content to the currently active object
-     * @access protected
-     */
-    protected function addContent($content){
-        $this->objects[$this->currentContents]['c'].=$content;
-    }
-
-    /**
-     * sets the colour for fill operations
-     * @access public
-     */
-    public function setColor($r,$g,$b,$force=0){
-        if ($r>=0 && ($force || $r!=$this->currentColour['r'] || $g!=$this->currentColour['g'] || $b!=$this->currentColour['b'])){
-            $this->objects[$this->currentContents]['c'].="\n".sprintf('%.3F',$r).' '.sprintf('%.3F',$g).' '.sprintf('%.3F',$b).' rg';
-            $this->currentColour=array('r'=>$r,'g'=>$g,'b'=>$b);
-        }
-    }
-
-    /**
-     * sets the colour for stroke operations
-     * @access public
-     */
-    public function setStrokeColor($r,$g,$b,$force=0){
-        if ($r>=0 && ($force || $r!=$this->currentStrokeColour['r'] || $g!=$this->currentStrokeColour['g'] || $b!=$this->currentStrokeColour['b'])){
-            $this->objects[$this->currentContents]['c'].="\n".sprintf('%.3F',$r).' '.sprintf('%.3F',$g).' '.sprintf('%.3F',$b).' RG';
-            $this->currentStrokeColour=array('r'=>$r,'g'=>$g,'b'=>$b);
-        }
-    }
-
-    /**
-     * draw a line from one set of coordinates to another
-     * @access public
-     */
-    public function line($x1,$y1,$x2,$y2){
-        $this->objects[$this->currentContents]['c'].="\n".sprintf('%.3F',$x1).' '.sprintf('%.3F',$y1).' m '.sprintf('%.3F',$x2).' '.sprintf('%.3F',$y2).' l S';
-    }
-
-    /**
-     * draw a bezier curve based on 4 control points
-     * @access public
-     */
-    public function curve($x0,$y0,$x1,$y1,$x2,$y2,$x3,$y3){
-        // in the current line style, draw a bezier curve from (x0,y0) to (x3,y3) using the other two points
-        // as the control points for the curve.
-        $this->objects[$this->currentContents]['c'].="\n".sprintf('%.3F',$x0).' '.sprintf('%.3F',$y0).' m '.sprintf('%.3F',$x1).' '.sprintf('%.3F',$y1);
-        $this->objects[$this->currentContents]['c'].= ' '.sprintf('%.3F',$x2).' '.sprintf('%.3F',$y2).' '.sprintf('%.3F',$x3).' '.sprintf('%.3F',$y3).' c S';
-    }
-
-    /**
-     * draw a part of an ellipse
-     * @access public
-     */
-    public function partEllipse($x0,$y0,$astart,$afinish,$r1,$r2=0,$angle=0,$nSeg=8){
-        $this->ellipse($x0,$y0,$r1,$r2,$angle,$nSeg,$astart,$afinish,0);
-    }
-
-    /**
-     * draw a filled ellipse
-     * @access public
-     */
-    public function filledEllipse($x0,$y0,$r1,$r2=0,$angle=0,$nSeg=8,$astart=0,$afinish=360){
-        return $this->ellipse($x0,$y0,$r1,$r2=0,$angle,$nSeg,$astart,$afinish,1,1);
-    }
-
-    /**
-     * draw an ellipse
-     * note that the part and filled ellipse are just special cases of this function
-     *
-     * draws an ellipse in the current line style
-     * centered at $x0,$y0, radii $r1,$r2
-     * if $r2 is not set, then a circle is drawn
-     * nSeg is not allowed to be less than 2, as this will simply draw a line (and will even draw a
-     * pretty crappy shape at 2, as we are approximating with bezier curves.
-     * @access public
-     */
-    public function ellipse($x0,$y0,$r1,$r2=0,$angle=0,$nSeg=8,$astart=0,$afinish=360,$close=1,$fill=0){
-        if ($r1==0){
-            return;
-        }
-        if ($r2==0){
-            $r2=$r1;
-        }
-        if ($nSeg<2){
-            $nSeg=2;
-        }
-
-        $astart = deg2rad((float)$astart);
-        $afinish = deg2rad((float)$afinish);
-        $totalAngle =$afinish-$astart;
-
-        $dt = $totalAngle/$nSeg;
-        $dtm = $dt/3;
-
-        if ($angle != 0){
-            $a = -1*deg2rad((float)$angle);
-            $tmp = "\n q ";
-            $tmp .= sprintf('%.3F',cos($a)).' '.sprintf('%.3F',(-1.0*sin($a))).' '.sprintf('%.3F',sin($a)).' '.sprintf('%.3F',cos($a)).' ';
-            $tmp .= sprintf('%.3F',$x0).' '.sprintf('%.3F',$y0).' cm';
-            $this->objects[$this->currentContents]['c'].= $tmp;
-            $x0=0;
-            $y0=0;
-        }
-
-        $t1 = $astart;
-        $a0 = $x0+$r1*cos($t1);
-        $b0 = $y0+$r2*sin($t1);
-        $c0 = -$r1*sin($t1);
-        $d0 = $r2*cos($t1);
-
-        $this->objects[$this->currentContents]['c'].="\n".sprintf('%.3F',$a0).' '.sprintf('%.3F',$b0).' m ';
-        for ($i=1;$i<=$nSeg;$i++){
-            // draw this bit of the total curve
-            $t1 = $i*$dt+$astart;
-            $a1 = $x0+$r1*cos($t1);
-            $b1 = $y0+$r2*sin($t1);
-            $c1 = -$r1*sin($t1);
-            $d1 = $r2*cos($t1);
-            $this->objects[$this->currentContents]['c'].="\n".sprintf('%.3F',($a0+$c0*$dtm)).' '.sprintf('%.3F',($b0+$d0*$dtm));
-            $this->objects[$this->currentContents]['c'].= ' '.sprintf('%.3F',($a1-$c1*$dtm)).' '.sprintf('%.3F',($b1-$d1*$dtm)).' '.sprintf('%.3F',$a1).' '.sprintf('%.3F',$b1).' c';
-            $a0=$a1;
-            $b0=$b1;
-            $c0=$c1;
-            $d0=$d1;
-        }
-        if ($fill){
-            $this->objects[$this->currentContents]['c'].=' f';
-        } else {
-            if ($close){
-                $this->objects[$this->currentContents]['c'].=' s'; // small 's' signifies closing the path as well
-            } else {
-                $this->objects[$this->currentContents]['c'].=' S';
-            }
-        }
-        if ($angle !=0){
-            $this->objects[$this->currentContents]['c'].=' Q';
-        }
-    }
-
-    /**
-     * this sets the line drawing style.
-     * width, is the thickness of the line in user units
-     * cap is the type of cap to put on the line, values can be 'butt','round','square'
-     *    where the diffference between 'square' and 'butt' is that 'square' projects a flat end past the
-     *    end of the line.
-     * join can be 'miter', 'round', 'bevel'
-     * dash is an array which sets the dash pattern, is a series of length values, which are the lengths of the
-     *   on and off dashes.
-     *   (2) represents 2 on, 2 off, 2 on , 2 off ...
-     *   (2,1) is 2 on, 1 off, 2 on, 1 off.. etc
-     * phase is a modifier on the dash pattern which is used to shift the point at which the pattern starts.
-     * @access public
-     */
-    public function setLineStyle($width=1,$cap='',$join='',$dash='',$phase=0){
-
-        // this is quite inefficient in that it sets all the parameters whenever 1 is changed, but will fix another day
-        $string = '';
-        if ($width>0){
-            $string.= $width.' w';
-        }
-        $ca = array('butt'=>0,'round'=>1,'square'=>2);
-        if (isset($ca[$cap])){
-            $string.= ' '.$ca[$cap].' J';
-        }
-        $ja = array('miter'=>0,'round'=>1,'bevel'=>2);
-        if (isset($ja[$join])){
-            $string.= ' '.$ja[$join].' j';
-        }
-        if (is_array($dash)){
-            $string.= ' [';
-            foreach ($dash as $len){
-                $string.=' '.$len;
-            }
-            $string.= ' ] '.$phase.' d';
-        }
-        $this->currentLineStyle = $string;
-        $this->objects[$this->currentContents]['c'].="\n".$string;
-    }
-
-    /**
-     * draw a polygon, the syntax for this is similar to the GD polygon command
-     * @access public
-     */
-    public function polygon($p,$np,$f=0){
-        $this->objects[$this->currentContents]['c'].="\n";
-        $this->objects[$this->currentContents]['c'].=sprintf('%.3F',$p[0]).' '.sprintf('%.3F',$p[1]).' m ';
-        for ($i=2;$i<$np*2;$i=$i+2){
-            $this->objects[$this->currentContents]['c'].= sprintf('%.3F',$p[$i]).' '.sprintf('%.3F',$p[$i+1]).' l ';
-        }
-        if ($f==1){
-            $this->objects[$this->currentContents]['c'].=' f';
-        } else {
-            $this->objects[$this->currentContents]['c'].=' S';
-        }
-    }
-
-    /**
-     * a filled rectangle, note that it is the width and height of the rectangle which are the secondary paramaters, not
-     * the coordinates of the upper-right corner
-     * @access public
-     */
-    public function filledRectangle($x1,$y1,$width,$height){
-        $this->objects[$this->currentContents]['c'].="\n".sprintf('%.3F',$x1).' '.sprintf('%.3F',$y1).' '.sprintf('%.3F',$width).' '.sprintf('%.3F',$height).' re f';
-    }
-
-    /**
-     * draw a rectangle, note that it is the width and height of the rectangle which are the secondary paramaters, not
-     * the coordinates of the upper-right corner
-     * @access public 
-     */
-    public function rectangle($x1,$y1,$width,$height){
-        $this->objects[$this->currentContents]['c'].="\n".sprintf('%.3F',$x1).' '.sprintf('%.3F',$y1).' '.sprintf('%.3F',$width).' '.sprintf('%.3F',$height).' re S';
-    }
-
-    /**
-     * add a new page to the document
-     * this also makes the new page the current active object
-     * @access public
-     */
-    public function newPage($insert=0,$id=0,$pos='after'){
-
-        // if there is a state saved, then go up the stack closing them
-        // then on the new page, re-open them with the right setings
-
-        if ($this->nStateStack){
-            for ($i=$this->nStateStack;$i>=1;$i--){
-                $this->restoreState($i);
-            }
-        }
-
-        $this->numObj++;
-        if ($insert){
-            // the id from the ezPdf class is the od of the contents of the page, not the page object itself
-            // query that object to find the parent
-            $rid = $this->objects[$id]['onPage'];
-            $opt= array('rid'=>$rid,'pos'=>$pos);
-            $this->o_page($this->numObj,'new',$opt);
-        } else {
-            $this->o_page($this->numObj,'new');
-        }
-        // if there is a stack saved, then put that onto the page
-        if ($this->nStateStack){
-            for ($i=1;$i<=$this->nStateStack;$i++){
-                $this->saveState($i);
-            }
-        }
-        // and if there has been a stroke or fill colour set, then transfer them
-        if ($this->currentColour['r']>=0){
-            $this->setColor($this->currentColour['r'],$this->currentColour['g'],$this->currentColour['b'],1);
-        }
-        if ($this->currentStrokeColour['r']>=0){
-            $this->setStrokeColor($this->currentStrokeColour['r'],$this->currentStrokeColour['g'],$this->currentStrokeColour['b'],1);
-        }
-
-        // if there is a line style set, then put this in too
-        if (strlen($this->currentLineStyle)){
-            $this->objects[$this->currentContents]['c'].="\n".$this->currentLineStyle;
-        }
-
-        // the call to the o_page object set currentContents to the present page, so this can be returned as the page id
-        return $this->currentContents;
-    }
-
-    /**
-     * output the pdf code, streaming it to the browser
-     * the relevant headers are set so that hopefully the browser will recognise it
-     * this method is protected to force user to use ezStream method from Cezpdf.php
-     * @access protected
-     */
-    protected function stream($options=''){
-        // setting the options allows the adjustment of the headers
-        // values at the moment are:
-        // 'Content-Disposition'=>'filename'  - sets the filename, though not too sure how well this will
-        //        work as in my trial the browser seems to use the filename of the php file with .pdf on the end
-        // 'Accept-Ranges'=>1 or 0 - if this is not set to 1, then this header is not included, off by default
-        //    this header seems to have caused some problems despite tha fact that it is supposed to solve
-        //    them, so I am leaving it off by default.
-        // 'compress'=> 1 or 0 - apply content stream compression, this is on (1) by default
-        // 'download'=> 1 or 0 - provide download dialog
-        if (!is_array($options)){
-            $options=array();
-        }
-        if ( isset($options['compress']) && $options['compress']==0){
-            $tmp = $this->output(1);
-        } else {
-            $tmp = $this->output();
-        }
-        header("Content-type: application/pdf");
-        header("Content-Length: ".strlen(ltrim($tmp)));
-        $fileName = (isset($options['Content-Disposition'])?$options['Content-Disposition']:'file.pdf');
-        if(isset($options['download']) && $options['download'] == 1)
-        	$attached = 'attachment';
-        else
-        	$attached = 'inline';
-        header("Content-Disposition: $attached; filename=".$fileName);
-        if (isset($options['Accept-Ranges']) && $options['Accept-Ranges']==1){
-            header("Accept-Ranges: ".strlen(ltrim($tmp)));
-        }
-        echo ltrim($tmp);
-    }
-
-    /**
-     * return the height in units of the current font in the given size
-     * @access public
-     */
-    public function getFontHeight($size){
-        if (!$this->numFonts){
-            $this->selectFont('./fonts/Helvetica');
-        }
-        
-        $font = &$this->fonts[$this->currentFont];
-        // for the current font, and the given size, what is the height of the font in user units
-        $h = $font['FontBBox'][3] - $font['FontBBox'][1];
-    	return $size*$h/1000;
-    }
-
-    /**
-     * return the font decender, this will normally return a negative number
-     * if you add this number to the baseline, you get the level of the bottom of the font
-     * it is in the pdf user units
-     * @access public
-     */
-    public function getFontDecender($size){
-        // note that this will most likely return a negative value
-        if (!$this->numFonts){
-            $this->selectFont('./fonts/Helvetica');
-        }
-        $h = $this->fonts[$this->currentFont]['Descender'];
-        return $size*$h/1000;
-    }
-
-    /**
-     * filter the text, this is applied to all text just before being inserted into the pdf document
-     * it escapes the various things that need to be escaped, and so on
-     *
-     * @access protected
-     */
-    protected function filterText($text, $bom = true, $convert_encoding = true){
-    	
-    	if ($convert_encoding) {
-	      $cf = $this->currentFont;
-	      if (isset($this->fonts[$cf]) && $this->fonts[$cf]['isUnicode']) {
-	        //$text = html_entity_decode($text, ENT_QUOTES, 'UTF-8');
-	        $text = $this->utf8toUtf16BE($text, $bom);
-	      } else {
-	        //$text = html_entity_decode($text, ENT_QUOTES);
-	        $text = mb_convert_encoding($text, $this->targetEncoding, 'UTF-8');
-	      }
-	    }
-    	
-    	$text = strtr($text,  array(')' => '\\)', '(' => '\\(', '\\' => '\\\\', chr(8) => '\\b', chr(9) => '\\t', chr(10) => '\\n', chr(12) => '\\f' ,chr(13) => '\\r') );
-
-		if($this->rtl){
-			$text = strrev($text);
-		}
-
-        return $text;
-    }
-
-	/**
-	   * return array containing codepoints (UTF-8 character values) for the
-	   * string passed in.
-	   *
-	   * based on the excellent TCPDF code by Nicola Asuni and the
-	   * RFC for UTF-8 at http://www.faqs.org/rfcs/rfc3629.html
-	   *
-	   * @access private
-	   * @author Orion Richardson
-	   * @since January 5, 2008
-	   * @param string $text UTF-8 string to process
-	   * @return array UTF-8 codepoints array for the string
-	   */
-	  private function utf8toCodePointsArray(&$text) {
-	    $length = mb_strlen($text, '8bit'); // http://www.php.net/manual/en/function.mb-strlen.php#77040
-	    $unicode = array(); // array containing unicode values
-	    $bytes = array(); // array containing single character byte sequences
-	    $numbytes = 1; // number of octetc needed to represent the UTF-8 character
-
-	    for ($i = 0; $i < $length; $i++) {
-	      $c = ord($text[$i]); // get one string character at time
-	      if (count($bytes) === 0) { // get starting octect
-	        if ($c <= 0x7F) {
-	          $unicode[] = $c; // use the character "as is" because is ASCII
-	          $numbytes = 1;
-	        } elseif (($c >> 0x05) === 0x06) { // 2 bytes character (0x06 = 110 BIN)
-	          $bytes[] = ($c - 0xC0) << 0x06;
-	          $numbytes = 2;
-	        } elseif (($c >> 0x04) === 0x0E) { // 3 bytes character (0x0E = 1110 BIN)
-	          $bytes[] = ($c - 0xE0) << 0x0C;
-	          $numbytes = 3;
-	        } elseif (($c >> 0x03) === 0x1E) { // 4 bytes character (0x1E = 11110 BIN)
-	          $bytes[] = ($c - 0xF0) << 0x12;
-	          $numbytes = 4;
-	        } else {
-	          // use replacement character for other invalid sequences
-	          $unicode[] = 0xFFFD;
-	          $bytes = array();
-	          $numbytes = 1;
-	        }
-	      } elseif (($c >> 0x06) === 0x02) { // bytes 2, 3 and 4 must start with 0x02 = 10 BIN
-	        $bytes[] = $c - 0x80;
-	        if (count($bytes) === $numbytes) {
-	          // compose UTF-8 bytes to a single unicode value
-	          $c = $bytes[0];
-	          for ($j = 1; $j < $numbytes; $j++) {
-	            $c += ($bytes[$j] << (($numbytes - $j - 1) * 0x06));
-	          }
-	          if ((($c >= 0xD800) AND ($c <= 0xDFFF)) OR ($c >= 0x10FFFF)) {
-	            // The definition of UTF-8 prohibits encoding character numbers between
-	            // U+D800 and U+DFFF, which are reserved for use with the UTF-16
-	            // encoding form (as surrogate pairs) and do not directly represent
-	            // characters.
-	            $unicode[] = 0xFFFD; // use replacement character
-	          } else {
-	            $unicode[] = $c; // add char to array
-	          }
-	          // reset data for next char
-	          $bytes = array();
-	          $numbytes = 1;
-	        }
-	      } else {
-	        // use replacement character for other invalid sequences
-	        $unicode[] = 0xFFFD;
-	        $bytes = array();
-	        $numbytes = 1;
-	      }
-	    }
-	    return $unicode;
-	  }
-
-	  /**
-	   * convert UTF-8 to UTF-16 with an additional byte order marker
-	   * at the front if required.
-	   *
-	   * based on the excellent TCPDF code by Nicola Asuni and the
-	   * RFC for UTF-8 at http://www.faqs.org/rfcs/rfc3629.html
-	   *
-	   * @access private
-	   * @author Orion Richardson
-	   * @since January 5, 2008
-	   * @param string $text UTF-8 string to process
-	   * @param boolean $bom whether to add the byte order marker
-	   * @return string UTF-16 result string
-	   */
-	  private function utf8toUtf16BE(&$text, $bom = true) {
-	    $cf = $this->currentFont;
-	    if (!$this->fonts[$cf]['isUnicode']) return $text;
-	    $out = $bom ? "\xFE\xFF" : '';
-	    $unicode = $this->utf8toCodePointsArray($text);
-	    foreach ($unicode as $c) {
-	      if ($c === 0xFFFD) {
-	        $out .= "\xFF\xFD"; // replacement character
-	      } elseif ($c < 0x10000) {
-	        $out .= chr($c >> 0x08) . chr($c & 0xFF);
-	       } else {
-	        $c -= 0x10000;
-	        $w1 = 0xD800 | ($c >> 0x10);
-	        $w2 = 0xDC00 | ($c & 0x3FF);
-	        $out .= chr($w1 >> 0x08) . chr($w1 & 0xFF) . chr($w2 >> 0x08) . chr($w2 & 0xFF);
-	      }
-	    }
-	    return $out;
-	  }
-
-    /**
-     * given a start position and information about how text is to be laid out, calculate where
-     * on the page the text will end
-     *
-     * @access protected
-     */
-    protected function getTextPosition($x,$y,$angle,$size,$wa,$text){
-        // given this information return an array containing x and y for the end position as elements 0 and 1
-        $w = $this->getTextWidth($size,$text);
-        // need to adjust for the number of spaces in this text
-        $words = explode(' ',$text);
-        $nspaces=count($words)-1;
-        $w += $wa*$nspaces;
-        $a = deg2rad((float)$angle);
-        return array(cos($a)*$w+$x,-sin($a)*$w+$y);
-    }
-
-    /**
-     * wrapper function for checkTextDirective1
-     *
-     * @access private
-     */
-    private function checkTextDirective(&$text,$i,&$f){
-        $x=0;
-        $y=0;
-        return $this->checkTextDirective1($text,$i,$f,0,$x,$y);
-    }
-
-    /**
-     * checks if the text stream contains a control directive
-     * if so then makes some changes and returns the number of characters involved in the directive
-     * this has been re-worked to include everything neccesary to fins the current writing point, so that
-     * the location can be sent to the callback function if required
-     * if the directive does not require a font change, then $f should be set to 0
-     *
-     * @access private
-     */
-    private function checkTextDirective1(&$text,$i,&$f,$final,&$x,&$y,$size=0,$angle=0,$wordSpaceAdjust=0){
-        $directive = 0;
-        $j=$i;
-        if ($text[$j]=='<'){
-            $j++;
-            switch($text[$j]){
-            case '/':
-                $j++;
-                if (strlen($text) <= $j){
-                    return $directive;
-                }
-                switch($text[$j]){
-                case 'b':
-                case 'i':
-                    $j++;
-                    if ($text[$j]=='>'){
-                        $p = strrpos($this->currentTextState,$text[$j-1]);
-                        if ($p !== false){
-                            // then there is one to remove
-                            $this->currentTextState = substr($this->currentTextState,0,$p).substr($this->currentTextState,$p+1);
-                        }
-                        $directive=$j-$i+1;
-                    }
-                    break;
-                case 'c':
-                    // this this might be a callback function
-                    $j++;
-                    $k = strpos($text,'>',$j);
-                    if ($k!==false && $text[$j]==':'){
-                        // then this will be treated as a callback directive
-                        $directive = $k-$i+1;
-                        $f=0;
-                        // split the remainder on colons to get the function name and the paramater
-                        $tmp = substr($text,$j+1,$k-$j-1);
-                        $b1 = strpos($tmp,':');
-                        if ($b1!==false){
-                            $func = substr($tmp,0,$b1);
-                            $parm = substr($tmp,$b1+1);
-                        } else {
-                            $func=$tmp;
-                            $parm='';
-                        }
-                        if (!isset($func) || !strlen(trim($func))){
-                            $directive=0;
-                        } else {
-                            // only call the function if this is the final call
-                            if ($final){
-                                // need to assess the text position, calculate the text width to this point
-                                // can use getTextWidth to find the text width I think
-                                $tmp = $this->getTextPosition($x,$y,$angle,$size,$wordSpaceAdjust,substr($text,0,$i));
-                                $info = array('x'=>$tmp[0],'y'=>$tmp[1],'angle'=>$angle,'status'=>'end','p'=>$parm,'nCallback'=>$this->nCallback);
-                                $x=$tmp[0];
-                                $y=$tmp[1];
-                                $ret = $this->$func($info);
-                                if (is_array($ret)){
-                                    // then the return from the callback function could set the position, to start with, later will do font colour, and font
-                                    foreach($ret as $rk=>$rv){
-                                        switch($rk){
-                                        case 'x':
-                                        case 'y':
-                                            $$rk=$rv;
-                                            break;
-                                        }
-                                    }
-                                }
-                                // also remove from to the stack
-                                // for simplicity, just take from the end, fix this another day
-                                $this->nCallback--;
-                                if ($this->nCallback<0){
-                                    $this->nCallBack=0;
-                                }
-                            }
-                        }
-                    }
-                    break;
-                }
-                break;
-            case 'b':
-            case 'i':
-                $j++;
-                if ($text[$j]=='>'){
-                    $this->currentTextState.=$text[$j-1];
-                    $directive=$j-$i+1;
-                }
-                break;
-            case 'C':
-                $noClose=1;
-            case 'c':
-                // this this might be a callback function
-                $j++;
-                $k = strpos($text,'>',$j);
-                if ($k!==false && $text[$j]==':'){
-                    // then this will be treated as a callback directive
-                    $directive = $k-$i+1;
-                    $f=0;
-                    // split the remainder on colons to get the function name and the paramater
-                    // $bits = explode(':',substr($text,$j+1,$k-$j-1));
-                    $tmp = substr($text,$j+1,$k-$j-1);
-                    $b1 = strpos($tmp,':');
-                    if ($b1!==false){
-                        $func = substr($tmp,0,$b1);
-                        $parm = substr($tmp,$b1+1);
-                    } else {
-                        $func=$tmp;
-                        $parm='';
-                    }
-                    if (!isset($func) || !strlen(trim($func))){
-                        $directive=0;
-                    } else {
-                    // only call the function if this is the final call, ie, the one actually doing printing, not measurement
-                    if ($final){
-                        // need to assess the text position, calculate the text width to this point
-                        // can use getTextWidth to find the text width I think
-                        // also add the text height and decender
-                        $tmp = $this->getTextPosition($x,$y,$angle,$size,$wordSpaceAdjust,substr($text,0,$i));
-                        $info = array('x'=>$tmp[0],'y'=>$tmp[1],'angle'=>$angle,'status'=>'start','p'=>$parm,'f'=>$func,'height'=>$this->getFontHeight($size),'decender'=>$this->getFontDecender($size));
-                        $x=$tmp[0];
-                        $y=$tmp[1];
-                        if (!isset($noClose) || !$noClose){
-                            // only add to the stack if this is a small 'c', therefore is a start-stop pair
-                            $this->nCallback++;
-                            $info['nCallback']=$this->nCallback;
-                            $this->callback[$this->nCallback]=$info;
-                        }
-                        $ret = $this->$func($info);
-                        if (is_array($ret)){
-                            // then the return from the callback function could set the position, to start with, later will do font colour, and font
-                            foreach($ret as $rk=>$rv){
-                                switch($rk){
-                                case 'x':
-                                case 'y':
-                                    $$rk=$rv;
-                                break;
-                                }
-                            }
-                        }
-                        }
-                    }
-                }
-                break;
-            }
-        }
-        return $directive;
-    }
-
-    /**
-     * add text to the document, at a specified location, size and angle on the page
-     * @access public
-     */
-    public function addText($x, $y, $size, $text, $angle = 0, $wordSpaceAdjust = 0) {
-        if (!$this->numFonts) {
-            $this->selectFont(dirname(__FILE__) . '/fonts/Helvetica');
-        }
-
-        // if there are any open callbacks, then they should be called, to show the start of the line
-        if ($this->nCallback > 0){
-            for ($i = $this->nCallback; $i > 0; $i--){
-                // call each function
-                $info = array('x'=>$x,'y'=>$y,'angle'=>$angle,'status'=>'sol','p'=>$this->callback[$i]['p'],'nCallback'=>$this->callback[$i]['nCallback'],'height'=>$this->callback[$i]['height'],'decender'=>$this->callback[$i]['decender']);
-                $func = $this->callback[$i]['f'];
-                $this->$func($info);
-            }
-        }
-        if ($angle == 0) {
-	      $this->addContent(sprintf("\nBT %.3F %.3F Td", $x, $y));
-	    } else {
-	      $a = deg2rad((float)$angle);
-	      $this->addContent(sprintf("\nBT %.3F %.3F %.3F %.3F %.3F %.3F Tm", cos($a), -sin($a), sin($a), cos($a), $x, $y));
-	    }
-
-	    if ($wordSpaceAdjust != 0 || $wordSpaceAdjust != $this->wordSpaceAdjust) {
-	      $this->wordSpaceAdjust = $wordSpaceAdjust;
-	      $this->addContent(sprintf(" %.3F Tw", $wordSpaceAdjust));
-	    }
-
-	    $len = strlen($text);
-        $start=0;
-        for ($i=0;$i<$len;$i++){
-            $f=1;
-            $directive = $this->checkTextDirective($text,$i,$f);
-            if ($directive){
-                // then we should write what we need to
-                if ($i>$start){
-                    $part = substr($text,$start,$i-$start);
-                    $this->addContent(' /F'.$this->currentFontNum.' '.sprintf('%.1f',$size).' Tf ');
-                    $this->addContent(' ('.$this->filterText($part, false).') Tj');
-                }
-                if ($f){
-                    // then there was nothing drastic done here, restore the contents
-                    $this->setCurrentFont();
-                } else {
-                    $this->addContent(' ET');
-                    $f=1;
-                    $xp=$x;
-                    $yp=$y;
-                    $directive = $this->checkTextDirective1($text,$i,$f,1,$xp,$yp,$size,$angle,$wordSpaceAdjust);
-
-                    // restart the text object
-                    if ($angle==0){
-                        $this->addContent("\n".'BT '.sprintf('%.3F',$xp).' '.sprintf('%.3F',$yp).' Td');
-                    } else {
-                        $a = deg2rad((float)$angle);
-                        $tmp = "\n".'BT ';
-                        $tmp .= sprintf('%.3F',cos($a)).' '.sprintf('%.3F',(-1.0*sin($a))).' '.sprintf('%.3F',sin($a)).' '.sprintf('%.3F',cos($a)).' ';
-                        $tmp .= sprintf('%.3F',$xp).' '.sprintf('%.3F',$yp).' Tm';
-                        $this->addContent($tmp);
-                    }
-                    if ($wordSpaceAdjust!=0 || $wordSpaceAdjust != $this->wordSpaceAdjust){
-                        $this->wordSpaceAdjust=$wordSpaceAdjust;
-                        $this->addContent(' '.sprintf('%.3F',$wordSpaceAdjust).' Tw');
-                    }
-                }
-                // and move the writing point to the next piece of text
-                $i=$i+$directive-1;
-                $start=$i+1;
-            }
-        }
-
-	    if ($start < $len) {
-	      $part = substr($text,$start);
-	      $place_text = $this->filterText($part, false);
-	      // modify unicode text so that extra word spacing is manually implemented (bug #)
-	      $cf = $this->currentFont;
-	      if ($this->fonts[$cf]['isUnicode'] && $wordSpaceAdjust != 0) {
-	        $space_scale = 1000 / $size;
-	        $place_text = str_replace(' ', ' ) '.(-round($space_scale*$wordSpaceAdjust)).' (', $place_text);
-	      }
-	      $this->addContent(" /F$this->currentFontNum ".sprintf('%.1F Tf ', $size));
-	      $this->addContent(" [($place_text)] TJ");
-	    }
-
-	    $this->addContent(' ET');
-
-	    // if there are any open callbacks, then they should be called, to show the end of the line
-	    if ($this->nCallback > 0) {
-	      for ($i = $this->nCallback; $i > 0; $i--) {
-	        // call each function
-	        $tmp = $this->getTextPosition($x, $y, $angle, $size, $wordSpaceAdjust, $text);
-	        $info = array(
-	          'x' => $tmp[0],
-	          'y' => $tmp[1],
-	          'angle' => $angle,
-	          'status' => 'eol',
-	          'p'         => $this->callback[$i]['p'],
-	          'nCallback' => $this->callback[$i]['nCallback'],
-	          'height'    => $this->callback[$i]['height'],
-	          'descender' => $this->callback[$i]['descender']
-	        );
-	        $func = $this->callback[$i]['f'];
-	        $this->$func($info);
-	      }
-	    }
-    }
-
-    /**
-     * calculate how wide a given text string will be on a page, at a given size.
-     * this can be called externally, but is alse used by the other class functions
-     * @access public
-     */
-    public function getTextWidth($size,$text){
-        // this function should not change any of the settings, though it will need to
-        // track any directives which change during calculation, so copy them at the start
-        // and put them back at the end.
-        $store_currentTextState = $this->currentTextState;
-
-        if (!$this->numFonts){
-            $this->selectFont('./fonts/Helvetica');
-        }
-
-        // converts a number or a float to a string so it can get the width
-        $text = "$text";
-
-        // hmm, this is where it all starts to get tricky - use the font information to
-        // calculate the width of each character, add them up and convert to user units
-        $w=0;
-        $len=strlen($text);
-        $cf = $this->currentFont;
-        for ($i=0;$i<$len;$i++){
-            $f=1;
-            $directive = $this->checkTextDirective($text,$i,$f);
-            if ($directive){
-                if ($f){
-                    $this->setCurrentFont();
-                    $cf = $this->currentFont;
-                }
-                $i=$i+$directive-1;
-            } else {
-                $char=ord($text[$i]);
-                if (isset($this->fonts[$cf]['differences'][$char])){
-                    // then this character is being replaced by another
-                    $name = $this->fonts[$cf]['differences'][$char];
-                    if (isset($this->fonts[$cf]['C'][$name])){
-                        $w+=$this->fonts[$cf]['C'][$name];
-                    }
-                } else if (isset($this->fonts[$cf]['C'][$char])){
-                    $w+=$this->fonts[$cf]['C'][$char];
-                }
-            }
-        }
-
-        $this->currentTextState = $store_currentTextState;
-        $this->setCurrentFont();
-
-        return $w*$size/1000;
-    }
-
-    /**
-     * do a part of the calculation for sorting out the justification of the text
-     *
-     * @access private
-     */
-    private function adjustWrapText($text,$actual,$width,&$x,&$adjust,$justification){
-        switch ($justification){
-            case 'left':
-                return;
-                break;
-            case 'right':
-                $x+=$width-$actual;
-                break;
-            case 'center':
-            case 'centre':
-                $x+=($width-$actual)/2;
-                break;
-            case 'full':
-                // count the number of words
-                $words = explode(' ',$text);
-                $nspaces=count($words)-1;
-                if ($nspaces>0){
-                    $adjust = ($width-$actual)/$nspaces;
-                } else {
-                    $adjust=0;
-                }
-                break;
-        }
-    }
-
-    /**
-     * add text to the page, but ensure that it fits within a certain width
-     * if it does not fit then put in as much as possible, splitting at word boundaries
-     * and return the remainder.
-     * justification and angle can also be specified for the text
-     * @access public
-     */
-    public function addTextWrap($x, $y, $width, $size, $text, $justification = 'left', $angle = 0, $test = 0){
-        // this will display the text, and if it goes beyond the width $width, will backtrack to the
-        // previous space or hyphen, and return the remainder of the text.
-
-        // $justification can be set to 'left','right','center','centre','full'
-
-        // need to store the initial text state, as this will change during the width calculation
-        // but will need to be re-set before printing, so that the chars work out right
-        $store_currentTextState = $this->currentTextState;
-
-        if (!$this->numFonts) {
-            $this->selectFont(dirname(__FILE__) . '/fonts/Helvetica');
-        }
-        if ($width<=0){
-            // error, pretend it printed ok, otherwise risking a loop
-            return '';
-        }
-        $w=0;
-        $break=0;
-        $breakWidth=0;
-        $len=strlen($text);
-        $cf = $this->currentFont;
-        $tw = $width/$size*1000;
-        for ($i=0;$i<$len;$i++){
-            $f=1;
-            $directive = $this->checkTextDirective($text,$i,$f);
-            if ($directive){
-                if ($f){
-                    $this->setCurrentFont();
-                    $cf = $this->currentFont;
-                }
-                $i=$i+$directive-1;
-            } else {
-                $cOrd = ord($text[$i]);
-                if (isset($this->fonts[$cf]['differences'][$cOrd])){
-                    // then this character is being replaced by another
-                    $cOrd2 = $this->fonts[$cf]['differences'][$cOrd];
-                } else {
-                    $cOrd2 = $cOrd;
-                }
-
-                if (isset($this->fonts[$cf]['C'][$cOrd2])){
-                    $w+=$this->fonts[$cf]['C'][$cOrd2];
-                }
-                if ($w>$tw){
-                    // then we need to truncate this line
-                    if ($break>0){
-                        // then we have somewhere that we can split :)
-                        if ($text[$break]==' '){
-                            $tmp = substr($text,0,$break);
-                        } else {
-                            $tmp = substr($text,0,$break+1);
-                        }
-                        $adjust=0;
-                        $this->adjustWrapText($tmp,$breakWidth,$width,$x,$adjust,$justification);
-
-                        // reset the text state
-                        $this->currentTextState = $store_currentTextState;
-                        $this->setCurrentFont();
-                        if (!$test){
-                            $this->addText($x,$y,$size,$tmp,$angle,$adjust);
-                        }
-                        return substr($text,$break+1);
-                    } else {
-                        // just split before the current character
-                        $tmp = substr($text,0,$i);
-                        $adjust=0;
-                        $ctmp=ord($text[$i]);
-                        if (isset($this->fonts[$cf]['differences'][$ctmp])){
-                            $ctmp=$this->fonts[$cf]['differences'][$ctmp];
-                        }
-                        $tmpw=($w-$this->fonts[$cf]['C'][$ctmp])*$size/1000;
-                        $this->adjustWrapText($tmp,$tmpw,$width,$x,$adjust,$justification);
-                        // reset the text state
-                        $this->currentTextState = $store_currentTextState;
-                        $this->setCurrentFont();
-                        if (!$test){
-                            $this->addText($x,$y,$size,$tmp,$angle,$adjust);
-                        }
-                        return substr($text,$i);
-                    }
-                }
-                if ($text[$i]=='-'){
-                    $break=$i;
-                    $breakWidth = $w*$size/1000;
-                }
-                if ($text[$i]==' '){
-                    $break=$i;
-                    $ctmp=ord($text[$i]);
-                    if (isset($this->fonts[$cf]['differences'][$ctmp])){
-                        $ctmp=$this->fonts[$cf]['differences'][$ctmp];
-                    }
-                    $breakWidth = ($w-$this->fonts[$cf]['C'][$ctmp])*$size/1000;
-                }
-            }
-        }
-        // then there was no need to break this line
-        if ($justification=='full'){
-            $justification='left';
-        }
-        $adjust=0;
-        $tmpw=$w*$size/1000;
-        $this->adjustWrapText($text,$tmpw,$width,$x,$adjust,$justification);
-        // reset the text state
-        $this->currentTextState = $store_currentTextState;
-        $this->setCurrentFont();
-        if (!$test){
-            $this->addText($x,$y,$size,$text,$angle,$adjust,$angle);
-        }
-        return '';
-    }
-
-    /**
-     * this will be called at a new page to return the state to what it was on the
-     * end of the previous page, before the stack was closed down
-     * This is to get around not being able to have open 'q' across pages
-     * @access public
-     */
-    public function saveState($pageEnd=0){
-        if ($pageEnd){
-            // this will be called at a new page to return the state to what it was on the
-            // end of the previous page, before the stack was closed down
-            // This is to get around not being able to have open 'q' across pages
-            $opt = $this->stateStack[$pageEnd]; // ok to use this as stack starts numbering at 1
-            $this->setColor($opt['col']['r'],$opt['col']['g'],$opt['col']['b'],1);
-            $this->setStrokeColor($opt['str']['r'],$opt['str']['g'],$opt['str']['b'],1);
-            $this->objects[$this->currentContents]['c'].="\n".$opt['lin'];
-            // $this->currentLineStyle = $opt['lin'];
-        } else {
-            $this->nStateStack++;
-            $this->stateStack[$this->nStateStack]=array(
-                'col'=>$this->currentColour
-                ,'str'=>$this->currentStrokeColour
-                ,'lin'=>$this->currentLineStyle
-            );
-        }
-        $this->objects[$this->currentContents]['c'].="\nq";
-    }
-
-    /**
-     * restore a previously saved state
-     * @access public
-     */
-    public function restoreState($pageEnd=0){
-        if (!$pageEnd){
-            $n = $this->nStateStack;
-            $this->currentColour = $this->stateStack[$n]['col'];
-            $this->currentStrokeColour = $this->stateStack[$n]['str'];
-            $this->objects[$this->currentContents]['c'].="\n".$this->stateStack[$n]['lin'];
-            $this->currentLineStyle = $this->stateStack[$n]['lin'];
-            unset($this->stateStack[$n]);
-            $this->nStateStack--;
-        }
-        $this->objects[$this->currentContents]['c'].="\nQ";
-    }
-
-    /**
-     * make a loose object, the output will go into this object, until it is closed, then will revert to
-     * the current one.
-     * this object will not appear until it is included within a page.
-     * the function will return the object number
-     * @access public
-     */
-    public function openObject(){
-        $this->nStack++;
-        $this->stack[$this->nStack]=array('c'=>$this->currentContents,'p'=>$this->currentPage);
-        // add a new object of the content type, to hold the data flow
-        $this->numObj++;
-        $this->o_contents($this->numObj,'new');
-        $this->currentContents=$this->numObj;
-        $this->looseObjects[$this->numObj]=1;
-
-        return $this->numObj;
-    }
-
-	/**
-	* open an existing object for editing
-	* @access public
-	*/
-	public function reopenObject($id){
-	   $this->nStack++;
-	   $this->stack[$this->nStack]=array('c'=>$this->currentContents,'p'=>$this->currentPage);
-	   $this->currentContents=$id;
-	   // also if this object is the primary contents for a page, then set the current page to its parent
-	   if (isset($this->objects[$id]['onPage'])){
-	     $this->currentPage = $this->objects[$id]['onPage'];
-	   }
-	}
-
-    /**
-     * close an object
-     * @access public
-     */
-    public function closeObject(){
-        // close the object, as long as there was one open in the first place, which will be indicated by
-        // an objectId on the stack.
-        if ($this->nStack>0){
-            $this->currentContents=$this->stack[$this->nStack]['c'];
-            $this->currentPage=$this->stack[$this->nStack]['p'];
-            $this->nStack--;
-            // easier to probably not worry about removing the old entries, they will be overwritten
-            // if there are new ones.
-        }
-    }
-
-    /**
-     * stop an object from appearing on pages from this point on
-     * @access public
-     */
-    public function stopObject($id){
-        // if an object has been appearing on pages up to now, then stop it, this page will
-        // be the last one that could contian it.
-        if (isset($this->addLooseObjects[$id])){
-            $this->addLooseObjects[$id]='';
-        }
-    }
-
-    /**
-     * after an object has been created, it wil only show if it has been added, using this function.
-     * @access public
-     */
-    public function addObject($id,$options='add'){
-        // add the specified object to the page
-        if (isset($this->looseObjects[$id]) && $this->currentContents!=$id){
-            // then it is a valid object, and it is not being added to itself
-            switch($options){
-            case 'all':
-                // then this object is to be added to this page (done in the next block) and
-                // all future new pages.
-                $this->addLooseObjects[$id]='all';
-            case 'add':
-                if (isset($this->objects[$this->currentContents]['onPage'])){
-                    // then the destination contents is the primary for the page
-                    // (though this object is actually added to that page)
-                    $this->o_page($this->objects[$this->currentContents]['onPage'],'content',$id);
-                }
-                break;
-            case 'even':
-                $this->addLooseObjects[$id]='even';
-                $pageObjectId=$this->objects[$this->currentContents]['onPage'];
-                if ($this->objects[$pageObjectId]['info']['pageNum']%2==0){
-                    $this->addObject($id); // hacky huh :)
-                }
-                break;
-            case 'odd':
-                $this->addLooseObjects[$id]='odd';
-                $pageObjectId=$this->objects[$this->currentContents]['onPage'];
-                if ($this->objects[$pageObjectId]['info']['pageNum']%2==1){
-                    $this->addObject($id); // hacky huh :)
-                }
-                break;
-            case 'next':
-                $this->addLooseObjects[$id]='all';
-                break;
-            case 'nexteven':
-                $this->addLooseObjects[$id]='even';
-                break;
-            case 'nextodd':
-                $this->addLooseObjects[$id]='odd';
-                break;
-            }
-        }
-    }
-
-    /**
-     * add content to the documents info object
-     * @access public
-     */
-    public function addInfo($label,$value=0){
-        // this will only work if the label is one of the valid ones.
-        // modify this so that arrays can be passed as well.
-        // if $label is an array then assume that it is key=>value pairs
-        // else assume that they are both scalar, anything else will probably error
-        if (is_array($label)){
-            foreach ($label as $l=>$v){
-                $this->o_info($this->infoObject,$l,$v);
-            }
-        } else {
-            $this->o_info($this->infoObject,$label,$value);
-        }
-    }
-
-    /**
-     * set the viewer preferences of the document, it is up to the browser to obey these.
-     * @access public
-     */
-    public function setPreferences($label,$value=0){
-        // this will only work if the label is one of the valid ones.
-        if (is_array($label)){
-            foreach ($label as $l=>$v){
-                $this->o_catalog($this->catalogId,'viewerPreferences',array($l=>$v));
-            }
-        } else {
-            $this->o_catalog($this->catalogId,'viewerPreferences',array($label=>$value));
-        }
-    }
-
-    /**
-     * extract an integer from a position in a byte stream
-     *
-     * @access private
-     */
-    private function getBytes(&$data,$pos,$num){
-        // return the integer represented by $num bytes from $pos within $data
-        $ret=0;
-        for ($i=0;$i<$num;$i++){
-            $ret=$ret*256;
-            $ret+=ord($data[$pos+$i]);
-        }
-        return $ret;
-    }
-
-    /**
-     * reads the PNG chunk
-     * @param $data - binary part of the png image
-     * @access private
-     */
-    private function readPngChunks(&$data){
-    	$default = array('info'=> array(), 'transparency'=> null, 'idata'=> null, 'pdata'=> null, 'haveHeader'=> false);
-    	// set pointer
-		$p = 8;
-		$len = strlen($data);
-		// cycle through the file, identifying chunks
-		while ($p<$len){
-			$chunkLen = $this->getBytes($data,$p,4);
-			$chunkType = substr($data,$p+4,4);
-			//error_log($chunkType. ' - '.$chunkLen);
-			switch($chunkType){
-				case 'IHDR':
-				//this is where all the file information comes from
-				$default['info']['width']=$this->getBytes($data,$p+8,4);
-				$default['info']['height']=$this->getBytes($data,$p+12,4);
-				$default['info']['bitDepth']=ord($data[$p+16]);
-				$default['info']['colorType']=ord($data[$p+17]);
-				$default['info']['compressionMethod']=ord($data[$p+18]);
-				$default['info']['filterMethod']=ord($data[$p+19]);
-				$default['info']['interlaceMethod']=ord($data[$p+20]);
-				
-				$this->debug('readPngChunks: ColorType is' . $default['info']['colorType'], E_USER_NOTICE);
-				
-				$default['haveHeader'] = true;
-				
-				if ($default['info']['compressionMethod']!=0){
-					$error = true;
-					$errormsg = "unsupported compression method";
-				}
-				if ($default['info']['filterMethod']!=0){
-					$error = true;
-					$errormsg = "unsupported filter method";
-				}
-				
-				$default['transparency'] = array('type'=> null, 'data' => null);
-				
-				if ($default['info']['colorType'] == 3) { // indexed color, rbg
-					// corresponding to entries in the plte chunk
-					// Alpha for palette index 0: 1 byte
-					// Alpha for palette index 1: 1 byte
-					// ...etc...
-		
-					// there will be one entry for each palette entry. up until the last non-opaque entry.
-					// set up an array, stretching over all palette entries which will be o (opaque) or 1 (transparent)
-					$default['transparency']['type']='indexed';
-					//$numPalette = strlen($default['pdata'])/3;
-					$trans=0;
-					for ($i=$chunkLen;$i>=0;$i--){
-						if (ord($data[$p+8+$i])==0){
-							$trans=$i;
-						}
-					}
-					$default['transparency']['data'] = $trans;
-		
-				} elseif($default['info']['colorType'] == 0) { // grayscale
-					// corresponding to entries in the plte chunk
-					// Gray: 2 bytes, range 0 .. (2^bitdepth)-1
-		
-					// $transparency['grayscale']=$this->getBytes($data,$p+8,2); // g = grayscale
-					$default['transparency']['type']='indexed';
-					$default['transparency']['data'] = ord($data[$p+8+1]);
-				} elseif($default['info']['colorType'] == 2) { // truecolor
-					// corresponding to entries in the plte chunk
-					// Red: 2 bytes, range 0 .. (2^bitdepth)-1
-					// Green: 2 bytes, range 0 .. (2^bitdepth)-1
-					// Blue: 2 bytes, range 0 .. (2^bitdepth)-1
-					$default['transparency']['r']=$this->getBytes($data,$p+8,2); // r from truecolor
-					$default['transparency']['g']=$this->getBytes($data,$p+10,2); // g from truecolor
-					$default['transparency']['b']=$this->getBytes($data,$p+12,2); // b from truecolor
-				} else if($default['info']['colorType'] == 6 || $default['info']['colorType'] == 4) {
-					// set transparency type to "alpha" and proceed with it in $this->o_image later
-					$default['transparency']['type'] = 'alpha';
-					
-					$img = imagecreatefromstring($data);
-					
-					$imgalpha = imagecreate($default['info']['width'], $default['info']['height']);
-					// generate gray scale palette (0 -> 255)
-					for ($c = 0; $c < 256; ++$c) {
-						ImageColorAllocate($imgalpha, $c, $c, $c);
-					}
-					// extract alpha channel
-					for ($xpx = 0; $xpx < $default['info']['width']; ++$xpx) {
-						for ($ypx = 0; $ypx < $default['info']['height']; ++$ypx) {
-							$colorBits = imagecolorat($img, $xpx, $ypx);
-							$color = imagecolorsforindex($img, $colorBits);
-							$color['alpha'] = (((127 - $color['alpha']) / 127) * 255);
-							imagesetpixel($imgalpha, $xpx, $ypx, $color['alpha']);
-						}
-					}
-					$tmpfile_alpha=tempnam($this->tempPath,'ezImg');
-					
-					imagepng($imgalpha, $tmpfile_alpha);
-					imagedestroy($imgalpha);
-					
-					$alphaData = file_get_contents($tmpfile_alpha);
-					// nested method call to receive info on alpha image
-					$alphaImg = $this->readPngChunks($alphaData);
-					// use 'pdate' to fill alpha image as "palette". But it s the alpha channel
-					$default['pdata'] = $alphaImg['idata'];
-					
-					// generate true color image with no alpha channel
-					$tmpfile_tt=tempnam($this->tempPath,'ezImg');
-		        	
-					$imgplain = imagecreatetruecolor($default['info']['width'], $default['info']['height']);
-					imagecopy($imgplain, $img, 0, 0, 0, 0, $default['info']['width'], $default['info']['height']);
-					imagepng($imgplain, $tmpfile_tt);
-					imagedestroy($imgplain);
-					
-					$ttData = file_get_contents($tmpfile_tt);
-					$ttImg = $this->readPngChunks($ttData);
-					
-					$default['idata'] = $ttImg['idata'];
-					
-					// remove temp files 
-					unlink($tmpfile_alpha);
-					unlink($tmpfile_tt);
-					// return to addPngImage prematurely. IDAT has already been read and PLTE is not required
-					return $default;
-				}
-				break;
-				case 'PLTE':
-					$default['pdata'] = substr($data,$p+8,$chunkLen); 
-				break;
-				case 'IDAT':
-					$default['idata'] .= substr($data,$p+8,$chunkLen);
-				break;
-				case 'tRNS': // this HEADER info is optional. More info: rfc2083 (http://tools.ietf.org/html/rfc2083)
-					// error_log('OPTIONAL HEADER -tRNS- exist:');
-					// this chunk can only occur once and it must occur after the PLTE chunk and before IDAT chunk
-					// KS End new code
-				break;
-				default:
-				break;
-			}
-			$p += $chunkLen+12;
-		}
-    	return $default;
-    }
-    
-    /**
-     * add a PNG image into the document, from a file
-     * this should work with remote files
-     * @access public
-     */
-    public function addPngFromFile($file,$x,$y,$w=0,$h=0){
-        // read in a png file, interpret it, then add to the system
-        $error = false;
-    	$errormsg = "";
-        
-        $this->debug('addPngFromFile: opening image ' . $file);
-        
-        $data = file_get_contents($file);
-        
-        if($data === false){
-        	$this->debug('addPngFromFile: trouble opening file ' . $file, E_USER_WARNING);
-        	return;
-        }
-        
-		$header = chr(137).chr(80).chr(78).chr(71).chr(13).chr(10).chr(26).chr(10);
-		if (substr($data,0,8)!=$header){
-			$this->debug('addPngFromFile: Invalid PNG header for file: ' . $file, E_USER_WARNING);
-			return;
-        }
-		
-		$iChunk = $this->readPngChunks($data);
-		
-		if(!$iChunk['haveHeader']){
-			$error = true;
-			$errormsg = "information header is missing.";
-		}
-		if (isset($iChunk['info']['interlaceMethod']) && $iChunk['info']['interlaceMethod']){
-			$error = true;
-			$errormsg = "There appears to be no support for interlaced images in pdf.";
-		}
-		
-        if ($iChunk['info']['bitDepth'] > 8){
-        	$error = true;
-			$errormsg = "only bit depth of 8 or less is supported.";
-        }
-
-		if ($iChunk['info']['colorType'] == 1 || $iChunk['info']['colorType'] == 5 || $iChunk['info']['colorType']== 7){
-			$error = true;
-			$errormsg = 'Unsupported PNG color type: '.$iChunk['info']['colorType'];
-		} else if(isset($iChunk['info'])) {
-			switch ($iChunk['info']['colorType']){
-				case 3:
-					$color = 'DeviceRGB';
-					$ncolor=1;
-				break;
-				case 6:
-				case 2:
-					$color = 'DeviceRGB';
-					$ncolor=3;
-				break;
-				case 4:
-				case 0:
-					$color = 'DeviceGray';
-					$ncolor=1;
-				break;
-			}
-		}
-            
-        if ($error){
-            $this->debug('addPngFromFile: '.$errormsg, E_USER_WARNING);
-            return;
-        }
-        if ($w==0){
-            $w=$h/$iChunk['info']['height']*$iChunk['info']['width'];
-        }
-        if ($h==0){
-            $h=$w*$iChunk['info']['height']/$iChunk['info']['width'];
-        }
-        
-        if($this->hashed){
-        	$oHash = md5($iChunk['idata']);
-        }
-    	if(isset($oHash) && isset($this->objectHash[$oHash])){
-    		$label = $this->objectHash[$oHash];
-    	}else{
-    		$this->numImages++;
-        	$label='I'.$this->numImages;
-        	$this->numObj++;
-        	
-    		if(isset($oHash)){
-    			$this->objectHash[$oHash] = $label;
-    		}
-    		
-    		$options = array('label'=>$label,'data'=>$iChunk['idata'],'bitsPerComponent'=>$iChunk['info']['bitDepth'],'pdata'=>$iChunk['pdata']
-                                      ,'iw'=>$iChunk['info']['width'],'ih'=>$iChunk['info']['height'],'type'=>'png','color'=>$color,'ncolor'=>$ncolor);
-        	if (isset($iChunk['transparency'])){
-	            $options['transparency']=$iChunk['transparency'];
-    	    }
-        	$this->o_image($this->numObj,'new',$options);
-    	}
-    	
-        $this->objects[$this->currentContents]['c'].="\nq ".sprintf('%.3F',$w)." 0 0 ".sprintf('%.3F',$h)." ".sprintf('%.3F',$x)." ".sprintf('%.3F',$y)." cm";
-        $this->objects[$this->currentContents]['c'].=" /".$label.' Do';
-        $this->objects[$this->currentContents]['c'].=" Q";
-    }
-    
-    /**
-     * add a JPEG image into the document, from a file
-     * @access public
-     */
-    public function addJpegFromFile($img,$x,$y,$w=0,$h=0){
-        // attempt to add a jpeg image straight from a file, using no GD commands
-        // note that this function is unable to operate on a remote file.
-
-        if (!file_exists($img)){
-            return;
-        }
-
-        $tmp=getimagesize($img);
-        $imageWidth=$tmp[0];
-        $imageHeight=$tmp[1];
-
-        if (isset($tmp['channels'])){
-            $channels = $tmp['channels'];
-        } else {
-            $channels = 3;
-        }
-
-        if ($w<=0 && $h<=0){
-            $w=$imageWidth;
-        }
-        if ($w==0){
-            $w=$h/$imageHeight*$imageWidth;
-        }
-        if ($h==0){
-            $h=$w*$imageHeight/$imageWidth;
-        }
-
-        $data = file_get_contents($img);
-
-        $this->addJpegImage_common($data,$x,$y,$w,$h,$imageWidth,$imageHeight,$channels);
-    }
-
-    /**
-     * read gif image from file, converts it into an JPEG (no transparancy) and display it
-     * @param $img - file path ti gif image
-     * @param $x - coord x
-     * @param $y - y cord
-     * @param $w - width
-     * @param $h - height
-     * @access public
-     */
-	public function addGifFromFile($img, $x, $y, $w=0, $h=0){
-		if (!file_exists($img)){
-            return;
-        }
-        
-        if(!function_exists("imagecreatefromgif")){
-        	$this->debug('addGifFromFile: Missing GD function imageCreateFromGif', E_USER_ERROR);
-        	return;
-        }
-        
-        $tmp=getimagesize($img);
-        $imageWidth=$tmp[0];
-        $imageHeight=$tmp[1];
-        
-        
-        if ($w<=0 && $h<=0){
-            $w=$imageWidth;
-        }
-        if ($w==0){
-            $w=$h/$imageHeight*$imageWidth;
-        }
-        if ($h==0){
-            $h=$w*$imageHeight/$imageWidth;
-        }
-        
-        $imgres = imagecreatefromgif($img);
-        $tmpName=tempnam($this->tempPath,'img');
-        imagejpeg($imgres,$tmpName,90);
-        
-        $this->addJpegFromFile($tmpName,$x,$y,$w,$h);
-	}
-	
-	 /**
-     * add an image into the document, from a GD object
-     * this function is not all that reliable, and I would probably encourage people to use
-     * the file based functions
-     * @param $img - gd image resource
-     * @param $x coord x
-     * @param $y coord y
-     * @param $w width
-     * @param $h height
-     * @param $quality image quality
-     * @access protected
-     */
-    protected function addImage(&$img,$x,$y,$w=0,$h=0,$quality=75){
-        // add a new image into the current location, as an external object
-        // add the image at $x,$y, and with width and height as defined by $w & $h
-
-        // note that this will only work with full colour images and makes them jpg images for display
-        // later versions could present lossless image formats if there is interest.
-
-        // there seems to be some problem here in that images that have quality set above 75 do not appear
-        // not too sure why this is, but in the meantime I have restricted this to 75.
-        if ($quality>75){
-            $quality=75;
-        }
-
-        // if the width or height are set to zero, then set the other one based on keeping the image
-        // height/width ratio the same, if they are both zero, then give up :)
-        $imageWidth=imagesx($img);
-        $imageHeight=imagesy($img);
-
-        if ($w<=0 && $h<=0){
-            return;
-        }
-        if ($w==0){
-            $w=$h/$imageHeight*$imageWidth;
-        }
-        if ($h==0){
-            $h=$w*$imageHeight/$imageWidth;
-        }
-
-        $tmpName=tempnam($this->tempPath,'img');
-        imagejpeg($img,$tmpName,$quality);
-        
-        $data = file_get_contents($tmpName);
-        if($data === false) {
-            $this->debug('addImage: trouble opening image resource', E_USER_WARNING);
-        }
-        unlink($tmpName);
-        $this->addJpegImage_common($data,$x,$y,$w,$h,$imageWidth,$imageHeight);
-    }
-
-    /**
-     * common code used by the two JPEG adding functions
-     * @access private
-     */
-    private function addJpegImage_common(&$data,$x,$y,$w=0,$h=0,$imageWidth,$imageHeight,$channels=3){
-        // note that this function is not to be called externally
-        // it is just the common code between the GD and the file options
-        if($this->hashed){
-        	$oHash = md5($data);
-        }
-    	if(isset($oHash) && isset($this->objectHash[$oHash])){
-    		$label = $this->objectHash[$oHash];
-    	}else{
-    		$this->numImages++;
-        	$label='I'.$this->numImages;
-        	$this->numObj++;
-        	
-    		if(isset($oHash)){
-    			$this->objectHash[$oHash] = $label;
-    		}
-    		
-        	$this->o_image($this->numObj,'new',array('label'=>$label,'data'=>$data,'iw'=>$imageWidth,'ih'=>$imageHeight,'channels'=>$channels));
-    	}
-
-        $this->objects[$this->currentContents]['c'].="\nq ".sprintf('%.3F',$w)." 0 0 ".sprintf('%.3F',$h)." ".sprintf('%.3F',$x)." ".sprintf('%.3F',$y)." cm";
-        $this->objects[$this->currentContents]['c'].=" /".$label.' Do';
-        $this->objects[$this->currentContents]['c'].=" Q";
-    }
-
-    /**
-     * specify where the document should open when it first starts
-     * @access public
-     */
-    public function openHere($style,$a=0,$b=0,$c=0){
-        // this function will open the document at a specified page, in a specified style
-        // the values for style, and the required paramters are:
-        // 'XYZ'  left, top, zoom
-        // 'Fit'
-        // 'FitH' top
-        // 'FitV' left
-        // 'FitR' left,bottom,right
-        // 'FitB'
-        // 'FitBH' top
-        // 'FitBV' left
-        $this->numObj++;
-        $this->o_destination($this->numObj,'new',array('page'=>$this->currentPage,'type'=>$style,'p1'=>$a,'p2'=>$b,'p3'=>$c));
-        $id = $this->catalogId;
-        $this->o_catalog($id,'openHere',$this->numObj);
-    }
-
-    /**
-     * create a labelled destination within the document
-     * @access public
-     */
-    public function addDestination($label,$style,$a=0,$b=0,$c=0){
-        // associates the given label with the destination, it is done this way so that a destination can be specified after
-        // it has been linked to
-        // styles are the same as the 'openHere' function
-        $this->numObj++;
-        $this->o_destination($this->numObj,'new',array('page'=>$this->currentPage,'type'=>$style,'p1'=>$a,'p2'=>$b,'p3'=>$c));
-        $id = $this->numObj;
-        // store the label->idf relationship, note that this means that labels can be used only once
-        $this->destinations["$label"]=$id;
-    }
-
-    /**
-     * define font families, this is used to initialize the font families for the default fonts
-     * and for the user to add new ones for their fonts. The default bahavious can be overridden should
-     * that be desired.
-     * @access public
-     */
-    public function setFontFamily($family, $options = ''){
-        if (is_array($options)) {
-            // the user is trying to set a font family
-            // note that this can also be used to set the base ones to something else
-            if (strlen($family)){
-                $this->fontFamilies[$family] = $options;
-            }
-        }
-    }
-
-    /**
-     * used to add messages for use in debugging
-     * @access protected
-     */
-    protected function debug($message, $error_type = E_USER_NOTICE)
-    {
-    	if($error_type <= $this->DEBUGLEVEL){
-	    	switch(strtolower($this->DEBUG)){
-	    		default:
-	    		case 'none':
-	    			break;
-	    		case 'error_log':
-	    			trigger_error($message, $error_type);
-	    			break;
-	    		case 'variable':
-	    			$this->messages.=$message."\n";
-	    		break;
-	    	}
-    	}
-    }
-
-    /**
-     * a few functions which should allow the document to be treated transactionally.
-     *
-     * @param string $action WHAT IS THIS?
-     * @return void
-     * @access protected
-     */
-    public function transaction($action){
-        switch ($action){
-        case 'start':
-            // store all the data away into the checkpoint variable
-            $data = get_object_vars($this);
-            $this->checkpoint = $data;
-            unset($data);
-            break;
-        case 'commit':
-            if (is_array($this->checkpoint) && isset($this->checkpoint['checkpoint'])){
-                $tmp = $this->checkpoint['checkpoint'];
-                $this->checkpoint = $tmp;
-                unset($tmp);
-            } else {
-                $this->checkpoint='';
-            }
-            break;
-        case 'rewind':
-            // do not destroy the current checkpoint, but move us back to the state then, so that we can try again
-            if (is_array($this->checkpoint)){
-                // can only abort if were inside a checkpoint
-                $tmp = $this->checkpoint;
-                foreach ($tmp as $k=>$v){
-                    if ($k != 'checkpoint'){
-                        $this->$k=$v;
-                    }
-                }
-                unset($tmp);
-            }
-            break;
-        case 'abort':
-            if (is_array($this->checkpoint)){
-                // can only abort if were inside a checkpoint
-                $tmp = $this->checkpoint;
-                foreach ($tmp as $k=>$v){
-                    $this->$k=$v;
-                }
-                unset($tmp);
-            }
-            break;
-        }
-    }
-} // end of class
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
+
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
 ?>
+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

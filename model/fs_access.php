@@ -1,112 +1,69 @@
-<?php
-/*
- * This file is part of FacturaSctipts
- * Copyright (C) 2013-2016  Carlos Garcia Gomez  neorazorx@gmail.com
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-/**
- * Define que un usuario tiene acceso a una página concreta
- * y si tiene permisos de eliminación en esa página.
- */
-class fs_access extends fs_model
-{
-   /**
-    * Nick del usuario.
-    * @var type 
-    */
-   public $fs_user;
-   
-   /**
-    * Nombre de la página (nombre del controlador).
-    * @var type 
-    */
-   public $fs_page;
-   
-   /**
-    * Otorga permisos al usuario a eliminar elementos en la página.
-    * @var type 
-    */
-   public $allow_delete;
-   
-   public function __construct($a=FALSE)
-   {
-      parent::__construct('fs_access');
-      if($a)
-      {
-         $this->fs_user = $a['fs_user'];
-         $this->fs_page = $a['fs_page'];
-         $this->allow_delete = $this->str2bool($a['allow_delete']);
-      }
-      else
-      {
-         $this->fs_user = NULL;
-         $this->fs_page = NULL;
-         $this->allow_delete = FALSE;
-      }
-   }
-   
-   protected function install()
-   {
-      return '';
-   }
-   
-   public function exists()
-   {
-      if( is_null($this->fs_page) )
-      {
-         return FALSE;
-      }
-      else
-         return $this->db->select("SELECT * FROM ".$this->table_name." WHERE fs_user = ".$this->var2str($this->fs_user).
-                 " AND fs_page = ".$this->var2str($this->fs_page).";");
-   }
-   
-   public function save()
-   {
-      if( $this->exists() )
-      {
-         $sql = "UPDATE ".$this->table_name." SET allow_delete = ".$this->var2str($this->allow_delete)."
-            WHERE fs_user = ".$this->var2str($this->fs_user)." AND fs_page = ".$this->var2str($this->fs_page).";";
-      }
-      else
-      {
-         $sql = "INSERT INTO ".$this->table_name." (fs_user,fs_page,allow_delete) VALUES
-            (".$this->var2str($this->fs_user).",".$this->var2str($this->fs_page).",".$this->var2str($this->allow_delete).");";
-      }
-      
-      return $this->db->exec($sql);
-   }
-   
-   public function delete()
-   {
-      return $this->db->exec("DELETE FROM ".$this->table_name." WHERE fs_user = ".$this->var2str($this->fs_user).
-              " AND fs_page = ".$this->var2str($this->fs_page).";");
-   }
-   
-   public function all_from_nick($n='')
-   {
-      $accesslist = array();
-      
-      $access = $this->db->select("SELECT * FROM ".$this->table_name." WHERE fs_user = ".$this->var2str($n).";");
-      if($access)
-      {
-         foreach($access as $a)
-            $accesslist[] = new fs_access($a);
-      }
-      
-      return $accesslist;
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+sxQI8DJIhIbRS0a=

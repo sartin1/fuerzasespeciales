@@ -1,1152 +1,377 @@
-<?php
-/**
- * PHPMailer RFC821 SMTP email transport class.
- * PHP Version 5
- * @package PHPMailer
- * @link https://github.com/PHPMailer/PHPMailer/ The PHPMailer GitHub project
- * @author Marcus Bointon (Synchro/coolbru) <phpmailer@synchromedia.co.uk>
- * @author Jim Jagielski (jimjag) <jimjag@gmail.com>
- * @author Andy Prevost (codeworxtech) <codeworxtech@users.sourceforge.net>
- * @author Brent R. Matzelle (original founder)
- * @copyright 2014 Marcus Bointon
- * @copyright 2010 - 2012 Jim Jagielski
- * @copyright 2004 - 2009 Andy Prevost
- * @license http://www.gnu.org/copyleft/lesser.html GNU Lesser General Public License
- * @note This program is distributed in the hope that it will be useful - WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE.
- */
-
-/**
- * PHPMailer RFC821 SMTP email transport class.
- * Implements RFC 821 SMTP commands and provides some utility methods for sending mail to an SMTP server.
- * @package PHPMailer
- * @author Chris Ryan
- * @author Marcus Bointon <phpmailer@synchromedia.co.uk>
- */
-class SMTP
-{
-    /**
-     * The PHPMailer SMTP version number.
-     * @type string
-     */
-    const VERSION = '5.2.10';
-
-    /**
-     * SMTP line break constant.
-     * @type string
-     */
-    const CRLF = "\r\n";
-
-    /**
-     * The SMTP port to use if one is not specified.
-     * @type integer
-     */
-    const DEFAULT_SMTP_PORT = 25;
-
-    /**
-     * The maximum line length allowed by RFC 2822 section 2.1.1
-     * @type integer
-     */
-    const MAX_LINE_LENGTH = 998;
-
-    /**
-     * Debug level for no output
-     */
-    const DEBUG_OFF = 2;
-
-    /**
-     * Debug level to show client -> server messages
-     */
-    const DEBUG_CLIENT = 1;
-
-    /**
-     * Debug level to show client -> server and server -> client messages
-     */
-    const DEBUG_SERVER = 2;
-
-    /**
-     * Debug level to show connection status, client -> server and server -> client messages
-     */
-    const DEBUG_CONNECTION = 3;
-
-    /**
-     * Debug level to show all messages
-     */
-    const DEBUG_LOWLEVEL = 4;
-
-    /**
-     * The PHPMailer SMTP Version number.
-     * @type string
-     * @deprecated Use the `VERSION` constant instead
-     * @see SMTP::VERSION
-     */
-    public $Version = '5.2.10';
-
-    /**
-     * SMTP server port number.
-     * @type integer
-     * @deprecated This is only ever used as a default value, so use the `DEFAULT_SMTP_PORT` constant instead
-     * @see SMTP::DEFAULT_SMTP_PORT
-     */
-    public $SMTP_PORT = 25;
-
-    /**
-     * SMTP reply line ending.
-     * @type string
-     * @deprecated Use the `CRLF` constant instead
-     * @see SMTP::CRLF
-     */
-    public $CRLF = "\r\n";
-
-    /**
-     * Debug output level.
-     * Options:
-     * * self::DEBUG_OFF (`0`) No debug output, default
-     * * self::DEBUG_CLIENT (`1`) Client commands
-     * * self::DEBUG_SERVER (`2`) Client commands and server responses
-     * * self::DEBUG_CONNECTION (`3`) As DEBUG_SERVER plus connection status
-     * * self::DEBUG_LOWLEVEL (`4`) Low-level data output, all messages
-     * @type integer
-     */
-    public $do_debug = self::DEBUG_OFF;
-
-    /**
-     * How to handle debug output.
-     * Options:
-     * * `echo` Output plain-text as-is, appropriate for CLI
-     * * `html` Output escaped, line breaks converted to `<br>`, appropriate for browser output
-     * * `error_log` Output to error log as configured in php.ini
-     *
-     * Alternatively, you can provide a callable expecting two params: a message string and the debug level:
-     * <code>
-     * $smtp->Debugoutput = function($str, $level) {echo "debug level $level; message: $str";};
-     * </code>
-     * @type string|callable
-     */
-    public $Debugoutput = 'echo';
-
-    /**
-     * Whether to use VERP.
-     * @link http://en.wikipedia.org/wiki/Variable_envelope_return_path
-     * @link http://www.postfix.org/VERP_README.html Info on VERP
-     * @type boolean
-     */
-    public $do_verp = false;
-
-    /**
-     * The timeout value for connection, in seconds.
-     * Default of 5 minutes (300sec) is from RFC2821 section 4.5.3.2
-     * This needs to be quite high to function correctly with hosts using greetdelay as an anti-spam measure.
-     * @link http://tools.ietf.org/html/rfc2821#section-4.5.3.2
-     * @type integer
-     */
-    public $Timeout = 300;
-
-    /**
-     * How long to wait for commands to complete, in seconds.
-     * Default of 5 minutes (300sec) is from RFC2821 section 4.5.3.2
-     * @type integer
-     */
-    public $Timelimit = 300;
-
-    /**
-     * The socket for the server connection.
-     * @type resource
-     */
-    protected $smtp_conn;
-
-    /**
-     * Error information, if any, for the last SMTP command.
-     * @type array
-     */
-    protected $error = array(
-        'error' => '',
-        'detail' => '',
-        'smtp_code' => '',
-        'smtp_code_ex' => ''
-    );
-
-    /**
-     * The reply the server sent to us for HELO.
-     * If null, no HELO string has yet been received.
-     * @type string|null
-     */
-    protected $helo_rply = null;
-
-    /**
-     * The set of SMTP extensions sent in reply to EHLO command.
-     * Indexes of the array are extension names.
-     * Value at index 'HELO' or 'EHLO' (according to command that was sent)
-     * represents the server name. In case of HELO it is the only element of the array.
-     * Other values can be boolean TRUE or an array containing extension options.
-     * If null, no HELO/EHLO string has yet been received.
-     * @type array|null
-     */
-    protected $server_caps = null;
-
-    /**
-     * The most recent reply received from the server.
-     * @type string
-     */
-    protected $last_reply = '';
-
-    /**
-     * Output debugging info via a user-selected method.
-     * @see SMTP::$Debugoutput
-     * @see SMTP::$do_debug
-     * @param string $str Debug string to output
-     * @param integer $level The debug level of this message; see DEBUG_* constants
-     * @return void
-     */
-    protected function edebug($str, $level = 0)
-    {
-        if ($level > $this->do_debug) {
-            return;
-        }
-        //Avoid clash with built-in function names
-        if (!in_array($this->Debugoutput, array('error_log', 'html', 'echo')) and is_callable($this->Debugoutput)) {
-            call_user_func($this->Debugoutput, $str, $this->do_debug);
-            return;
-        }
-        switch ($this->Debugoutput) {
-            case 'error_log':
-                //Don't output, just log
-                error_log($str);
-                break;
-            case 'html':
-                //Cleans up output a bit for a better looking, HTML-safe output
-                echo htmlentities(
-                    preg_replace('/[\r\n]+/', '', $str),
-                    ENT_QUOTES,
-                    'UTF-8'
-                )
-                . "<br>\n";
-                break;
-            case 'echo':
-            default:
-                //Normalize line breaks
-                $str = preg_replace('/(\r\n|\r|\n)/ms', "\n", $str);
-                echo gmdate('Y-m-d H:i:s') . "\t" . str_replace(
-                    "\n",
-                    "\n                   \t                  ",
-                    trim($str)
-                )."\n";
-        }
-    }
-
-    /**
-     * Connect to an SMTP server.
-     * @param string $host SMTP server IP or host name
-     * @param integer $port The port number to connect to
-     * @param integer $timeout How long to wait for the connection to open
-     * @param array $options An array of options for stream_context_create()
-     * @access public
-     * @return boolean
-     */
-    public function connect($host, $port = null, $timeout = 30, $options = array())
-    {
-        static $streamok;
-        //This is enabled by default since 5.0.0 but some providers disable it
-        //Check this once and cache the result
-        if (is_null($streamok)) {
-            $streamok = function_exists('stream_socket_client');
-        }
-        // Clear errors to avoid confusion
-        $this->setError('');
-        // Make sure we are __not__ connected
-        if ($this->connected()) {
-            // Already connected, generate error
-            $this->setError('Already connected to a server');
-            return false;
-        }
-        if (empty($port)) {
-            $port = self::DEFAULT_SMTP_PORT;
-        }
-        // Connect to the SMTP server
-        $this->edebug(
-            "Connection: opening to $host:$port, timeout=$timeout, options=".var_export($options, true),
-            self::DEBUG_CONNECTION
-        );
-        $errno = 0;
-        $errstr = '';
-        if ($streamok) {
-            $socket_context = stream_context_create($options);
-            //Suppress errors; connection failures are handled at a higher level
-            $this->smtp_conn = @stream_socket_client(
-                $host . ":" . $port,
-                $errno,
-                $errstr,
-                $timeout,
-                STREAM_CLIENT_CONNECT,
-                $socket_context
-            );
-        } else {
-            //Fall back to fsockopen which should work in more places, but is missing some features
-            $this->edebug(
-                "Connection: stream_socket_client not available, falling back to fsockopen",
-                self::DEBUG_CONNECTION
-            );
-            $this->smtp_conn = fsockopen(
-                $host,
-                $port,
-                $errno,
-                $errstr,
-                $timeout
-            );
-        }
-        // Verify we connected properly
-        if (!is_resource($this->smtp_conn)) {
-            $this->setError(
-                'Failed to connect to server',
-                $errno,
-                $errstr
-            );
-            $this->edebug(
-                'SMTP ERROR: ' . $this->error['error']
-                . ": $errstr ($errno)",
-                self::DEBUG_CLIENT
-            );
-            return false;
-        }
-        $this->edebug('Connection: opened', self::DEBUG_CONNECTION);
-        // SMTP server can take longer to respond, give longer timeout for first read
-        // Windows does not have support for this timeout function
-        if (substr(PHP_OS, 0, 3) != 'WIN') {
-            $max = ini_get('max_execution_time');
-            // Don't bother if unlimited
-            if ($max != 0 && $timeout > $max) {
-                @set_time_limit($timeout);
-            }
-            stream_set_timeout($this->smtp_conn, $timeout, 0);
-        }
-        // Get any announcement
-        $announce = $this->get_lines();
-        $this->edebug('SERVER -> CLIENT: ' . $announce, self::DEBUG_SERVER);
-        return true;
-    }
-
-    /**
-     * Initiate a TLS (encrypted) session.
-     * @access public
-     * @return boolean
-     */
-    public function startTLS()
-    {
-        if (!$this->sendCommand('STARTTLS', 'STARTTLS', 220)) {
-            return false;
-        }
-        // Begin encrypted connection
-        if (!stream_socket_enable_crypto(
-            $this->smtp_conn,
-            true,
-            STREAM_CRYPTO_METHOD_TLS_CLIENT
-        )) {
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Perform SMTP authentication.
-     * Must be run after hello().
-     * @see hello()
-     * @param string $username    The user name
-     * @param string $password    The password
-     * @param string $authtype    The auth type (PLAIN, LOGIN, NTLM, CRAM-MD5)
-     * @param string $realm       The auth realm for NTLM
-     * @param string $workstation The auth workstation for NTLM
-     * @access public
-     * @return boolean True if successfully authenticated.
-     */
-    public function authenticate(
-        $username,
-        $password,
-        $authtype = null,
-        $realm = '',
-        $workstation = ''
-    ) {
-        if (!$this->server_caps) {
-            $this->setError('Authentication is not allowed before HELO/EHLO');
-            return false;
-        }
-
-        if (array_key_exists('EHLO', $this->server_caps)) {
-        // SMTP extensions are available. Let's try to find a proper authentication method
-
-            if (!array_key_exists('AUTH', $this->server_caps)) {
-                $this->setError('Authentication is not allowed at this stage');
-                // 'at this stage' means that auth may be allowed after the stage changes
-                // e.g. after STARTTLS
-                return false;
-            }
-
-            self::edebug('Auth method requested: ' . ($authtype ? $authtype : 'UNKNOWN'), self::DEBUG_LOWLEVEL);
-            self::edebug(
-                'Auth methods available on the server: ' . implode(',', $this->server_caps['AUTH']),
-                self::DEBUG_LOWLEVEL
-            );
-
-            if (empty($authtype)) {
-                foreach (array('LOGIN', 'CRAM-MD5', 'NTLM', 'PLAIN') as $method) {
-                    if (in_array($method, $this->server_caps['AUTH'])) {
-                        $authtype = $method;
-                        break;
-                    }
-                }
-                if (empty($authtype)) {
-                    $this->setError('No supported authentication methods found');
-                    return false;
-                }
-                self::edebug('Auth method selected: '.$authtype, self::DEBUG_LOWLEVEL);
-            }
-
-            if (!in_array($authtype, $this->server_caps['AUTH'])) {
-                $this->setError("The requested authentication method \"$authtype\" is not supported by the server");
-                return false;
-            }
-        } elseif (empty($authtype)) {
-            $authtype = 'LOGIN';
-        }
-        switch ($authtype) {
-            case 'PLAIN':
-                // Start authentication
-                if (!$this->sendCommand('AUTH', 'AUTH PLAIN', 334)) {
-                    return false;
-                }
-                // Send encoded username and password
-                if (!$this->sendCommand(
-                    'User & Password',
-                    base64_encode("\0" . $username . "\0" . $password),
-                    235
-                )
-                ) {
-                    return false;
-                }
-                break;
-            case 'LOGIN':
-                // Start authentication
-                if (!$this->sendCommand('AUTH', 'AUTH LOGIN', 334)) {
-                    return false;
-                }
-                if (!$this->sendCommand("Username", base64_encode($username), 334)) {
-                    return false;
-                }
-                if (!$this->sendCommand("Password", base64_encode($password), 235)) {
-                    return false;
-                }
-                break;
-            case 'NTLM':
-                /*
-                 * ntlm_sasl_client.php
-                 * Bundled with Permission
-                 *
-                 * How to telnet in windows:
-                 * http://technet.microsoft.com/en-us/library/aa995718%28EXCHG.65%29.aspx
-                 * PROTOCOL Docs http://curl.haxx.se/rfc/ntlm.html#ntlmSmtpAuthentication
-                 */
-                require_once 'extras/ntlm_sasl_client.php';
-                $temp = new stdClass;
-                $ntlm_client = new ntlm_sasl_client_class;
-                //Check that functions are available
-                if (!$ntlm_client->Initialize($temp)) {
-                    $this->setError($temp->error);
-                    $this->edebug(
-                        'You need to enable some modules in your php.ini file: '
-                        . $this->error['error'],
-                        self::DEBUG_CLIENT
-                    );
-                    return false;
-                }
-                //msg1
-                $msg1 = $ntlm_client->TypeMsg1($realm, $workstation); //msg1
-
-                if (!$this->sendCommand(
-                    'AUTH NTLM',
-                    'AUTH NTLM ' . base64_encode($msg1),
-                    334
-                )
-                ) {
-                    return false;
-                }
-                //Though 0 based, there is a white space after the 3 digit number
-                //msg2
-                $challenge = substr($this->last_reply, 3);
-                $challenge = base64_decode($challenge);
-                $ntlm_res = $ntlm_client->NTLMResponse(
-                    substr($challenge, 24, 8),
-                    $password
-                );
-                //msg3
-                $msg3 = $ntlm_client->TypeMsg3(
-                    $ntlm_res,
-                    $username,
-                    $realm,
-                    $workstation
-                );
-                // send encoded username
-                return $this->sendCommand('Username', base64_encode($msg3), 235);
-            case 'CRAM-MD5':
-                // Start authentication
-                if (!$this->sendCommand('AUTH CRAM-MD5', 'AUTH CRAM-MD5', 334)) {
-                    return false;
-                }
-                // Get the challenge
-                $challenge = base64_decode(substr($this->last_reply, 4));
-
-                // Build the response
-                $response = $username . ' ' . $this->hmac($challenge, $password);
-
-                // send encoded credentials
-                return $this->sendCommand('Username', base64_encode($response), 235);
-            default:
-                $this->setError("Authentication method \"$authtype\" is not supported");
-                return false;
-        }
-        return true;
-    }
-
-    /**
-     * Calculate an MD5 HMAC hash.
-     * Works like hash_hmac('md5', $data, $key)
-     * in case that function is not available
-     * @param string $data The data to hash
-     * @param string $key  The key to hash with
-     * @access protected
-     * @return string
-     */
-    protected function hmac($data, $key)
-    {
-        if (function_exists('hash_hmac')) {
-            return hash_hmac('md5', $data, $key);
-        }
-
-        // The following borrowed from
-        // http://php.net/manual/en/function.mhash.php#27225
-
-        // RFC 2104 HMAC implementation for php.
-        // Creates an md5 HMAC.
-        // Eliminates the need to install mhash to compute a HMAC
-        // by Lance Rushing
-
-        $bytelen = 64; // byte length for md5
-        if (strlen($key) > $bytelen) {
-            $key = pack('H*', md5($key));
-        }
-        $key = str_pad($key, $bytelen, chr(0x00));
-        $ipad = str_pad('', $bytelen, chr(0x36));
-        $opad = str_pad('', $bytelen, chr(0x5c));
-        $k_ipad = $key ^ $ipad;
-        $k_opad = $key ^ $opad;
-
-        return md5($k_opad . pack('H*', md5($k_ipad . $data)));
-    }
-
-    /**
-     * Check connection state.
-     * @access public
-     * @return boolean True if connected.
-     */
-    public function connected()
-    {
-        if (is_resource($this->smtp_conn)) {
-            $sock_status = stream_get_meta_data($this->smtp_conn);
-            if ($sock_status['eof']) {
-                // The socket is valid but we are not connected
-                $this->edebug(
-                    'SMTP NOTICE: EOF caught while checking if connected',
-                    self::DEBUG_CLIENT
-                );
-                $this->close();
-                return false;
-            }
-            return true; // everything looks good
-        }
-        return false;
-    }
-
-    /**
-     * Close the socket and clean up the state of the class.
-     * Don't use this function without first trying to use QUIT.
-     * @see quit()
-     * @access public
-     * @return void
-     */
-    public function close()
-    {
-        $this->setError('');
-        $this->server_caps = null;
-        $this->helo_rply = null;
-        if (is_resource($this->smtp_conn)) {
-            // close the connection and cleanup
-            fclose($this->smtp_conn);
-            $this->smtp_conn = null; //Makes for cleaner serialization
-            $this->edebug('Connection: closed', self::DEBUG_CONNECTION);
-        }
-    }
-
-    /**
-     * Send an SMTP DATA command.
-     * Issues a data command and sends the msg_data to the server,
-     * finializing the mail transaction. $msg_data is the message
-     * that is to be send with the headers. Each header needs to be
-     * on a single line followed by a <CRLF> with the message headers
-     * and the message body being separated by and additional <CRLF>.
-     * Implements rfc 821: DATA <CRLF>
-     * @param string $msg_data Message data to send
-     * @access public
-     * @return boolean
-     */
-    public function data($msg_data)
-    {
-        //This will use the standard timelimit
-        if (!$this->sendCommand('DATA', 'DATA', 354)) {
-            return false;
-        }
-
-        /* The server is ready to accept data!
-         * According to rfc821 we should not send more than 1000 characters on a single line (including the CRLF)
-         * so we will break the data up into lines by \r and/or \n then if needed we will break each of those into
-         * smaller lines to fit within the limit.
-         * We will also look for lines that start with a '.' and prepend an additional '.'.
-         * NOTE: this does not count towards line-length limit.
-         */
-
-        // Normalize line breaks before exploding
-        $lines = explode("\n", str_replace(array("\r\n", "\r"), "\n", $msg_data));
-
-        /* To distinguish between a complete RFC822 message and a plain message body, we check if the first field
-         * of the first line (':' separated) does not contain a space then it _should_ be a header and we will
-         * process all lines before a blank line as headers.
-         */
-
-        $field = substr($lines[0], 0, strpos($lines[0], ':'));
-        $in_headers = false;
-        if (!empty($field) && strpos($field, ' ') === false) {
-            $in_headers = true;
-        }
-
-        foreach ($lines as $line) {
-            $lines_out = array();
-            if ($in_headers and $line == '') {
-                $in_headers = false;
-            }
-            //Break this line up into several smaller lines if it's too long
-            //Micro-optimisation: isset($str[$len]) is faster than (strlen($str) > $len),
-            while (isset($line[self::MAX_LINE_LENGTH])) {
-                //Working backwards, try to find a space within the last MAX_LINE_LENGTH chars of the line to break on
-                //so as to avoid breaking in the middle of a word
-                $pos = strrpos(substr($line, 0, self::MAX_LINE_LENGTH), ' ');
-                //Deliberately matches both false and 0
-                if (!$pos) {
-                    //No nice break found, add a hard break
-                    $pos = self::MAX_LINE_LENGTH - 1;
-                    $lines_out[] = substr($line, 0, $pos);
-                    $line = substr($line, $pos);
-                } else {
-                    //Break at the found point
-                    $lines_out[] = substr($line, 0, $pos);
-                    //Move along by the amount we dealt with
-                    $line = substr($line, $pos + 1);
-                }
-                //If processing headers add a LWSP-char to the front of new line RFC822 section 3.1.1
-                if ($in_headers) {
-                    $line = "\t" . $line;
-                }
-            }
-            $lines_out[] = $line;
-
-            //Send the lines to the server
-            foreach ($lines_out as $line_out) {
-                //RFC2821 section 4.5.2
-                if (!empty($line_out) and $line_out[0] == '.') {
-                    $line_out = '.' . $line_out;
-                }
-                $this->client_send($line_out . self::CRLF);
-            }
-        }
-
-        //Message data has been sent, complete the command
-        //Increase timelimit for end of DATA command
-        $savetimelimit = $this->Timelimit;
-        $this->Timelimit = $this->Timelimit * 2;
-        $result = $this->sendCommand('DATA END', '.', 250);
-        //Restore timelimit
-        $this->Timelimit = $savetimelimit;
-        return $result;
-    }
-
-    /**
-     * Send an SMTP HELO or EHLO command.
-     * Used to identify the sending server to the receiving server.
-     * This makes sure that client and server are in a known state.
-     * Implements RFC 821: HELO <SP> <domain> <CRLF>
-     * and RFC 2821 EHLO.
-     * @param string $host The host name or IP to connect to
-     * @access public
-     * @return boolean
-     */
-    public function hello($host = '')
-    {
-        //Try extended hello first (RFC 2821)
-        return (boolean)($this->sendHello('EHLO', $host) or $this->sendHello('HELO', $host));
-    }
-
-    /**
-     * Send an SMTP HELO or EHLO command.
-     * Low-level implementation used by hello()
-     * @see hello()
-     * @param string $hello The HELO string
-     * @param string $host The hostname to say we are
-     * @access protected
-     * @return boolean
-     */
-    protected function sendHello($hello, $host)
-    {
-        $noerror = $this->sendCommand($hello, $hello . ' ' . $host, 250);
-        $this->helo_rply = $this->last_reply;
-        if ($noerror) {
-            $this->parseHelloFields($hello);
-        } else {
-            $this->server_caps = null;
-        }
-        return $noerror;
-    }
-
-    /**
-     * Parse a reply to HELO/EHLO command to discover server extensions.
-     * In case of HELO, the only parameter that can be discovered is a server name.
-     * @access protected
-     * @param string $type - 'HELO' or 'EHLO'
-     */
-    protected function parseHelloFields($type)
-    {
-        $this->server_caps = array();
-        $lines = explode("\n", $this->last_reply);
-        foreach ($lines as $n => $s) {
-            $s = trim(substr($s, 4));
-            if (!$s) {
-                continue;
-            }
-            $fields = explode(' ', $s);
-            if (!empty($fields)) {
-                if (!$n) {
-                    $name = $type;
-                    $fields = $fields[0];
-                } else {
-                    $name = array_shift($fields);
-                    if ($name == 'SIZE') {
-                        $fields = ($fields) ? $fields[0] : 0;
-                    }
-                }
-                $this->server_caps[$name] = ($fields ? $fields : true);
-            }
-        }
-    }
-
-    /**
-     * Send an SMTP MAIL command.
-     * Starts a mail transaction from the email address specified in
-     * $from. Returns true if successful or false otherwise. If True
-     * the mail transaction is started and then one or more recipient
-     * commands may be called followed by a data command.
-     * Implements rfc 821: MAIL <SP> FROM:<reverse-path> <CRLF>
-     * @param string $from Source address of this message
-     * @access public
-     * @return boolean
-     */
-    public function mail($from)
-    {
-        $useVerp = ($this->do_verp ? ' XVERP' : '');
-        return $this->sendCommand(
-            'MAIL FROM',
-            'MAIL FROM:<' . $from . '>' . $useVerp,
-            250
-        );
-    }
-
-    /**
-     * Send an SMTP QUIT command.
-     * Closes the socket if there is no error or the $close_on_error argument is true.
-     * Implements from rfc 821: QUIT <CRLF>
-     * @param boolean $close_on_error Should the connection close if an error occurs?
-     * @access public
-     * @return boolean
-     */
-    public function quit($close_on_error = true)
-    {
-        $noerror = $this->sendCommand('QUIT', 'QUIT', 221);
-        $err = $this->error; //Save any error
-        if ($noerror or $close_on_error) {
-            $this->close();
-            $this->error = $err; //Restore any error from the quit command
-        }
-        return $noerror;
-    }
-
-    /**
-     * Send an SMTP RCPT command.
-     * Sets the TO argument to $toaddr.
-     * Returns true if the recipient was accepted false if it was rejected.
-     * Implements from rfc 821: RCPT <SP> TO:<forward-path> <CRLF>
-     * @param string $toaddr The address the message is being sent to
-     * @access public
-     * @return boolean
-     */
-    public function recipient($toaddr)
-    {
-        return $this->sendCommand(
-            'RCPT TO',
-            'RCPT TO:<' . $toaddr . '>',
-            array(250, 251)
-        );
-    }
-
-    /**
-     * Send an SMTP RSET command.
-     * Abort any transaction that is currently in progress.
-     * Implements rfc 821: RSET <CRLF>
-     * @access public
-     * @return boolean True on success.
-     */
-    public function reset()
-    {
-        return $this->sendCommand('RSET', 'RSET', 250);
-    }
-
-    /**
-     * Send a command to an SMTP server and check its return code.
-     * @param string $command       The command name - not sent to the server
-     * @param string $commandstring The actual command to send
-     * @param integer|array $expect     One or more expected integer success codes
-     * @access protected
-     * @return boolean True on success.
-     */
-    protected function sendCommand($command, $commandstring, $expect)
-    {
-        if (!$this->connected()) {
-            $this->setError("Called $command without being connected");
-            return false;
-        }
-        $this->client_send($commandstring . self::CRLF);
-
-        $this->last_reply = $this->get_lines();
-        // Fetch SMTP code and possible error code explanation
-        $matches = array();
-        if (preg_match("/^([0-9]{3})[ -](?:([0-9]\\.[0-9]\\.[0-9]) )?/", $this->last_reply, $matches)) {
-            $code = $matches[1];
-            $code_ex = (count($matches) > 2 ? $matches[2] : null);
-            // Cut off error code from each response line
-            $detail = preg_replace(
-                "/{$code}[ -]".($code_ex ? str_replace('.', '\\.', $code_ex).' ' : '')."/m",
-                '',
-                $this->last_reply
-            );
-        } else {
-            // Fall back to simple parsing if regex fails
-            $code = substr($this->last_reply, 0, 3);
-            $code_ex = null;
-            $detail = substr($this->last_reply, 4);
-        }
-
-        $this->edebug('SERVER -> CLIENT: ' . $this->last_reply, self::DEBUG_SERVER);
-
-        if (!in_array($code, (array)$expect)) {
-            $this->setError(
-                "$command command failed",
-                $detail,
-                $code,
-                $code_ex
-            );
-            $this->edebug(
-                'SMTP ERROR: ' . $this->error['error'] . ': ' . $this->last_reply,
-                self::DEBUG_CLIENT
-            );
-            return false;
-        }
-
-        $this->setError('');
-        return true;
-    }
-
-    /**
-     * Send an SMTP SAML command.
-     * Starts a mail transaction from the email address specified in $from.
-     * Returns true if successful or false otherwise. If True
-     * the mail transaction is started and then one or more recipient
-     * commands may be called followed by a data command. This command
-     * will send the message to the users terminal if they are logged
-     * in and send them an email.
-     * Implements rfc 821: SAML <SP> FROM:<reverse-path> <CRLF>
-     * @param string $from The address the message is from
-     * @access public
-     * @return boolean
-     */
-    public function sendAndMail($from)
-    {
-        return $this->sendCommand('SAML', "SAML FROM:$from", 250);
-    }
-
-    /**
-     * Send an SMTP VRFY command.
-     * @param string $name The name to verify
-     * @access public
-     * @return boolean
-     */
-    public function verify($name)
-    {
-        return $this->sendCommand('VRFY', "VRFY $name", array(250, 251));
-    }
-
-    /**
-     * Send an SMTP NOOP command.
-     * Used to keep keep-alives alive, doesn't actually do anything
-     * @access public
-     * @return boolean
-     */
-    public function noop()
-    {
-        return $this->sendCommand('NOOP', 'NOOP', 250);
-    }
-
-    /**
-     * Send an SMTP TURN command.
-     * This is an optional command for SMTP that this class does not support.
-     * This method is here to make the RFC821 Definition complete for this class
-     * and _may_ be implemented in future
-     * Implements from rfc 821: TURN <CRLF>
-     * @access public
-     * @return boolean
-     */
-    public function turn()
-    {
-        $this->setError('The SMTP TURN command is not implemented');
-        $this->edebug('SMTP NOTICE: ' . $this->error['error'], self::DEBUG_CLIENT);
-        return false;
-    }
-
-    /**
-     * Send raw data to the server.
-     * @param string $data The data to send
-     * @access public
-     * @return integer|boolean The number of bytes sent to the server or false on error
-     */
-    public function client_send($data)
-    {
-        $this->edebug("CLIENT -> SERVER: $data", self::DEBUG_CLIENT);
-        return fwrite($this->smtp_conn, $data);
-    }
-
-    /**
-     * Get the latest error.
-     * @access public
-     * @return array
-     */
-    public function getError()
-    {
-        return $this->error;
-    }
-
-    /**
-     * Get SMTP extensions available on the server
-     * @access public
-     * @return array|null
-     */
-    public function getServerExtList()
-    {
-        return $this->server_caps;
-    }
-
-    /**
-     * A multipurpose method
-     * The method works in three ways, dependent on argument value and current state
-     *   1. HELO/EHLO was not sent - returns null and set up $this->error
-     *   2. HELO was sent
-     *     $name = 'HELO': returns server name
-     *     $name = 'EHLO': returns boolean false
-     *     $name = any string: returns null and set up $this->error
-     *   3. EHLO was sent
-     *     $name = 'HELO'|'EHLO': returns server name
-     *     $name = any string: if extension $name exists, returns boolean True
-     *       or its options. Otherwise returns boolean False
-     * In other words, one can use this method to detect 3 conditions:
-     *  - null returned: handshake was not or we don't know about ext (refer to $this->error)
-     *  - false returned: the requested feature exactly not exists
-     *  - positive value returned: the requested feature exists
-     * @param string $name Name of SMTP extension or 'HELO'|'EHLO'
-     * @return mixed
-     */
-    public function getServerExt($name)
-    {
-        if (!$this->server_caps) {
-            $this->setError('No HELO/EHLO was sent');
-            return null;
-        }
-
-        // the tight logic knot ;)
-        if (!array_key_exists($name, $this->server_caps)) {
-            if ($name == 'HELO') {
-                return $this->server_caps['EHLO'];
-            }
-            if ($name == 'EHLO' || array_key_exists('EHLO', $this->server_caps)) {
-                return false;
-            }
-            $this->setError('HELO handshake was used. Client knows nothing about server extensions');
-            return null;
-        }
-
-        return $this->server_caps[$name];
-    }
-
-    /**
-     * Get the last reply from the server.
-     * @access public
-     * @return string
-     */
-    public function getLastReply()
-    {
-        return $this->last_reply;
-    }
-
-    /**
-     * Read the SMTP server's response.
-     * Either before eof or socket timeout occurs on the operation.
-     * With SMTP we can tell if we have more lines to read if the
-     * 4th character is '-' symbol. If it is a space then we don't
-     * need to read anything else.
-     * @access protected
-     * @return string
-     */
-    protected function get_lines()
-    {
-        // If the connection is bad, give up straight away
-        if (!is_resource($this->smtp_conn)) {
-            return '';
-        }
-        $data = '';
-        $endtime = 0;
-        stream_set_timeout($this->smtp_conn, $this->Timeout);
-        if ($this->Timelimit > 0) {
-            $endtime = time() + $this->Timelimit;
-        }
-        while (is_resource($this->smtp_conn) && !feof($this->smtp_conn)) {
-            $str = @fgets($this->smtp_conn, 515);
-            $this->edebug("SMTP -> get_lines(): \$data was \"$data\"", self::DEBUG_LOWLEVEL);
-            $this->edebug("SMTP -> get_lines(): \$str is \"$str\"", self::DEBUG_LOWLEVEL);
-            $data .= $str;
-            $this->edebug("SMTP -> get_lines(): \$data is \"$data\"", self::DEBUG_LOWLEVEL);
-            // If 4th character is a space, we are done reading, break the loop, micro-optimisation over strlen
-            if ((isset($str[3]) and $str[3] == ' ')) {
-                break;
-            }
-            // Timed-out? Log and break
-            $info = stream_get_meta_data($this->smtp_conn);
-            if ($info['timed_out']) {
-                $this->edebug(
-                    'SMTP -> get_lines(): timed-out (' . $this->Timeout . ' sec)',
-                    self::DEBUG_LOWLEVEL
-                );
-                break;
-            }
-            // Now check if reads took too long
-            if ($endtime and time() > $endtime) {
-                $this->edebug(
-                    'SMTP -> get_lines(): timelimit reached ('.
-                    $this->Timelimit . ' sec)',
-                    self::DEBUG_LOWLEVEL
-                );
-                break;
-            }
-        }
-        return $data;
-    }
-
-    /**
-     * Enable or disable VERP address generation.
-     * @param boolean $enabled
-     */
-    public function setVerp($enabled = false)
-    {
-        $this->do_verp = $enabled;
-    }
-
-    /**
-     * Get VERP address generation mode.
-     * @return boolean
-     */
-    public function getVerp()
-    {
-        return $this->do_verp;
-    }
-
-    /**
-     * Set error messages and codes.
-     * @param string $message The error message
-     * @param string $detail Further detail on the error
-     * @param string $smtp_code An associated SMTP error code
-     * @param string $smtp_code_ex Extended SMTP code
-     */
-    protected function setError($message, $detail = '', $smtp_code = '', $smtp_code_ex = '')
-    {
-        $this->error = array(
-            'error' => $message,
-            'detail' => $detail,
-            'smtp_code' => $smtp_code,
-            'smtp_code_ex' => $smtp_code_ex
-        );
-    }
-
-    /**
-     * Set debug output method.
-     * @param string|callable $method The name of the mechanism to use for debugging output, or a callable to handle it.
-     */
-    public function setDebugOutput($method = 'echo')
-    {
-        $this->Debugoutput = $method;
-    }
-
-    /**
-     * Get debug output method.
-     * @return string
-     */
-    public function getDebugOutput()
-    {
-        return $this->Debugoutput;
-    }
-
-    /**
-     * Set debug output level.
-     * @param integer $level
-     */
-    public function setDebugLevel($level = 0)
-    {
-        $this->do_debug = $level;
-    }
-
-    /**
-     * Get debug output level.
-     * @return integer
-     */
-    public function getDebugLevel()
-    {
-        return $this->do_debug;
-    }
-
-    /**
-     * Set SMTP timeout.
-     * @param integer $timeout
-     */
-    public function setTimeout($timeout = 0)
-    {
-        $this->Timeout = $timeout;
-    }
-
-    /**
-     * Get SMTP timeout.
-     * @return integer
-     */
-    public function getTimeout()
-    {
-        return $this->Timeout;
-    }
-}
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
+
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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

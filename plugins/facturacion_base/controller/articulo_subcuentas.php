@@ -1,156 +1,102 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-/**
- * This file is part of FacturaSctipts
- * Copyright (C) 2015-2016  Carlos Garcia Gomez  neorazorx@gmail.com
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
-
-require_model('articulo.php');
-require_model('articulo_propiedad.php');
-require_model('subcuenta.php');
-
-/**
- * Description of articulo_subcuentas
- *
- * @author carlos
- */
-class articulo_subcuentas extends fs_controller
-{
-   public $articulo;
-   public $subcuentacom;
-   public $subcuentairpfcom;
-   public $subcuentaventa;
-   
-   public function __construct()
-   {
-      parent::__construct(__CLASS__, 'Subcuentas', 'ventas', FALSE, FALSE);
-   }
-   
-   protected function private_core()
-   {
-      $this->share_extension();
-      $art0 = new articulo();
-      
-      $this->articulo = FALSE;
-      if( isset($_REQUEST['ref']) )
-      {
-         $this->articulo = $art0->get($_REQUEST['ref']);
-      }
-      
-      if( isset($_REQUEST['buscar_subcuenta']) )
-      {
-         /// esto es para el autocompletar las subcuentas de la vista
-         $this->buscar_subcuenta();
-      }
-      else if($this->articulo)
-      {
-         $ap = new articulo_propiedad();
-         
-         if( isset($_POST['codsubcuentacom']) )
-         {
-            $this->articulo->codsubcuentacom = $_POST['codsubcuentacom'];
-            $this->articulo->codsubcuentairpfcom = $_POST['codsubcuentairpfcom'];
-            $aprops = array('codsubcuentaventa' => $_POST['codsubcuentaventa']);
-            
-            if($this->articulo->save() AND $ap->array_save($this->articulo->referencia, $aprops) )
-            {
-               $this->new_message('Datos guardados correctamente.');
-            }
-            else
-            {
-               $this->new_error_msg('Error al guardar las subcuentas.');
-            }
-         }
-         
-         $eje0 = new ejercicio();
-         $ejercicio = $eje0->get_by_fecha( $this->today() );
-         $sc = new subcuenta();
-         
-         $this->subcuentacom = $sc->get_by_codigo($this->articulo->codsubcuentacom, $ejercicio->codejercicio);
-         $this->subcuentairpfcom = $sc->get_by_codigo($this->articulo->codsubcuentairpfcom, $ejercicio->codejercicio);
-         
-         $propiedades = $ap->array_get($this->articulo->referencia);
-         if( isset($propiedades['codsubcuentaventa']) )
-         {
-            $this->subcuentaventa = $sc->get_by_codigo($propiedades['codsubcuentaventa'], $ejercicio->codejercicio);
-         }
-         
-         /**
-          * si alguna subcuenta no se encontrase, devuelve un false,
-          * pero necesitamos una subcuenta para la vista, aunque no esté en
-          * blanco y no esté en la base de datos
-          */
-         if(!$this->subcuentacom)
-         {
-            $this->subcuentacom = $sc;
-         }
-         if(!$this->subcuentairpfcom)
-         {
-            $this->subcuentairpfcom = $sc;
-         }
-         if(!$this->subcuentaventa)
-         {
-            $this->subcuentaventa = $sc;
-         }
-      }
-      else
-         $this->new_error_msg('Artículo no encontrado.');
-   }
-   
-   private function share_extension()
-   {
-      $fsext = new fs_extension();
-      $fsext->name = 'articulo_subcuentas';
-      $fsext->from = __CLASS__;
-      $fsext->to = 'ventas_articulo';
-      $fsext->type = 'tab';
-      $fsext->text = '<span class="glyphicon glyphicon-book" aria-hidden="true"></span><span class="hidden-xs">&nbsp; Subcuentas</span>';
-      $fsext->save();
-   }
-   
-   public function url()
-   {
-      if($this->articulo)
-      {
-         return 'index.php?page='.__CLASS__.'&ref='.$this->articulo->referencia;
-      }
-      else
-         return parent::url();
-   }
-   
-   private function buscar_subcuenta()
-   {
-      /// desactivamos la plantilla HTML
-      $this->template = FALSE;
-      
-      $subcuenta = new subcuenta();
-      $eje0 = new ejercicio();
-      $ejercicio = $eje0->get_by_fecha( $this->today() );
-      $json = array();
-      foreach($subcuenta->search_by_ejercicio($ejercicio->codejercicio, $_REQUEST['buscar_subcuenta']) as $subc)
-      {
-         $json[] = array(
-             'value' => $subc->codsubcuenta,
-             'data' => $subc->descripcion,
-             'saldo' => $subc->saldo,
-             'link' => $subc->url()
-         );
-      }
-      
-      header('Content-Type: application/json');
-      echo json_encode( array('query' => $_REQUEST['buscar_subcuenta'], 'suggestions' => $json) );
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+jG==

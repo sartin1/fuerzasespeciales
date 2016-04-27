@@ -1,562 +1,328 @@
-<?php
-   
-require_model('agente.php');
-require_model('direccion_agente.php');
-require_model('domiciliosant_agente.php');
-require_model('cursos_agente.php');
-require_model('seminario_agente.php');
-require_model('conferencia_agente.php');
-require_model('jornadas_agente.php');
-require_model('diser_agente.php');
-require_model('academia_agente.php');
-require_model('foto_agente.php');
-require_model('ingreso_agente.php');
-require_model('ingreso_agente1.php');
-require_model('ingresogoe_agente.php');
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-
-class admin_agente extends fs_controller
-{
-   public $agente;
-
-   public $allow_delete;
-
-   /*
-    * Esta página está en la carpeta admin, pero no se necesita ser admin para usarla.
-    * Está en la carpeta admin porque su antecesora también lo está (y debe estarlo).
-    */
-   public function __construct()
-   {
-      parent::__construct(__CLASS__, 'Efectivo controlador', '');
-   }
-   
-   protected function private_core()
-   {
-      
-      $this->ppage = $this->page->get('admin_agentes');
-      
-      /// ¿El usuario tiene permiso para eliminar en esta página?
-      $this->allow_delete = $this->user->allow_delete_on(__CLASS__);
-      $this->agente = FALSE;
-      if( isset($_GET['cod']) )
-      {
-         $agente = new agente();
-         $this->agente = $agente->get($_GET['cod']);
-      }
-
-       if( isset($_POST['codconf']) ) /// añadir/modificar cursos
-      {
-         $dir = new conferencia_agente();
-         if($_POST['codconf'] != '')
-         {
-            $dir = $dir->get($_POST['codconf']);
-         }
-         $dir->fecha = $_POST['fecha'];
-         $dir->conferencia = $_POST['conferencia'];
-         $dir->codagente = $this->agente->codagente;
-         $dir->observaciones = $_POST['observaciones'];
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir4']) ) /// eliminar dirección
-      {
-         $dir = new conferencia_agente();
-         $dir0 = $dir->get($_GET['delete_dir4']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-
-
-      if( isset($_POST['conarm']) ) /// añadir/modificar cursos
-      {
-         $dir = new ingresogoe_agente();
-         if($_POST['conarm'] != '')
-         {
-            $dir = $dir->get($_POST['conarm']);
-         }
-         $dir->codagente = $this->agente->codagente;
-         $dir->observaciones = $_POST['observaciones'];
-         $dir->arma = $_POST['arma'];
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir8']) ) /// eliminar dirección
-      {
-         $dir = new ingresogoe_agente();
-         $dir0 = $dir->get($_GET['delete_dir8']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-      if( isset($_POST['codjor']) ) /// añadir/modificar cursos
-      {
-         $dir = new jornadas_agente();
-         if($_POST['codjor'] != '')
-         {
-            $dir = $dir->get($_POST['codjor']);
-         }
-         $dir->fecha = $_POST['fecha'];
-         $dir->jornadas = $_POST['jornadas'];
-         $dir->codagente = $this->agente->codagente;
-         $dir->observaciones = $_POST['observaciones'];
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir5']) ) /// eliminar dirección
-      {
-         $dir = new jornadas_agente();
-         $dir0 = $dir->get($_GET['delete_dir5']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-
-      if( isset($_POST['codasc']) ) /// añadir/modificar cursos
-      {
-         $dir = new ingreso_agente1();
-         if($_POST['codasc'] != '')
-         {
-            $dir = $dir->get($_POST['codasc']);
-         }
-         $dir->fecha = $_POST['fecha'];
-         $dir->destino = $_POST['destino'];
-         $dir->codagente = $this->agente->codagente;
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir10']) ) /// eliminar dirección
-      {
-         $dir = new ingreso_agente1();
-         $dir0 = $dir->get($_GET['delete_dir10']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-      if( isset($_POST['codasc1']) ) /// añadir/modificar cursos
-      {
-         $dir = new ingreso_agente();
-         if($_POST['codasc1'] != '')
-         {
-            $dir = $dir->get($_POST['codasc1']);
-         }
-         $dir->fecha1 = $_POST['fecha1'];
-         $dir->jerarquia = $_POST['jerarquia'];
-         $dir->decreto1 = $_POST['decreto1'];
-         $dir->codagente = $this->agente->codagente;
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir9']) ) /// eliminar dirección
-      {
-         $dir = new ingreso_agente();
-         $dir0 = $dir->get($_GET['delete_dir9']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-      if( isset($_POST['codaca']) ) /// añadir/modificar cursos
-      {
-         $dir = new academia_agente();
-         if($_POST['codaca'] != '')
-         {
-            $dir = $dir->get($_POST['codaca']);
-         }
-         $dir->fecha = $_POST['fecha'];
-         $dir->academias = $_POST['academias'];
-         $dir->codagente = $this->agente->codagente;
-         $dir->observaciones = $_POST['observaciones'];
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir7']) ) /// eliminar dirección
-      {
-         $dir = new academia_agente();
-         $dir0 = $dir->get($_GET['delete_dir7']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-
-      if( isset($_POST['coddis']) ) /// añadir/modificar cursos
-      {
-         $dir = new diser_agente();
-         if($_POST['coddis'] != '')
-         {
-            $dir = $dir->get($_POST['coddis']);
-         }
-         $dir->fecha = $_POST['fecha'];
-         $dir->disertaciones = $_POST['disertaciones'];
-         $dir->codagente = $this->agente->codagente;
-         $dir->observaciones = $_POST['observaciones'];
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir6']) ) /// eliminar dirección
-      {
-         $dir = new diser_agente();
-         $dir0 = $dir->get($_GET['delete_dir6']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-
-      if( isset($_POST['codsem']) ) /// añadir/modificar cursos
-      {
-         $dir = new seminario_agente();
-         if($_POST['codsem'] != '')
-         {
-            $dir = $dir->get($_POST['codsem']);
-         }
-         $dir->fecha = $_POST['fecha'];
-         $dir->seminario = $_POST['seminario'];
-         $dir->codagente = $this->agente->codagente;
-         $dir->observaciones = $_POST['observaciones'];
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir3']) ) /// eliminar dirección
-      {
-         $dir = new seminario_agente();
-         $dir0 = $dir->get($_GET['delete_dir3']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-
-      if( isset($_POST['codcur']) ) /// añadir/modificar cursos
-      {
-         $dir = new cursos_agente();
-         if($_POST['codcur'] != '')
-         {
-            $dir = $dir->get($_POST['codcur']);
-         }
-         $dir->fecha = $_POST['fecha'];
-         $dir->cursos = $_POST['cursos'];
-         $dir->codagente = $this->agente->codagente;
-         $dir->observaciones = $_POST['observaciones'];
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir2']) ) /// eliminar dirección
-      {
-         $dir = new cursos_agente();
-         $dir0 = $dir->get($_GET['delete_dir2']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-      if( isset($_POST['coddant']) ) /// añadir/modificar domicilios anteriores
-      {
-         $dir = new domiciliosant_agente();
-         if($_POST['coddant'] != '')
-         {
-            $dir = $dir->get($_POST['coddant']);
-         }
-         $dir->fecha = $_POST['fecha'];
-         $dir->direccion = $_POST['direccion'];
-         $dir->codagente = $this->agente->codagente;
-         $dir->ciudad = $_POST['ciudad'];
-         $dir->telefono = $_POST['telefono'];
-         if( $dir->save() )
-         {
-            $this->new_message("Datos guardados correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar!");
-      }     
-         if(isset($_GET['delete_dir1']) ) /// eliminar dirección
-      {
-         $dir = new domiciliosant_agente();
-         $dir0 = $dir->get($_GET['delete_dir1']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Datos eliminados correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar.');
-         }
-         else
-            $this->new_error_msg('Datos no encontrada.');
-      }
-
-      if( isset($_POST['coddir']) ) /// añadir/modificar dirección
-      {
-         $dir = new direccion_agente();
-         if($_POST['coddir'] != '')
-         {
-            $dir = $dir->get($_POST['coddir']);
-         }
-         $dir->apartado = $_POST['apartado'];
-         $dir->ciudad = $_POST['ciudad'];
-         $dir->codagente = $this->agente->codagente;
-         $dir->codpais = $_POST['pais'];
-         $dir->descripcion = $_POST['descripcion'];
-         $dir->direccion = $_POST['direccion'];
-         $dir->domenvio = isset($_POST['direnvio']);
-         $dir->domfacturacion = isset($_POST['dirfact']);
-         $dir->provincia = $_POST['provincia'];
-         if( $dir->save() )
-         {
-            $this->new_message("Dirección guardada correctamente.");
-         }
-         else
-            $this->new_message("¡Imposible guardar la dirección!");
-      }     
-         if(isset($_GET['delete_dir']) ) /// eliminar dirección
-      {
-         $dir = new direccion_agente();
-         $dir0 = $dir->get($_GET['delete_dir']);
-         if($dir0)
-         {
-            if( $dir0->delete() )
-            {
-               $this->new_message('Dirección eliminada correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar la dirección.');
-         }
-         else
-            $this->new_error_msg('Dirección no encontrada.');
-      }
-      if($this->agente)
-      {
-         $this->page->title .= ' ' . $this->agente->codagente;
-         
-         if( isset($_POST['nombre']) )
-         {
-            if( $this->user_can_edit() )
-            {
-               $this->agente->nombre = $_POST['nombre'];
-               $this->agente->apellidos = $_POST['apellidos'];
-               $this->agente->tipodocumento = $_POST['tipodocumento'];
-               $this->agente->estatura = $_POST['estatura'];
-               $this->agente->contextfis = $_POST['contextfis'];
-               $this->agente->cutis = $_POST['cutis'];
-               $this->agente->cedulaid = $_POST['cedulaid'];
-               $this->agente->cabellotipo = $_POST['cabellotipo'];
-               $this->agente->cabellocolor = $_POST['cabellocolor'];
-               $this->agente->ojostipo = $_POST['ojostipo'];
-               $this->agente->ojoscolor = $_POST['ojoscolor'];
-               $this->agente->exppor = $_POST['exppor'];
-               $this->agente->prontuario = $_POST['prontuario'];
-               $this->agente->pasaporte = $_POST['pasaporte'];
-               $this->agente->estadocivil = $_POST['estadocivil'];
-               $this->agente->fcasamiento = $_POST['fcasamiento'];
-               $this->agente->serviciomilitar = $_POST['serviciomilitar'];
-               $this->agente->lugarcumplimiento = $_POST['lugarcumplimiento'];
-               $this->agente->estudios = $_POST['estudios'];
-               $this->agente->oficios = $_POST['oficios'];
-               $this->agente->dnicif = $_POST['dnicif'];
-               $this->agente->telefono = $_POST['telefono'];
-               $this->agente->email = $_POST['email'];
-               $this->agente->cargo = $_POST['cargo'];
-               $this->agente->provincia = $_POST['provincia'];
-               $this->agente->ciudad = $_POST['ciudad'];
-               $this->agente->direccion = $_POST['direccion'];
-               $this->agente->fecha = $_POST['fecha'];
-               $this->agente->decreto = $_POST['decreto'];
-               $this->agente->nagente = $_POST['nagente'];
-               $this->agente->credencial = $_POST['credencial'];
-               $this->agente->obs = $_POST['obs'];
-               $this->agente->obs1 = $_POST['obs1'];
-               $this->agente->fechagoe = $_POST['fechagoe'];
-               $this->agente->motivogoe = $_POST['motivogoe'];
-               $this->agente->practicaart = $_POST['practicaart'];
-               $this->agente->antpgoe = $_POST['antpgoe'];
-               $this->agente->claustr = $_POST['claustr'];
-               $this->agente->sufrvert = $_POST['sufrvert'];
-               $this->agente->sabna = $_POST['sabna'];
-               $this->agente->sabcon = $_POST['sabcon'];
-               $this->agente->conpa = $_POST['conpa'];
-               $this->agente->carasalt = $_POST['carasalt'];
-               $this->agente->armpr = $_POST['armpr'];
-               if($_POST['armpr'] != '')
-               {
-                  $this->agente->armpr = $_POST['armpr'];
-               }
-               $this->agente->otrasarmas = $_POST['otrasarmas'];
-               
-               
-               $this->agente->f_nacimiento = NULL;
-               if($_POST['f_nacimiento'] != '')
-               {
-                  $this->agente->f_nacimiento = $_POST['f_nacimiento'];
-               }
-               
-               $this->agente->f_alta = NULL;
-               if($_POST['f_alta'] != '')
-               {
-                  $this->agente->f_alta = $_POST['f_alta'];
-               }
-               
-               $this->agente->f_baja = NULL;
-               if($_POST['f_baja'] != '')
-               {
-                  $this->agente->f_baja = $_POST['f_baja'];
-               }
-               
-               $this->agente->seg_social = $_POST['seg_social'];
-               $this->agente->banco = $_POST['banco'];
-               $this->agente->porcomision = floatval($_POST['porcomision']);
-               
-               if( $this->agente->save() )
-               {
-                  $this->new_message("Datos del Efectivo policial guardados correctamente.");
-               }
-               else
-                  $this->new_error_msg("¡Imposible guardar los datos del Efectivo policial!");
-            }
-            else
-               $this->new_error_msg('No tienes permiso para modificar estos datos.');
-         }
-      }
-      else
-         $this->new_error_msg("Efectivo policial no encontrado.");
-   }
-   
-   private function user_can_edit()
-   {
-      if(FS_DEMO)
-      {
-         return ($this->user->codagente == $this->agente->codagente);
-      }
-      else
-      {
-         return TRUE;
-      }
-   }
-   
-   public function url()
-   {
-      if( !isset($this->agente) )
-      {
-         return parent::url();
-      }
-      else if($this->agente)
-      {
-         return $this->agente->url();
-      }
-      else
-         return $this->page->url();
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+lPBs1l5mg9bXHLjRR2axAVMyguUQuHG=

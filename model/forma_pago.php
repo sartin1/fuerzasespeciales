@@ -1,173 +1,103 @@
-<?php
-/*
- * This file is part of FacturaSctipts
- * Copyright (C) 2013-2016  Carlos Garcia Gomez  neorazorx@gmail.com
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-/**
- * Forma de pago de una factura.
- */
-class forma_pago extends fs_model
-{
-   /**
-    * Clave primaria. Varchar (10).
-    * @var type 
-    */
-   public $codpago;
-   public $descripcion;
-   
-   /**
-    * Pagados -> marca las facturas generadas como pagadas.
-    * @var type 
-    */
-   public $genrecibos;
-   
-   /**
-    * Código de la cuenta bancaria asociada.
-    * @var type 
-    */
-   public $codcuenta;
-   
-   /**
-    * Para indicar si hay que mostrar la cuenta bancaria del cliente.
-    * @var type 
-    */
-   public $domiciliado;
-   
-   /**
-    * Sirve para generar la fecha de vencimiento de las facturas.
-    * @var type 
-    */
-   public $vencimiento;
-   
-   public function __construct($f=FALSE)
-   {
-      parent::__construct('formaspago');
-      if( $f )
-      {
-         $this->codpago = $f['codpago'];
-         $this->descripcion = $f['descripcion'];
-         $this->genrecibos = $f['genrecibos'];
-         $this->codcuenta = $f['codcuenta'];
-         $this->domiciliado = $this->str2bool($f['domiciliado']);
-         $this->vencimiento = $f['vencimiento'];
-      }
-      else
-      {
-         $this->codpago = NULL;
-         $this->descripcion = '';
-         $this->genrecibos = 'Emitidos';
-         $this->codcuenta = '';
-         $this->domiciliado = FALSE;
-         $this->vencimiento = '+1month';
-      }
-   }
-   
-   public function install()
-   {
-      $this->clean_cache();
-      return "INSERT INTO ".$this->table_name." (codpago,descripcion,genrecibos,codcuenta,domiciliado,vencimiento)"
-              . " VALUES ('CONT','Al contado','Pagados',NULL,FALSE,'+1month')"
-              . ",('TRANS','Transferencia bancaria','Emitidos',NULL,FALSE,'+1month')"
-              . ",('PAYPAL','PayPal','Pagados',NULL,FALSE,'+1week');";
-   }
-   
-   public function url()
-   {
-      return 'index.php?page=contabilidad_formas_pago';
-   }
-   
-   public function is_default()
-   {
-      return ( $this->codpago == $this->default_items->codpago() );
-   }
-   
-   public function get($cod)
-   {
-      $pago = $this->db->select("SELECT * FROM ".$this->table_name." WHERE codpago = ".$this->var2str($cod).";");
-      if($pago)
-      {
-         return new forma_pago($pago[0]);
-      }
-      else
-         return FALSE;
-   }
-
-   public function exists()
-   {
-      if( is_null($this->codpago) )
-      {
-         return FALSE;
-      }
-      else
-         return $this->db->select("SELECT * FROM ".$this->table_name." WHERE codpago = ".$this->var2str($this->codpago).";");
-   }
-   
-   public function save()
-   {
-      $this->descripcion = $this->no_html($this->descripcion);
-      $this->clean_cache();
-      
-      if( $this->exists() )
-      {
-         $sql = "UPDATE ".$this->table_name." SET descripcion = ".$this->var2str($this->descripcion).
-                 ", genrecibos = ".$this->var2str($this->genrecibos).
-                 ", codcuenta = ".$this->var2str($this->codcuenta).
-                 ", domiciliado = ".$this->var2str($this->domiciliado).
-                 ", vencimiento = ".$this->var2str($this->vencimiento).
-                 " WHERE codpago = ".$this->var2str($this->codpago).";";
-      }
-      else
-      {
-         $sql = "INSERT INTO ".$this->table_name." (codpago,descripcion,genrecibos,codcuenta,domiciliado,vencimiento)
-                 VALUES (".$this->var2str($this->codpago).
-                 ",".$this->var2str($this->descripcion).
-                 ",".$this->var2str($this->genrecibos).
-                 ",".$this->var2str($this->codcuenta).
-                 ",".$this->var2str($this->domiciliado).
-                 ",".$this->var2str($this->vencimiento).");";
-      }
-      
-      return $this->db->exec($sql);
-   }
-   
-   public function delete()
-   {
-      $this->clean_cache();
-      return $this->db->exec("DELETE FROM ".$this->table_name." WHERE codpago = ".$this->var2str($this->codpago).";");
-   }
-   
-   private function clean_cache()
-   {
-      $this->cache->delete('m_forma_pago_all');
-   }
-   
-   public function all()
-   {
-      $listaformas = $this->cache->get_array('m_forma_pago_all');
-      if( !$listaformas )
-      {
-         $formas = $this->db->select("SELECT * FROM ".$this->table_name." ORDER BY descripcion ASC;");
-         if($formas)
-         {
-            foreach($formas as $f)
-               $listaformas[] = new forma_pago($f);
-         }
-         $this->cache->set('m_forma_pago_all', $listaformas);
-      }
-      return $listaformas;
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+80Z2eQ3RzOxD

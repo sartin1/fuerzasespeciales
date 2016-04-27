@@ -1,189 +1,117 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-require_model('servicio_cliente.php');
-require_model('documento_servicio.php');
-
-/**
- * Description of documentos_facturas
- *
- * @author carlos
- */
-class documentos_servicios extends fs_controller
-{
-   public $documentos;
-   
-   public function __construct()
-   {
-      parent::__construct(__CLASS__, 'Documentos', 'ventas', FALSE, FALSE);
-   }
-   
-   protected function private_core()
-   {
-      $this->share_extension();
-      
-      $this->check_documentos();
-      $this->documentos = array();
-      
-      if( isset($_GET['folder']) AND isset($_GET['id']) )
-      {
-         if( isset($_POST['upload']) )
-         {
-            $this->upload_documento();
-         }
-         else if( isset($_GET['delete']) )
-         {
-            $this->delete_documento();
-         }
-         
-         $this->documentos = $this->get_documentos();
-      }
-   }
-   
-   private function upload_documento()
-   {
-      if( is_uploaded_file($_FILES['fdocumento']['tmp_name']) )
-      {
-         $nuevon = $this->random_string(6).'_'.$_FILES['fdocumento']['name'];
-         
-         if( copy($_FILES['fdocumento']['tmp_name'], 'documentos/'.$nuevon) )
-         {
-            $doc = new documento_servicio();
-            $doc->ruta = 'documentos/'.$nuevon;
-            $doc->nombre = $_FILES['fdocumento']['name'];
-            $doc->tamano = filesize(getcwd().'/'.$doc->ruta);
-            $doc->usuario = $this->user->nick;
-            
-            
-            if($_GET['folder'] == 'servicioscli')
-            {
-               $doc->idservicio = $_GET['id'];
-            }
-            
-            if( $doc->save() )
-            {
-               $this->new_message('Documentos añadido correctamente.');
-            }
-            else
-            {
-               $this->new_error_msg('Error al asignar el archivo.');
-               @unlink($doc->ruta);
-            }
-         }
-         else
-         {
-            $this->new_error_msg('Error al mover el archivo.');
-         }
-      }
-   }
-   
-   private function delete_documento()
-   {
-      $doc0 = new documento_servicio();
-      
-      $documento = $doc0->get($_GET['delete']);
-      if($documento)
-      {
-         if( $documento->delete() )
-         {
-            $this->new_message('Documento eliminado correctamente.');
-            @unlink($documento->ruta);
-         }
-         else
-         {
-            $this->new_error_msg('Error al eliminar el documento.');
-         }
-      }
-      else
-      {
-         $this->new_error_msg('Documento no encontrado.');
-      }
-   }
-   
-   private function share_extension()
-   {
-      $extensiones = array(
-          array(
-              'name' => 'documentos_servicioscli',
-              'page_from' => __CLASS__,
-              'page_to' => 'ventas_servicio',
-              'type' => 'tab',
-              'text' => '<span class="glyphicon glyphicon-file" aria-hidden="true" title="Documentos"></span>',
-              'params' => '&folder=servicioscli'
-          ),
-      
-          
-      );
-      foreach($extensiones as $ext)
-      {
-         $fsext = new fs_extension($ext);
-         $fsext->save();
-      }
-   }
-   
-   public function url()
-   {
-      if( isset($_GET['folder']) AND isset($_GET['id']) )
-      {
-         return 'index.php?page='.__CLASS__.'&folder='.$_GET['folder'].'&id='.$_GET['id'];
-      }
-      else
-         return parent::url();
-   }
-   
-   private function get_documentos()
-   {
-      $doc = new documento_servicio();
-      if($_GET['folder'] == 'servicioscli')
-      {
-         return $doc->all_from('idservicio', $_GET['id']);
-      }
-   }
-   
-   private function check_documentos()
-   {
-      if( !file_exists('documentos') )
-      {
-         mkdir('documentos');
-      }
-      
-      if( isset($_GET['folder']) AND isset($_GET['id']) )
-      {
-         /// comprobamos la antigua rura
-         $folder = 'tmp/'.FS_TMP_NAME.'documentos_facturas/'.$_GET['folder'].'/'.$_GET['id'];
-         if( file_exists($folder) )
-         {
-            foreach( scandir($folder) as $f )
-            {
-               if($f != '.' AND $f != '..')
-               {
-                  /// movemos a la nueva ruta
-                  $nuevon = $this->random_string(6).'_'.(string)$f;
-                  if( rename($folder.'/'.$f, 'documentos/'.$nuevon) )
-                  {
-                     $doc = new documento_servicio();
-                     $doc->ruta = 'documentos/'.$nuevon;
-                     $doc->nombre = (string)$f;
-                     $doc->tamano = filesize(getcwd().'/'.$doc->ruta);
-                     $doc->usuario = $this->user->nick;
-                     
-                     if($_GET['folder'] == 'servicioscli')
-                     {
-                        $doc->idservicio = $_GET['id'];
-                     }
-                    
-                     
-                     if( !$doc->save() )
-                     {
-                        $this->new_error_msg('Error al mover el archivo.');
-                     }
-                  }
-                  else
-                  {
-                     $this->new_error_msg('Error al mover el archivo a la nueva ruta.');
-                  }
-               }
-            }
-         }
-      }
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+jlUEhHO=

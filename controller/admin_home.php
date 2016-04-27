@@ -1,1111 +1,497 @@
-<?php
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-
-/**
- * Panel de control de el sistema.
- */
-class admin_home extends fs_controller
-{
-   public $download_list;
-   public $download_list2;
-   public $last_download_check;
-   public $new_downloads;
-   public $paginas;
-   public $step;
-   
-   public function __construct()
-   {
-      parent::__construct(__CLASS__, 'Panel de control', 'admin', TRUE, TRUE);
-   }
-   
-   protected function private_core()
-   {
-      $this->check_htaccess();
-      
-      $this->get_download_list();
-      $fsvar = new fs_var();
-      
-      if( isset($_GET['check4updates']) )
-      {
-         $this->template = FALSE;
-         if( $this->check_for_updates2() )
-         {
-            echo 'Hay actualizaciones disponibles.';
-         }
-         else
-            echo 'No hay actualizaciones.';
-      }
-      else if( isset($_GET['updated']) )
-      {
-         /// el sistema ya se ha actualizado
-         $fsvar->simple_delete('updates');
-      }
-      else if(FS_DEMO)
-      {
-         $this->new_advice('En el modo demo no se pueden hacer cambios en esta página.');
-         $this->new_advice('Si te gusta el sistema y quieres saber más, consulta la '
-                 . '.');
-      }
-      else if( !$this->user->admin )
-      {
-         $this->new_error_msg('Sólo un administrador puede hacer cambios en esta página.');
-      }
-      else if( isset($_POST['modpages']) )
-      {
-         /// activar/desactivas páginas del menú
-         
-         if(!$this->step)
-         {
-            $this->step = '1';
-            $fsvar->simple_save('install_step', $this->step);
-         }
-         
-         foreach($this->all_pages() as $p)
-         {
-            if( !$p->exists ) /// la página está en la base de datos pero ya no existe el controlador
-            {
-               if( $p->delete() )
-               {
-                  $this->new_message('Se ha eliminado automáticamente la página '.$p->name.
-                          ' ya que no tiene un controlador asociado en la carpeta controller.');
-               }
-            }
-            else if( !isset($_POST['enabled']) ) /// ninguna página marcada
-            {
-               $this->disable_page($p);
-            }
-            else if( !$p->enabled AND in_array($p->name, $_POST['enabled']) ) /// página no activa marcada para activar
-            {
-               $this->enable_page($p);
-            }
-            else if( $p->enabled AND !in_array($p->name, $_POST['enabled']) ) /// págine activa no marcada (desactivar)
-            {
-               $this->disable_page($p);
-            }
-         }
-         
-         $this->new_message('Datos guardados correctamente.');
-      }
-      else if( isset($_GET['enable']) )
-      {
-         /// activar plugin
-         $this->enable_plugin($_GET['enable']);
-         
-         if($this->step == '1')
-         {
-            $this->step = '2';
-            $fsvar->simple_save('install_step', $this->step);
-         }
-      }
-      else if( isset($_GET['disable']) )
-      {
-         /// desactivar plugin
-         $this->disable_plugin($_GET['disable']);
-      }
-      else if( isset($_GET['delete_plugin']) )
-      {
-         /// eliminar plugin
-         if( is_writable('plugins/'.$_GET['delete_plugin']) )
-         {
-            if( $this->delTree('plugins/'.$_GET['delete_plugin']) )
-            {
-               $this->new_message('Plugin '.$_GET['delete_plugin'].' eliminado correctamente.');
-            }
-            else
-               $this->new_error_msg('Imposible eliminar el plugin '.$_GET['delete_plugin']);
-         }
-         else
-            $this->new_error_msg('No tienes permisos de escritura sobre la carpeta plugins/'.$_GET['delete_plugin']);
-      }
-      else if( isset($_POST['install']) )
-      {
-         $disabled = FALSE;
-         if( defined('FS_DISABLE_ADD_PLUGINS') )
-         {
-            $disabled = FS_DISABLE_ADD_PLUGINS;
-         }
-         
-         /// instalar plugin (copiarlo y descomprimirlo)
-         if($disabled)
-         {
-            $this->new_error_msg('La subida de plugins está desactivada.');
-         }
-         else if( is_uploaded_file($_FILES['fplugin']['tmp_name']) )
-         {
-            $zip = new ZipArchive();
-            $res = $zip->open($_FILES['fplugin']['tmp_name']);
-            if($res === TRUE)
-            {
-               $zip->extractTo('plugins/');
-               $zip->close();
-               $this->new_message('Plugin '.$_FILES['fplugin']['name'].' añadido correctamente. Ya puedes activarlo.');
-            }
-            else
-               $this->new_error_msg('Error al abrir el archivo ZIP. Código: '.$res);
-         }
-         else
-         {
-            $this->new_error_msg('Archivo no encontrado.');
-         }
-      }
-      else if( isset($_GET['download']) )
-      {
-         /// descargamos un plugin de la lista fija
-         $this->download1();
-      }
-      else if( isset($_GET['download2']) )
-      {
-         /// descargamos un plugin de la lista de la comunidad
-         $this->download2();
-      }
-      else if( isset($_GET['reset']) )
-      {
-         /// reseteamos la configuración avanzada
-         if( file_exists('tmp/'.FS_TMP_NAME.'config2.ini') )
-         {
-            unlink('tmp/'.FS_TMP_NAME.'config2.ini');
-            $this->new_message('Configuración reiniciada correctamente, pulsa <a href="'.$this->url().'#avanzado">aquí</a> para continuar.');
-         }
-      }
-      else
-      {
-         /// ¿Guardamos las opciones de la pestaña avanzado?
-         $guardar = FALSE;
-         foreach($GLOBALS['config2'] as $i => $value)
-         {
-            if( isset($_POST[$i]) )
-            {
-               $GLOBALS['config2'][$i] = $_POST[$i];
-               $guardar = TRUE;
-            }
-         }
-         
-         if($guardar)
-         {
-            $file = fopen('tmp/'.FS_TMP_NAME.'config2.ini', 'w');
-            if($file)
-            {
-               foreach($GLOBALS['config2'] as $i => $value)
-               {
-                  if( is_numeric($value) )
-                  {
-                     fwrite($file, $i." = ".$value.";\n");
-                  }
-                  else
-                  {
-                     fwrite($file, $i." = '".$value."';\n");
-                  }
-               }
-               
-               fclose($file);
-            }
-            
-            $this->new_message('Datos guardados correctamente.');
-         }
-      }
-      
-      
-      $this->paginas = $this->all_pages();
-      $this->load_menu(TRUE);
-   }
-   
-   /**
-    * Devuelve las páginas/controladore de los plugins activos.
-    * @return type
-    */
-   private function all_pages()
-   {
-      $pages = array();
-      $page_names = array();
-      
-      /// añadimos las páginas de los plugins
-      foreach($this->plugins() as $plugin)
-      {
-         if( file_exists(getcwd().'/plugins/'.$plugin.'/controller') )
-         {
-            foreach( scandir(getcwd().'/plugins/'.$plugin.'/controller') as $f )
-            {
-               if( substr($f, -4) == '.php' )
-               {
-                  $p = new fs_page();
-                  $p->name = substr($f, 0, -4);
-                  $p->exists = TRUE;
-                  $p->show_on_menu = FALSE;
-                  
-                  if( !in_array($p->name, $page_names) )
-                  {
-                     $pages[] = $p;
-                     $page_names[] = $p->name;
-                  }
-               }
-            }
-         }
-      }
-      
-      /// añadimos las páginas que están en el directorio controller
-      foreach( scandir(getcwd().'/controller') as $f)
-      {
-         if( substr($f, -4) == '.php' )
-         {
-            $p = new fs_page();
-            $p->name = substr($f, 0, -4);
-            $p->exists = TRUE;
-            $p->show_on_menu = FALSE;
-            
-            if( !in_array($p->name, $page_names) )
-            {
-               $pages[] = $p;
-               $page_names[] = $p->name;
-            }
-         }
-      }
-      
-      /// completamos los datos de las páginas con los datos de la base de datos
-      foreach($this->page->all() as $p)
-      {
-         $encontrada = FALSE;
-         foreach($pages as $i => $value)
-         {
-            if($p->name == $value->name)
-            {
-               $pages[$i] = $p;
-               $pages[$i]->enabled = TRUE;
-               $pages[$i]->exists = TRUE;
-               $encontrada = TRUE;
-               break;
-            }
-         }
-         if( !$encontrada )
-         {
-            $p->enabled = TRUE;
-            $pages[] = $p;
-         }
-      }
-      
-      /// ordenamos
-      usort($pages, function($a,$b){
-         if($a->name == $b->name)
-         {
-            return 0;
-         }
-         else if($a->name > $b->name)
-         {
-            return 1;
-         }
-         else
-            return -1;
-      });
-      
-      return $pages;
-   }
-   
-   /**
-    * Devuelve la lista de plugins instalados y activados
-    * @return type
-    */
-   private function plugins()
-   {
-      return $GLOBALS['plugins'];
-   }
-   
-   /**
-    * Activa una página/controlador.
-    * @param type $page
-    */
-   private function enable_page($page)
-   {
-      /// primero buscamos en los plugins
-      $found = FALSE;
-      foreach($this->plugins() as $plugin)
-      {
-         if( file_exists('plugins/'.$plugin.'/controller/'.$page->name.'.php') )
-         {
-            require_once 'plugins/'.$plugin.'/controller/'.$page->name.'.php';
-            $new_fsc = new $page->name();
-            $found = TRUE;
-            
-            if( isset($new_fsc->page) )
-            {
-               if( !$new_fsc->page->save() )
-               {
-                  $this->new_error_msg("Imposible guardar la página ".$page->name);
-               }
-            }
-            else
-            {
-               $this->new_error_msg("Error al leer la página ".$page->name);
-            }
-            
-            unset($new_fsc);
-            break;
-         }
-      }
-      
-      if( !$found )
-      {
-         require_once 'controller/'.$page->name.'.php';
-         $new_fsc = new $page->name(); /// cargamos el controlador asociado
-         
-         if( !$new_fsc->page->save() )
-            $this->new_error_msg("Imposible guardar la página ".$page->name);
-         
-         unset($new_fsc);
-      }
-   }
-   
-   /**
-    * Desactiva una página/controlador.
-    * @param type $page
-    */
-   private function disable_page($page)
-   {
-      if($page->name == $this->page->name)
-      {
-         $this->new_error_msg("No puedes desactivar esta página (".$page->name.").");
-      }
-      else if( !$page->delete() )
-      {
-         $this->new_error_msg('Imposible eliminar la página '.$page->name.'.');
-      }
-   }
-   
-   /**
-    * Devuelve la lista de elementos a traducir
-    * @return type
-    */
-   public function traducciones()
-   {
-      $clist = array();
-      $include = array(
-          'factura','facturas','factura_simplificada','factura_rectificativa',
-          'albaran','albaranes','pedido','pedidos','presupuesto','presupuestos',
-          'provincia','apartado','cifnif','iva','irpf','numero2','serie','series'
-      );
-      
-      foreach($GLOBALS['config2'] as $i => $value)
-      {
-         if( in_array($i, $include) )
-         {
-            $clist[] = array('nombre' => $i, 'valor' => $value);
-         }
-      }
-      
-      return $clist;
-   }
-
-   /**
-    * Timezones list with GMT offset
-    * 
-    * @return array
-    * @link http://stackoverflow.com/a/9328760
-    */
-   public function get_timezone_list()
-   {
-      $zones_array = array();
-      
-      $timestamp = time();
-      foreach(timezone_identifiers_list() as $key => $zone) {
-         date_default_timezone_set($zone);
-         $zones_array[$key]['zone'] = $zone;
-         $zones_array[$key]['diff_from_GMT'] = 'UTC/GMT ' . date('P', $timestamp);
-      }
-      
-      return $zones_array;
-   }
-   
-   /**
-    * Lista de opciones para NF0
-    * @return type
-    */
-   public function nf0()
-   {
-      return array(0, 1, 2, 3, 4, 5);
-   }
-   
-   /**
-    * Lista de opciones para NF1
-    * @return type
-    */
-   public function nf1()
-   {
-      return array(
-          ',' => 'coma',
-          '.' => 'punto',
-          ' ' => '(espacio en blanco)'
-      );
-   }
-   
-   /**
-    * Devuelve la lista completada de plugins instalados
-    * @return type
-    */
-   public function plugin_advanced_list()
-   {
-      $plugins = array();
-      
-      foreach( scandir(getcwd().'/plugins') as $f)
-      {
-         if( is_dir('plugins/'.$f) AND $f != '.' AND $f != '..')
-         {
-            $plugin = array(
-                'compatible' => FALSE,
-                'description' => 'Sin descripción.',
-                'download2_url' => '',
-                'enabled' => FALSE,
-                'idplugin' => NULL,
-                'name' => $f,
-                'prioridad' => '-',
-                'require' => array(),
-                'update_url' => '',
-                'version' => 0,
-                'version_url' => '',
-                'wizard' => FALSE,
-            );
-            
-            if( file_exists('plugins/'.$f.'/facturascripts.ini') )
-            {
-               $plugin['compatible'] = TRUE;
-               $plugin['enabled'] = in_array($f, $this->plugins());
-               
-               if( file_exists('plugins/'.$f.'/description') )
-               {
-                  $plugin['description'] = file_get_contents('plugins/'.$f.'/description');
-               }
-               
-               $ini_file = parse_ini_file('plugins/'.$f.'/facturascripts.ini');
-               if( isset($ini_file['version']) )
-               {
-                  $plugin['version'] = intval($ini_file['version']);
-               }
-               
-               if( isset($ini_file['require']) )
-               {
-                  if($ini_file['require'] != '')
-                  {
-                     foreach(explode(',', $ini_file['require']) as $aux)
-                     {
-                        $plugin['require'][] = $aux;
-                     }
-                  }
-               }
-               
-               if( isset($ini_file['idplugin']) )
-               {
-                  $plugin['idplugin'] = $ini_file['idplugin'];
-               }
-               
-               if( isset($ini_file['update_url']) )
-               {
-                  $plugin['update_url'] = $ini_file['update_url'];
-               }
-               
-               if( isset($ini_file['version_url']) )
-               {
-                  $plugin['version_url'] = $ini_file['version_url'];
-               }
-               else if($this->download_list2)
-               {
-                  foreach($this->download_list2 as $ditem)
-                  {
-                     if($ditem->id == $plugin['idplugin'])
-                     {
-                        if( intval($ditem->version) > $plugin['version'] )
-                        {
-                           $plugin['download2_url'] = 'updater.php?idplugin='.$plugin['idplugin'].'&name='.$f;
-                        }
-                        break;
-                     }
-                  }
-               }
-               
-               if( isset($ini_file['wizard']) )
-               {
-                  $plugin['wizard'] = $ini_file['wizard'];
-               }
-               
-               if($plugin['enabled'])
-               {
-                  foreach( array_reverse($this->plugins()) as $i => $value)
-                  {
-                     if($value == $f)
-                     {
-                        $plugin['prioridad'] = $i;
-                        break;
-                     }
-                  }
-               }
-            }
-            
-            $plugins[] = $plugin;
-         }
-      }
-      
-      return $plugins;
-   }
-   
-   /**
-    * Elimina recursivamente un directorio
-    * @param type $dir
-    * @return type
-    */
-   private function delTree($dir)
-   {
-      $files = array_diff(scandir($dir), array('.','..'));
-      foreach ($files as $file)
-      {
-         (is_dir("$dir/$file")) ? $this->delTree("$dir/$file") : unlink("$dir/$file");
-      }
-      return rmdir($dir);
-   }
-   
-   /**
-    * Activa un plugin
-    * @param type $name
-    */
-   private function enable_plugin($name)
-   {
-      if( substr($name, -7) == '-master' )
-      {
-         /// renombramos el directorio
-         $name = substr($name, 0, -7);
-         rename('plugins/'.$name.'-master', 'plugins/'.$name);
-      }
-      
-      /// comprobamos las dependencias
-      $install = TRUE;
-      $wizard = FALSE;
-      foreach($this->plugin_advanced_list() as $pitem)
-      {
-         if($pitem['name'] == $name)
-         {
-            $wizard = $pitem['wizard'];
-            
-            foreach($pitem['require'] as $req)
-            {
-               if( !in_array($req, $GLOBALS['plugins']) )
-               {
-                  $install = FALSE;
-                  $this->new_error_msg('Dependencias incumplidas: <b>'.$req.'</b>');
-               }
-            }
-            break;
-         }
-      }
-      
-      if( $install AND !in_array($name, $GLOBALS['plugins']) )
-      {
-         array_unshift($GLOBALS['plugins'], $name);
-         
-         if( file_put_contents('tmp/enabled_plugins.list', join(',', $GLOBALS['plugins']) ) !== FALSE )
-         {
-            if($wizard)
-            {
-               $this->new_advice('Ya puedes <a href="index.php?page='.$wizard.'">configurar el plugin</a>.');
-               header('Location: index.php?page='.$wizard);
-            }
-            else
-            {
-               /// cargamos el archivo functions.php
-               if( file_exists('plugins/'.$name.'/functions.php') )
-               {
-                  require_once 'plugins/'.$name.'/functions.php';
-               }
-               
-               if( file_exists(getcwd().'/plugins/'.$name.'/controller') )
-               {
-                  /// activamos las páginas del plugin
-                  $page_list = array();
-                  foreach( scandir(getcwd().'/plugins/'.$name.'/controller') as $f)
-                  {
-                     if( is_string($f) AND strlen($f) > 0 AND !is_dir($f) )
-                     {
-                        if( substr($f, -4) == '.php' )
-                        {
-                           $page_name = substr($f, 0, -4);
-                           $page_list[] = $page_name;
-                           
-                           require_once 'plugins/'.$name.'/controller/'.$f;
-                           $new_fsc = new $page_name();
-                           
-                           if( !$new_fsc->page->save() )
-                           {
-                              $this->new_error_msg("Imposible guardar la página ".$page_name);
-                           }
-                           
-                           unset($new_fsc);
-                        }
-                     }
-                  }
-                  
-                  $this->new_message('Se han activado automáticamente las siguientes páginas: '.join(', ', $page_list) . '.');
-               }
-               
-               $this->new_message('Plugin <b>'.$name.'</b> activado correctamente.');
-               $this->load_menu(TRUE);
-            }
-            
-            /// limpiamos la caché
-            $this->cache->clean();
-         }
-         else
-            $this->new_error_msg('Imposible activar el plugin <b>'.$name.'</b>.');
-      }
-   }
-   
-   /**
-    * Desactiva un plugin
-    * @param type $name
-    */
-   private function disable_plugin($name)
-   {
-      if( file_exists('tmp/enabled_plugins.list') )
-      {
-         if( in_array($name, $this->plugins()) )
-         {
-            if( count($GLOBALS['plugins']) == 1 AND $GLOBALS['plugins'][0] == $name )
-            {
-               $GLOBALS['plugins'] = array();
-               unlink('tmp/enabled_plugins.list');
-               
-               $this->new_message('Plugin <b>'.$name.'</b> desactivado correctamente.');
-            }
-            else
-            {
-               foreach($GLOBALS['plugins'] as $i => $value)
-               {
-                  if($value == $name)
-                  {
-                     unset($GLOBALS['plugins'][$i]);
-                     break;
-                  }
-               }
-               
-               if( file_put_contents('tmp/enabled_plugins.list', join(',', $GLOBALS['plugins']) ) !== FALSE )
-               {
-                  $this->new_message('Plugin <b>'.$name.'</b> desactivado correctamente.');
-               }
-               else
-                  $this->new_error_msg('Imposible desactivar el plugin <b>'.$name.'</b>.');
-            }
-         }
-         
-         
-         /*
-          * Desactivamos las páginas que ya no existen
-          */
-         $eliminadas = array();
-         foreach($this->page->all() as $p)
-         {
-            $encontrada = FALSE;
-            
-            if( file_exists(getcwd().'/controller/'.$p->name.'.php') )
-            {
-               $encontrada = TRUE;
-            }
-            else
-            {
-               foreach($GLOBALS['plugins'] as $plugin)
-               {
-                  if( file_exists(getcwd().'/plugins/'.$plugin.'/controller/'.$p->name.'.php') AND $name != $plugin)
-                  {
-                     $encontrada = TRUE;
-                     break;
-                  }
-               }
-            }
-            
-            if( !$encontrada )
-            {
-               if( $p->delete() )
-               {
-                  $eliminadas[] = $p->name;
-               }
-            }
-         }
-         if($eliminadas)
-         {
-            $this->new_message('Se han eliminado automáticamente las siguientes páginas: '.join(', ', $eliminadas));
-         }
-         
-         /// desactivamos los plugins que dependan de este
-         foreach($this->plugin_advanced_list() as $plug)
-         {
-            /// ¿El plugin está activo?
-            if( in_array($plug['name'], $GLOBALS['plugins']) )
-            {
-               /**
-                * Si el plugin que hemos desactivado, es requerido por el plugin
-                * que estamos comprobando, lo desativamos también.
-                */
-               if( in_array($name, $plug['require']) )
-               {
-                  $this->disable_plugin($plug['name']);
-               }
-            }
-         }
-         
-         /// borramos los archivos temporales del motor de plantillas
-         foreach( scandir(getcwd().'/tmp') as $f)
-         {
-            if( substr($f, -4) == '.php' )
-            {
-               unlink('tmp/'.$f);
-            }
-         }
-         
-         /// limpiamos la caché
-         $this->cache->clean();
-      }
-   }
-   
-   /**
-    * Comprueba actualizaciones de los plugins y del núcleo.
-    * @return boolean
-    */
-   public function check_for_updates2()
-   {
-      if( !$this->user->admin )
-      {
-         return FALSE;
-      }
-      else
-      {
-         $fsvar = new fs_var();
-         
-         /// comprobamos actualizaciones en los plugins
-         $updates = FALSE;
-         foreach($this->plugin_advanced_list() as $plugin)
-         {
-            if($plugin['version_url'] != '' AND $plugin['update_url'] != '')
-            {
-               /// plugin con descarga gratuita
-               $internet_ini = @parse_ini_string( $this->curl_get_contents($plugin['version_url']) );
-               if($internet_ini)
-               {
-                  if( $plugin['version'] < intval($internet_ini['version']) )
-                  {
-                     $updates = TRUE;
-                     break;
-                  }
-               }
-            }
-            else if($plugin['idplugin'])
-            {
-               /// plugin de pago/oculto
-               
-               if($plugin['download2_url'] != '')
-               {
-                  /// download2_url implica que hay actualización
-                  $updates = TRUE;
-                  break;
-               }
-            }
-         }
-         
-         if(!$updates)
-         {
-            /// comprobamos actualizaciones del núcleo
-            $version = file_get_contents('VERSION');
-            $internet_version = $this->curl_get_contents('https://raw.githubusercontent.com/NeoRazorX/facturascripts_2015/master/VERSION');
-            if( floatval($version) < floatval($internet_version) )
-            {
-               $updates = TRUE;
-            }
-         }
-         
-         if($updates)
-         {
-            $fsvar->simple_save('updates', 'true');
-            return TRUE;
-         }
-         else
-         {
-            $fsvar->name = 'updates';
-            $fsvar->delete();
-            return FALSE;
-         }
-      }
-   }
-   
-   /**
-    * Descarga el contenido con curl o file_get_contents
-    * @param type $url
-    * @param type $timeout
-    * @return type
-    */
-   private function curl_get_contents($url)
-   {
-      if( function_exists('curl_init') )
-      {
-         $ch = curl_init();
-         curl_setopt($ch, CURLOPT_URL, $url);
-         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
-         curl_setopt($ch, CURLOPT_FOLLOWLOCATION, 1);
-         curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
-         curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-         $data = curl_exec($ch);
-         $info = curl_getinfo($ch);
-         
-         if($info['http_code'] == 301 OR $info['http_code'] == 302)
-         {
-            $redirs = 0;
-            return $this->curl_redirect_exec($ch, $redirs);
-         }
-         else
-         {
-            curl_close($ch);
-            return $data;
-         }
-      }
-      else
-         return file_get_contents($url);
-   }
-   
-   /**
-    * Función alternativa para cuando el followlocation falla.
-    * @param type $ch
-    * @param type $redirects
-    * @param type $curlopt_header
-    * @return type
-    */
-   private function curl_redirect_exec($ch, &$redirects, $curlopt_header = false)
-   {
-      curl_setopt($ch, CURLOPT_HEADER, true);
-      curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-      $data = curl_exec($ch);
-      $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-      
-      if($http_code == 301 || $http_code == 302)
-      {
-         list($header) = explode("\r\n\r\n", $data, 2);
-         $matches = array();
-         preg_match("/(Location:|URI:)[^(\n)]*/", $header, $matches);
-         $url = trim(str_replace($matches[1], "", $matches[0]));
-         $url_parsed = parse_url($url);
-         if( isset($url_parsed) )
-         {
-            curl_setopt($ch, CURLOPT_URL, $url);
-            $redirects++;
-            return $this->curl_redirect_exec($ch, $redirects, $curlopt_header);
-         }
-      }
-      
-      if($curlopt_header)
-      {
-         curl_close($ch);
-         return $data;
-      }
-      else
-      {
-         list(, $body) = explode("\r\n\r\n", $data, 2);
-         curl_close($ch);
-         return $body;
-      }
-   }
-   
-   /**
-    * Descarga un plugin de la lista de plugins fijos.
-    */
-   private function download1()
-   {
-      if( isset($this->download_list[$_GET['download']]) )
-      {
-         $this->new_message('Descargando el plugin '.$_GET['download']);
-         
-         if( @file_put_contents('download.zip', $this->curl_get_contents($this->download_list[$_GET['download']]['url']) ) )
-         {
-            $zip = new ZipArchive();
-            $res = $zip->open('download.zip');
-            if($res === TRUE)
-            {
-               $plugins_list = scandir(getcwd().'/plugins');
-               $zip->extractTo('plugins/');
-               $zip->close();
-               unlink('download.zip');
-               
-               /// renombramos si es necesario
-               foreach( scandir(getcwd().'/plugins') as $f)
-               {
-                  if( is_dir('plugins/'.$f) AND $f != '.' AND $f != '..')
-                  {
-                     $encontrado2 = FALSE;
-                     foreach($plugins_list as $f2)
-                     {
-                        if($f == $f2)
-                        {
-                           $encontrado2 = TRUE;
-                           break;
-                        }
-                     }
-                     
-                     if(!$encontrado2)
-                     {
-                        rename('plugins/'.$f, 'plugins/'.$_GET['download']);
-                        break;
-                     }
-                  }
-               }
-               
-               $this->new_message('Plugin añadido correctamente.');
-               $this->enable_plugin($_GET['download']);
-               
-               if($this->step == '1')
-               {
-                  $this->step = '2';
-                  $fsvar = new fs_var();
-                  $fsvar->simple_save('install_step', $this->step);
-               }
-            }
-            else
-               $this->new_error_msg('Error al abrir el ZIP. Código: '.$res);
-         }
-         else
-         {
-            $this->new_error_msg('Error al descargar. Tendrás que descargarlo manualmente desde '
-                    . '<a href="'.$this->download_list[$_GET['download']]['url'].'" target="_blank">aquí</a> '
-                    . 'y añadirlo desde la pestaña <b>plugins</b>.');
-         }
-      }
-      else
-         $this->new_error_msg('Descarga no encontrada.');
-   }
-   
-   /**
-    * Descarga un plugin de la lista dinámica de la comunidad.
-    */
-   private function download2()
-   {
-      $encontrado = FALSE;
-      foreach($this->download_list2 as $item)
-      {
-         if( $item->id == intval($_GET['download2']) )
-         {
-            $this->new_message('Descargando el plugin '.$item->nombre);
-            $encontrado = TRUE;
-            
-            if( @file_put_contents('download.zip', $this->curl_get_contents($item->zip_link) ) )
-            {
-               $zip = new ZipArchive();
-               $res = $zip->open('download.zip');
-               if($res === TRUE)
-               {
-                  $plugins_list = scandir(getcwd().'/plugins');
-                  $zip->extractTo('plugins/');
-                  $zip->close();
-                  unlink('download.zip');
-                  
-                  /// renombramos si es necesario
-                  foreach( scandir(getcwd().'/plugins') as $f)
-                  {
-                     if( is_dir('plugins/'.$f) AND $f != '.' AND $f != '..')
-                     {
-                        $encontrado2 = FALSE;
-                        foreach($plugins_list as $f2)
-                        {
-                           if($f == $f2)
-                           {
-                              $encontrado2 = TRUE;
-                              break;
-                           }
-                        }
-                        
-                        if(!$encontrado2)
-                        {
-                           rename('plugins/'.$f, 'plugins/'.$item->nombre);
-                           break;
-                        }
-                     }
-                  }
-                  
-                  $this->new_message('Plugin añadido correctamente.');
-                  $this->enable_plugin($item->nombre);
-               }
-               else
-                  $this->new_error_msg('Error al abrir el ZIP. Código: '.$res);
-            }
-            else
-            {
-               $this->new_error_msg('Error al descargar. Tendrás que descargarlo manualmente desde '
-                       . '<a href="'.$item->zip_link.'" target="_blank">aquí</a> y añadirlo desde la pestaña <b>plugins</b>.');
-            }
-            break;
-         }
-      }
-      
-      if(!$encontrado)
-      {
-         $this->new_error_msg('Descarga no encontrada.');
-      }
-   }
-   
-   private function get_download_list()
-   {
-      /**
-       * Esta es la lista de plugins fijos, los imprescindibles.
-       */
-      
-      
-      $fsvar = new fs_var();
-      $this->step = $fsvar->simple_get('install_step');
-      
-      /**
-        * Usamos last_download_check para almacenar la última vez que vimos las descargas.
-        * Así podemos saber qué descargas son nuevas.
-        */
-      $this->last_download_check = $fsvar->simple_get('last_download_check');
-      if(!$this->last_download_check)
-      {
-         $this->last_download_check = Date('d-m-Y', strtotime('-1week'));
-      }
-      $this->new_downloads = 0;
-      
-      /**
-       * Download_list2 es la lista de plugins de la comunidad, se descarga de Internet.
-       */
-      $this->download_list2 = $this->cache->get('download_list');
-      if(!$this->download_list2)
-      {
-         $json = @$this->curl_get_contents('', 5);
-         if($json)
-         {
-            $this->download_list2 = json_decode($json);
-            $this->cache->set('download_list', $this->download_list2);
-         }
-         else
-         {
-            $this->new_error_msg('');
-            $this->download_list2 = array();
-         }
-      }
-      foreach($this->download_list2 as $i => $di)
-      {
-         $this->download_list2[$i]->nuevo = FALSE;
-         if( strtotime($di->creado) > strtotime($this->last_download_check) )
-         {
-            $this->new_downloads++;
-            $this->download_list2[$i]->nuevo = TRUE;
-         }
-      }
-      /// ahora nos guardamos last_download_check
-      $this->last_download_check = Date('d-m-Y', strtotime('-1week'));
-      $fsvar->simple_save('last_download_check', $this->last_download_check);
-   }
-   
-   private function check_htaccess()
-   {
-      if( !file_exists('.htaccess') )
-      {
-         $txt = file_get_contents('htaccess-sample');
-         file_put_contents('.htaccess', $txt);
-      }
-      
-      /// ahora comprobamos el de tmp/XXXXX/private_keys
-      if( file_exists('tmp/'.FS_TMP_NAME.'private_keys') )
-      {
-         if( !file_exists('tmp/'.FS_TMP_NAME.'private_keys/.htaccess') )
-         {
-            file_put_contents('tmp/'.FS_TMP_NAME.'private_keys/.htaccess', 'Deny from all');
-         }
-      }
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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

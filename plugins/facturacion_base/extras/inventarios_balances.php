@@ -1,912 +1,485 @@
-<?php
-/*
- * This file is part of FacturaSctipts
- * Copyright (C) 2013-2016  Carlos Garcia Gomez  neorazorx@gmail.com
- *
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- * 
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
- */
+<?php //00590
+// IONCUBE ENCODER 9.0 EVALUATION
+// THIS LICENSE MESSAGE IS ONLY ADDED BY THE EVALUATION ENCODER AND
+// IS NOT PRESENT IN PRODUCTION ENCODED FILES
 
-require_once 'plugins/facturacion_base/extras/fs_pdf.php';
-require_model('balance.php');
-require_model('cuenta.php');
-require_model('ejercicio.php');
-require_model('empresa.php');
-require_model('partida.php');
-
-class inventarios_balances
-{
-   private $balance;
-   private $balance_cuenta_a;
-   private $db;
-   private $empresa;
-   
-   public function __construct(&$db)
-   {
-      $this->balance = new balance();
-      $this->balance_cuenta_a = new balance_cuenta_a();
-      $this->db = $db;
-      $this->empresa = new empresa();
-   }
-   
-   /**
-    * Función para ejecutar en el cron.php
-    */
-   public function cron_job()
-   {
-      /**
-       * Como es un proceso que tarda mucho, solamente comprobamos los dos primeros
-       * ejercicios de la lista (los más nuevos), más uno aleatorio.
-       */
-      $ejercicio = new ejercicio();
-      $ejercicios = $ejercicio->all();
-      $random = mt_rand( 0, count($ejercicios)-1 );
-      foreach($ejercicios as $num => $eje)
-      {
-         if($num < 2 OR $num == $random)
-         {
-            $this->generar_libro($eje);
-         }
-      }
-   }
-   
-   /**
-    * Genera el libro de inventarios y balances de un ejercicio.
-    * @param ejercicio $eje
-    */
-   private function generar_libro(&$eje)
-   {
-      if($eje)
-      {
-         if( !file_exists('tmp/'.FS_TMP_NAME.'inventarios_balances') )
-         {
-            mkdir('tmp/'.FS_TMP_NAME.'inventarios_balances');
-         }
-         
-         if( !file_exists('tmp/'.FS_TMP_NAME.'inventarios_balances/'.$eje->codejercicio.'.pdf') )
-         {
-            echo '.'.$eje->codejercicio.'.';
-            
-            $pdf_doc = new fs_pdf();
-            $pdf_doc->pdf->addInfo('Title', 'Libro de inventarios y balances de ' . $this->empresa->nombre);
-            $pdf_doc->pdf->addInfo('Subject', 'Libro de inventarios y balances de ' . $this->empresa->nombre);
-            $pdf_doc->pdf->addInfo('Author', $this->empresa->nombre);
-            $pdf_doc->pdf->ezStartPageNumbers(580, 10, 10, 'left', '{PAGENUM} de {TOTALPAGENUM}');
-            
-            $excluir = FALSE;
-            if( isset($eje->idasientocierre) AND isset($eje->idasientopyg) )
-            {
-               $excluir = array($eje->idasientocierre, $eje->idasientopyg);
-            }
-            
-            $this->sumas_y_saldos($pdf_doc, $eje, 'de apertura a cierre', $eje->fechainicio, $eje->fechafin, $excluir, FALSE);
-            $this->sumas_y_saldos($pdf_doc, $eje, 'de apertura a apertura', $eje->fechainicio, $eje->fechainicio);
-            $this->sumas_y_saldos($pdf_doc, $eje, 'del 1º trimestre', $eje->fechainicio, '31-3-'.$eje->year());
-            $this->sumas_y_saldos($pdf_doc, $eje, 'del 2º trimestre', '1-4-'.$eje->year(), '30-6-'.$eje->year());
-            $this->sumas_y_saldos($pdf_doc, $eje, 'del 3º trimestre', '1-7-'.$eje->year(), '30-9-'.$eje->year());
-            $this->sumas_y_saldos($pdf_doc, $eje, 'del 4º trimestre', '1-10-'.$eje->year(), $eje->fechafin);
-            $this->perdidas_y_ganancias($pdf_doc, $eje);
-            $this->situacion($pdf_doc, $eje);
-            
-            $pdf_doc->save('tmp/'.FS_TMP_NAME.'inventarios_balances/'.$eje->codejercicio.'.pdf');
-         }
-      }
-   }
-   
-   /**
-    * Genera el balance de pérdidas y ganancias de un ejercicio.
-    * @param type $codeje
-    */
-   public function generar_pyg($codeje)
-   {
-      $ejercicio = new ejercicio();
-      
-      $eje0 = $ejercicio->get($codeje);
-      if($eje0)
-      {
-         $pdf_doc = new fs_pdf();
-         $pdf_doc->pdf->addInfo('Title', 'Balance de pérdidas y ganancias de ' . $this->empresa->nombre);
-         $pdf_doc->pdf->addInfo('Subject', 'Balance de pérdidas y ganancias de ' . $this->empresa->nombre);
-         $pdf_doc->pdf->addInfo('Author', $this->empresa->nombre);
-         $pdf_doc->pdf->ezStartPageNumbers(580, 10, 10, 'left', '{PAGENUM} de {TOTALPAGENUM}');
-         
-         $this->perdidas_y_ganancias($pdf_doc, $eje0, FALSE);
-         
-         $pdf_doc->show();
-      }
-   }
-   
-   /**
-    * Genera el balance de situación.
-    * @param type $codeje
-    */
-   public function generar_sit($codeje)
-   {
-      $ejercicio = new ejercicio();
-      
-      $eje0 = $ejercicio->get($codeje);
-      if($eje0)
-      {
-         $pdf_doc = new fs_pdf();
-         $pdf_doc->pdf->addInfo('Title', 'Balance de pérdidas y ganancias de ' . $this->empresa->nombre);
-         $pdf_doc->pdf->addInfo('Subject', 'Balance de pérdidas y ganancias de ' . $this->empresa->nombre);
-         $pdf_doc->pdf->addInfo('Author', $this->empresa->nombre);
-         $pdf_doc->pdf->ezStartPageNumbers(580, 10, 10, 'left', '{PAGENUM} de {TOTALPAGENUM}');
-         
-         $this->situacion($pdf_doc, $eje0, FALSE);
-         
-         $pdf_doc->show();
-      }
-   }
-   
-   /**
-    * Función auxiliar para generar el balance de sumas y saldos de un ejercicio y unas fechas concretas.
-    * Este informe muestra los saldos (distintos de cero) de cada cuenta y subcuenta
-    * por periodos, pero siempre excluyendo los asientos de cierre y pérdidas y ganancias.
-    */
-   public function sumas_y_saldos(&$pdf_doc, &$eje, $titulo, $fechaini, $fechafin, $excluir=FALSE, $np=TRUE)
-   {
-      $ge0 = new grupo_epigrafes();
-      $epi0 = new epigrafe();
-      $cuenta0 = new cuenta();
-      $subcuenta0 = new subcuenta();
-      
-      $lineas = array();
-      
-      $sql = "SELECT p.codsubcuenta, SUM(p.debe) as debe, SUM(p.haber) as haber".
-              " FROM co_partidas p, co_asientos a WHERE p.idasiento = a.idasiento".
-              " AND a.codejercicio = ".$this->empresa->var2str($eje->codejercicio).
-              " AND a.fecha >= ".$this->empresa->var2str($fechaini).
-              " AND fecha <= ".$this->empresa->var2str($fechafin);
-      
-      if($excluir)
-      {
-         foreach($excluir as $exc)
-         {
-            $sql .= " AND p.idasiento != ".$this->empresa->var2str($exc);
-         }
-      }
-      
-      $sql .= " GROUP BY p.codsubcuenta ORDER BY codsubcuenta ASC;";
-      
-      $data = $this->db->select($sql);
-      if($data)
-      {
-         $grupos = $ge0->all_from_ejercicio($eje->codejercicio);
-         $epigrafes = $epi0->all_from_ejercicio($eje->codejercicio);
-         
-         for($i = 1; $i < 10; $i++)
-         {
-            $debe = 0;
-            $haber = 0;
-            foreach($data as $d)
-            {
-               if( substr($d['codsubcuenta'], 0, 1) == (string)$i )
-               {
-                  $debe += floatval($d['debe']);
-                  $haber += floatval($d['haber']);
-               }
-            }
-            
-            /// añadimos el grupo
-            foreach($grupos as $ge)
-            {
-               if($ge->codgrupo == $i)
-               {
-                  $lineas[] = array(
-                      'cuenta' => $i,
-                      'descripcion' => $ge->descripcion,
-                      'debe' => $debe,
-                      'haber' => $haber
-                  );
-                  break;
-               }
-            }
-            
-            for($j = 0; $j < 10; $j++)
-            {
-               $debe = 0;
-               $haber = 0;
-               foreach($data as $d)
-               {
-                  if( substr($d['codsubcuenta'], 0, 2) == (string)$i.$j )
-                  {
-                     $debe += floatval($d['debe']);
-                     $haber += floatval($d['haber']);
-                  }
-               }
-               
-               /// añadimos el epígrafe
-               foreach($epigrafes as $ep)
-               {
-                  if($ep->codepigrafe == (string)$i.$j )
-                  {
-                     $lineas[] = array(
-                         'cuenta' => $i.$j,
-                         'descripcion' => $ep->descripcion,
-                         'debe' => $debe,
-                         'haber' => $haber
-                     );
-                     break;
-                  }
-               }
-               
-               for($k = 0; $k < 10; $k++)
-               {
-                  $debe = 0;
-                  $haber = 0;
-                  foreach($data as $d)
-                  {
-                     if( substr($d['codsubcuenta'], 0, 3) == (string)$i.$j.$k )
-                     {
-                        $debe += floatval($d['debe']);
-                        $haber += floatval($d['haber']);
-                     }
-                  }
-                  
-                  /// añadimos la cuenta
-                  if($debe != 0 OR $haber != 0)
-                  {
-                     $cuenta = $cuenta0->get_by_codigo($i.$j.$k, $eje->codejercicio);
-                     if($cuenta)
-                     {
-                        $lineas[] = array(
-                            'cuenta' => $i.$j.$k,
-                            'descripcion' => $cuenta->descripcion,
-                            'debe' => $debe,
-                            'haber' => $haber
-                        );
-                     }
-                     else
-                     {
-                        $lineas[] = array(
-                            'cuenta' => $i.$j.$k,
-                            'descripcion' => '-',
-                            'debe' => $debe,
-                            'haber' => $haber
-                        );
-                     }
-                  }
-                  
-                  /// añadimos las subcuentas
-                  foreach($data as $d)
-                  {
-                     if( substr($d['codsubcuenta'], 0, 3) == (string)$i.$j.$k )
-                     {
-                        $desc = '';
-                        $subc = $subcuenta0->get_by_codigo($d['codsubcuenta'], $eje->codejercicio);
-                        if($subc)
-                        {
-                           $desc = $subc->descripcion;
-                        }
-                        
-                        $lineas[] = array(
-                            'cuenta' => $d['codsubcuenta'],
-                            'descripcion' => $desc,
-                            'debe' => floatval($d['debe']),
-                            'haber' => floatval($d['haber'])
-                        );
-                     }
-                  }
-               }
-            }
-         }
-      }
-      
-      /// a partir de la lista generamos el documento
-      $linea = 0;
-      $tdebe = 0;
-      $thaber = 0;
-      while( $linea < count($lineas) )
-      {
-         if($linea > 0)
-         {
-            $pdf_doc->pdf->ezNewPage();
-         }
-         
-         $pdf_doc->pdf->ezText($this->empresa->nombre." - Balance de sumas y saldos ".$eje->year().' '.$titulo.".\n\n", 12);
-         
-         /// Creamos la tabla con las lineas
-         $pdf_doc->new_table();
-         $pdf_doc->add_table_header(
-               array(
-                   'cuenta' => '<b>Cuenta</b>',
-                   'descripcion' => '<b>Descripción</b>',
-                   'debe' => '<b>Debe</b>',
-                   'haber' => '<b>Haber</b>',
-                   'saldo' => '<b>Saldo</b>'
-               )
-         );
-         
-         for($i=$linea; $i<min( array($linea+48, count($lineas)) ); $i++)
-         {
-            if( strlen($lineas[$i]['cuenta']) == 1 )
-            {
-               $a = '<b>';
-               $b = '</b>';
-               $tdebe += $lineas[$i]['debe'];
-               $thaber += $lineas[$i]['haber'];
-            }
-            else if( strlen($lineas[$i]['cuenta']) == 2 )
-            {
-               $a = $b = '';
-            }
-            else
-            {
-               $a = '<i>';
-               $b = '</i>';
-            }
-            
-            $pdf_doc->add_table_row(
-                  array(
-                      'cuenta' => $a.$lineas[$i]['cuenta'].$b,
-                      'descripcion' => $a.substr($lineas[$i]['descripcion'], 0, 50).$b,
-                      'debe' => $a.$this->show_numero($lineas[$i]['debe']).$b,
-                      'haber' => $a.$this->show_numero($lineas[$i]['haber']).$b,
-                      'saldo' => $a.$this->show_numero( floatval($lineas[$i]['debe']) - floatval($lineas[$i]['haber']) ).$b
-                  )
-            );
-         }
-         $linea += 48;
-         
-         /// añadimos las sumas de la línea actual
-         $desc = 'Suma y sigue';
-         if( $linea >= count($lineas) )
-         {
-            $desc = 'Totales';
-         }
-         $pdf_doc->add_table_row(
-               array(
-                   'cuenta' => '',
-                   'descripcion' => '<b>'.$desc.'</b>',
-                   'debe' => '<b>'.$this->show_numero($tdebe).'</b>',
-                   'haber' => '<b>'.$this->show_numero($thaber).'</b>',
-                   'saldo' => '<b>'.$this->show_numero($tdebe-$thaber).'</b>'
-               )
-         );
-         $pdf_doc->save_table(
-               array(
-                   'fontSize' => 9,
-                   'cols' => array(
-                       'debe' => array('justification' => 'right'),
-                       'haber' => array('justification' => 'right'),
-                       'saldo' => array('justification' => 'right')
-                   ),
-                   'width' => 540,
-                   'shaded' => 0
-               )
-         );
-      }
-   }
-   
-   /**
-    * Función auxiliar para generar el balance de pérdidas y ganancias.
-    * Este informe se confecciona a partir de las cuentas que señalan los códigos
-    * de balance que empiezan por PG.
-    */
-   private function perdidas_y_ganancias(&$pdf_doc, &$eje, $np=TRUE)
-   {
-      if($np)
-      {
-         $pdf_doc->pdf->ezNewPage();
-      }
-      
-      $pdf_doc->pdf->ezText($this->empresa->nombre." - Cuenta de pérdidas y ganancias abreviada del ejercicio ".$eje->year().".\n\n", 13);
-      
-      /// necesitamos el ejercicio anterior
-      $eje0 = $eje->get_by_fecha( '1-1-'.(intval($eje->year())-1), FALSE, FALSE );
-      if($eje0)
-      {
-         /// creamos las cabeceras de la tabla
-         $pdf_doc->new_table();
-         $pdf_doc->add_table_header(
-            array(
-                'descripcion' => '<b>Descripción</b>',
-                'actual' => '<b>'.$eje->year().'</b>',
-                'anterior' => '<b>'.$eje0->year().'</b>'
-            )
-         );
-         
-         $balances = $this->balance->all();
-         $num = 1;
-         $continuar = TRUE;
-         $totales = array(
-             $eje->year() => array('a' => 0, 'b' => 0, 'c' => 0, 'd' => 0),
-             $eje0->year() => array('a' => 0, 'b' => 0, 'c' => 0, 'd' => 0)
-         );
-         while($continuar)
-         {
-            if($num == 12)
-            {
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "\n<b>A) RESULTADOS DE EXPLOTACIÓN (1+2+3+4+5+6+7+8+9+10+11)</b>",
-                      'actual' => "\n<b>".$this->show_numero($totales[$eje->year()]['a']).'</b>',
-                      'anterior' => "\n<b>".$this->show_numero($totales[$eje0->year()]['a']).'</b>'
-                  )
-               );
-            }
-            else if($num == 17)
-            {
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "\n<b>B) RESULTADO FINANCIERO (12+13+14+15+16)</b>",
-                      'actual' => "\n<b>".$this->show_numero($totales[$eje->year()]['b']).'</b>',
-                      'anterior' => "\n<b>".$this->show_numero($totales[$eje0->year()]['b']).'</b>'
-                  )
-               );
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "<b>C) RESULTADO ANTES DE IMPUESTOS (A+B)</b>",
-                      'actual' => '<b>'.$this->show_numero($totales[$eje->year()]['c']).'</b>',
-                      'anterior' => '<b>'.$this->show_numero($totales[$eje0->year()]['c']).'</b>'
-                  )
-               );
-            }
-            
-            $encontrado = FALSE;
-            foreach($balances as $bal)
-            {
-               if($bal->naturaleza == 'PG' AND strstr($bal->codbalance, 'PG-A-'.$num.'-') )
-               {
-                  $saldo1 = $this->get_saldo_balance('PG-A-'.$num.'-', $eje);
-                  $saldo0 = $this->get_saldo_balance('PG-A-'.$num.'-', $eje0);
-                  
-                  /// añadimos la fila
-                  $pdf_doc->add_table_row(
-                     array(
-                         'descripcion' => $bal->descripcion2,
-                         'actual' => $this->show_numero($saldo1),
-                         'anterior' => $this->show_numero($saldo0)
-                     )
-                  );
-                  
-                  /// sumamos donde corresponda
-                  if($num <= 11)
-                  {
-                     $totales[$eje->year()]['a'] += $saldo1;
-                     $totales[$eje0->year()]['a'] += $saldo0;
-                  }
-                  else if($num <= 16)
-                  {
-                     $totales[$eje->year()]['b'] += $saldo1;
-                     $totales[$eje0->year()]['b'] += $saldo0;
-                     
-                     $totales[$eje->year()]['c'] = $totales[$eje->year()]['a'] + $totales[$eje->year()]['b'];
-                     $totales[$eje0->year()]['c'] = $totales[$eje0->year()]['a'] + $totales[$eje0->year()]['b'];
-                  }
-                  else if($num == 17)
-                  {
-                     $totales[$eje->year()]['d'] = $totales[$eje->year()]['c'] + $saldo1;
-                     $totales[$eje0->year()]['d'] = $totales[$eje0->year()]['c'] + $saldo0;
-                  }
-                  
-                  $encontrado = TRUE;
-                  $num++;
-                  break;
-               }
-            }
-            
-            $continuar = $encontrado;
-         }
-         
-         $pdf_doc->add_table_row(
-            array(
-                'descripcion' => "\n<b>D) RESULTADO DEL EJERCICIO (C+17)</b>",
-                'actual' => "\n<b>".$this->show_numero($totales[$eje->year()]['d']).'</b>',
-                'anterior' => "\n<b>".$this->show_numero($totales[$eje0->year()]['d']).'</b>'
-            )
-         );
-         
-         $pdf_doc->save_table(
-            array(
-                'fontSize' => 12,
-                'cols' => array(
-                    'actual' => array('justification' => 'right'),
-                    'anterior' => array('justification' => 'right')
-                ),
-                'width' => 540,
-                'shaded' => 0
-            )
-         );
-      }
-      else
-      {
-         /// creamos las cabeceras de la tabla
-         $pdf_doc->new_table();
-         $pdf_doc->add_table_header(
-            array(
-                'descripcion' => '<b>Descripción</b>',
-                'actual' => '<b>'.$eje->year().'</b>'
-            )
-         );
-         
-         $balances = $this->balance->all();
-         $num = 1;
-         $continuar = TRUE;
-         $totales = array( $eje->year() => array('a' => 0, 'b' => 0, 'c' => 0, 'd' => 0) );
-         while($continuar)
-         {
-            if($num == 12)
-            {
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "\n<b>A) RESULTADOS DE EXPLOTACIÓN (1+2+3+4+5+6+7+8+9+10+11)</b>",
-                      'actual' => "\n<b>".$this->show_numero($totales[$eje->year()]['a']).'</b>'
-                  )
-               );
-            }
-            else if($num == 17)
-            {
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "\n<b>B) RESULTADO FINANCIERO (12+13+14+15+16)</b>",
-                      'actual' => "\n<b>".$this->show_numero($totales[$eje->year()]['b']).'</b>'
-                  )
-               );
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "<b>C) RESULTADO ANTES DE IMPUESTOS (A+B)</b>",
-                      'actual' => '<b>'.$this->show_numero($totales[$eje->year()]['c']).'</b>'
-                  )
-               );
-            }
-            
-            $encontrado = FALSE;
-            foreach($balances as $bal)
-            {
-               if($bal->naturaleza == 'PG' AND strstr($bal->codbalance, 'PG-A-'.$num.'-') )
-               {
-                  $saldo1 = $this->get_saldo_balance('PG-A-'.$num.'-', $eje);
-                  
-                  /// añadimos la fila
-                  $pdf_doc->add_table_row(
-                     array(
-                         'descripcion' => $bal->descripcion2,
-                         'actual' => $this->show_numero($saldo1)
-                     )
-                  );
-                  
-                  /// sumamos donde corresponda
-                  if($num <= 11)
-                  {
-                     $totales[$eje->year()]['a'] += $saldo1;
-                  }
-                  else if($num <= 16)
-                  {
-                     $totales[$eje->year()]['b'] += $saldo1;
-                     $totales[$eje->year()]['c'] = $totales[$eje->year()]['a'] + $totales[$eje->year()]['b'];
-                  }
-                  else if($num == 17)
-                  {
-                     $totales[$eje->year()]['d'] = $totales[$eje->year()]['c'] + $saldo1;
-                  }
-                  
-                  $encontrado = TRUE;
-                  $num++;
-                  break;
-               }
-            }
-            
-            $continuar = $encontrado;
-         }
-         
-         $pdf_doc->add_table_row(
-            array(
-                'descripcion' => "\n<b>D) RESULTADO DEL EJERCICIO (C+17)</b>",
-                'actual' => "\n<b>".$this->show_numero($totales[$eje->year()]['d']).'</b>'
-            )
-         );
-         
-         $pdf_doc->save_table(
-            array(
-                'fontSize' => 12,
-                'cols' => array(
-                    'actual' => array('justification' => 'right')
-                ),
-                'width' => 540,
-                'shaded' => 0
-            )
-         );
-      }
-   }
-   
-   private function get_saldo_balance($codbalance, &$ejercicio)
-   {
-      $total = 0;
-      
-      foreach($this->balance_cuenta_a->search_by_codbalance($codbalance) as $bca)
-      {
-         $total += $bca->saldo($ejercicio);
-      }
-      
-      return $total;
-   }
-   
-   /**
-    * Función auxiliar para generar el informe de situación.
-    * Para generar este informe hay que leer los códigos de balance con naturaleza A o P
-    * en orden. Pero como era demasiado sencillo, los hijos de puta de facturalux decidieron
-    * añadir números romanos, para que no puedas ordenarlos fácilemnte.
-    */
-   private function situacion(&$pdf_doc, &$eje, $np=TRUE)
-   {
-      /// necesitamos el ejercicio anterior
-      $eje0 = $eje->get_by_fecha( '1-1-'.(intval($eje->year())-1), FALSE, FALSE );
-      if($eje0)
-      {
-         $nivel0 = array('A', 'P');
-         $nivel1 = array('A', 'B', 'C');
-         $nivel2 = array('', '1', '2', '3', '4', '5', '6', '7', '8', '9');
-         $nivel3 = array('', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X');
-         $nivel4 = array('', '1', '2', '3', '4', '5', '6', '7', '8', '9');
-         $balances = $this->balance->all();
-         
-         foreach($nivel0 as $nv0)
-         {
-            if($np)
-            {
-               $pdf_doc->pdf->ezNewPage();
-            }
-            else
-               $np = TRUE;
-            
-            $pdf_doc->pdf->ezText($this->empresa->nombre." - Balance de situación del ejercicio ".$eje->year().".\n\n", 13);
-            
-            /// creamos las cabeceras de la tabla
-            $pdf_doc->new_table();
-            $pdf_doc->add_table_header(
-               array(
-                   'descripcion' => '<b>Descripción</b>',
-                   'actual' => '<b>'.$eje->year().'</b>',
-                   'anterior' => '<b>'.$eje0->year().'</b>'
-               )
-            );
-            
-            $desc1 = '';
-            $desc2 = '';
-            $desc3 = '';
-            $desc4 = '';
-            foreach($nivel1 as $nv1)
-            {
-               foreach($nivel2 as $nv2)
-               {
-                  foreach($nivel3 as $nv3)
-                  {
-                     foreach($nivel4 as $nv4)
-                     {
-                        foreach($balances as $bal)
-                        {
-                           if($bal->naturaleza == $nv0 AND $bal->nivel1 == $nv1 AND $bal->nivel2 == $nv2 AND $bal->nivel3 == $nv3 AND $bal->nivel4 == $nv4)
-                           {
-                              if($bal->descripcion1 != $desc1 AND $bal->descripcion1 != '')
-                              {
-                                 $pdf_doc->add_table_row(
-                                    array(
-                                        'descripcion' => "\n<b>".$bal->descripcion1.'</b>',
-                                        'actual' => "\n<b>".$this->get_saldo_balance2($nv0.'-'.$nv1.'-', $eje, $nv0).'</b>',
-                                        'anterior' => "\n<b>".$this->get_saldo_balance2($nv0.'-'.$nv1.'-', $eje0, $nv0).'</b>'
-                                    )
-                                 );
-                                 
-                                 $desc1 = $bal->descripcion1;
-                              }
-                              
-                              if($bal->descripcion2 != $desc2 AND $bal->descripcion2 != '')
-                              {
-                                 $pdf_doc->add_table_row(
-                                    array(
-                                        'descripcion' => ' <b>'.$bal->descripcion2.'</b>',
-                                        'actual' => $this->get_saldo_balance2($nv0.'-'.$nv1.'-'.$nv2.'-', $eje, $nv0),
-                                        'anterior' => $this->get_saldo_balance2($nv0.'-'.$nv1.'-'.$nv2.'-', $eje0, $nv0)
-                                    )
-                                 );
-                                 
-                                 $desc2 = $bal->descripcion2;
-                              }
-                              
-                              if($bal->descripcion3 != $desc3 AND $bal->descripcion3 != '')
-                              {
-                                 $pdf_doc->add_table_row(
-                                    array(
-                                        'descripcion' => '  '.$bal->descripcion3,
-                                        'actual' => $this->get_saldo_balance2($nv0.'-'.$nv1.'-'.$nv2.'-'.$nv3.'-', $eje, $nv0),
-                                        'anterior' => $this->get_saldo_balance2($nv0.'-'.$nv1.'-'.$nv2.'-'.$nv3.'-', $eje0, $nv0)
-                                    )
-                                 );
-                                 
-                                 $desc3 = $bal->descripcion3;
-                              }
-                           }
-                        }
-                     }
-                  }
-               }
-            }
-            
-            if($nv0 == 'A')
-            {
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "\n<b>TOTAL ACTIVO (A+B)</b>",
-                      'actual' => "\n<b>".$this->get_saldo_balance2($nv0.'-', $eje, $nv0).'</b>',
-                      'anterior' => "\n<b>".$this->get_saldo_balance2($nv0.'-', $eje0, $nv0).'</b>'
-                  )
-               );
-            }
-            else if($nv0 == 'P')
-            {
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "\n<b>TOTAL PATRIMONIO NETO (A+B+C)</b>",
-                      'actual' => "\n<b>".$this->get_saldo_balance2($nv0.'-', $eje, $nv0).'</b>',
-                      'anterior' => "\n<b>".$this->get_saldo_balance2($nv0.'-', $eje0, $nv0).'</b>'
-                  )
-               );
-            }
-            
-            $pdf_doc->save_table(
-               array(
-                   'fontSize' => 12,
-                   'cols' => array(
-                       'actual' => array('justification' => 'right'),
-                       'anterior' => array('justification' => 'right')
-                   ),
-                   'width' => 540,
-                   'shaded' => 0
-               )
-            );
-         }
-      }
-      else
-      {
-         $nivel0 = array('A', 'P');
-         $nivel1 = array('A', 'B', 'C');
-         $nivel2 = array('', '1', '2', '3', '4', '5', '6', '7', '8', '9');
-         $nivel3 = array('', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X');
-         $nivel4 = array('', '1', '2', '3', '4', '5', '6', '7', '8', '9');
-         $balances = $this->balance->all();
-         
-         foreach($nivel0 as $nv0)
-         {
-            if($np)
-            {
-               $pdf_doc->pdf->ezNewPage();
-            }
-            else
-               $np = TRUE;
-            
-            $pdf_doc->pdf->ezText($this->empresa->nombre." - Balance de situación del ejercicio ".$eje->year().".\n\n", 13);
-            
-            /// creamos las cabeceras de la tabla
-            $pdf_doc->new_table();
-            $pdf_doc->add_table_header(
-               array(
-                   'descripcion' => '<b>Descripción</b>',
-                   'actual' => '<b>'.$eje->year().'</b>'
-               )
-            );
-            
-            $desc1 = '';
-            $desc2 = '';
-            $desc3 = '';
-            $desc4 = '';
-            foreach($nivel1 as $nv1)
-            {
-               foreach($nivel2 as $nv2)
-               {
-                  foreach($nivel3 as $nv3)
-                  {
-                     foreach($nivel4 as $nv4)
-                     {
-                        foreach($balances as $bal)
-                        {
-                           if($bal->naturaleza == $nv0 AND $bal->nivel1 == $nv1 AND $bal->nivel2 == $nv2 AND $bal->nivel3 == $nv3 AND $bal->nivel4 == $nv4)
-                           {
-                              if($bal->descripcion1 != $desc1 AND $bal->descripcion1 != '')
-                              {
-                                 $pdf_doc->add_table_row(
-                                    array(
-                                        'descripcion' => "\n<b>".$bal->descripcion1.'</b>',
-                                        'actual' => "\n<b>".$this->get_saldo_balance2($nv0.'-'.$nv1.'-', $eje, $nv0).'</b>'
-                                    )
-                                 );
-                                 
-                                 $desc1 = $bal->descripcion1;
-                              }
-                              
-                              if($bal->descripcion2 != $desc2 AND $bal->descripcion2 != '')
-                              {
-                                 $pdf_doc->add_table_row(
-                                    array(
-                                        'descripcion' => ' <b>'.$bal->descripcion2.'</b>',
-                                        'actual' => $this->get_saldo_balance2($nv0.'-'.$nv1.'-'.$nv2.'-', $eje, $nv0)
-                                    )
-                                 );
-                                 
-                                 $desc2 = $bal->descripcion2;
-                              }
-                              
-                              if($bal->descripcion3 != $desc3 AND $bal->descripcion3 != '')
-                              {
-                                 $pdf_doc->add_table_row(
-                                    array(
-                                        'descripcion' => '  '.$bal->descripcion3,
-                                        'actual' => $this->get_saldo_balance2($nv0.'-'.$nv1.'-'.$nv2.'-'.$nv3.'-', $eje, $nv0)
-                                    )
-                                 );
-                                 
-                                 $desc3 = $bal->descripcion3;
-                              }
-                           }
-                        }
-                     }
-                  }
-               }
-            }
-            
-            if($nv0 == 'A')
-            {
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "\n<b>TOTAL ACTIVO (A+B)</b>",
-                      'actual' => "\n<b>".$this->get_saldo_balance2($nv0.'-', $eje, $nv0).'</b>'
-                  )
-               );
-            }
-            else if($nv0 == 'P')
-            {
-               $pdf_doc->add_table_row(
-                  array(
-                      'descripcion' => "\n<b>TOTAL PATRIMONIO NETO (A+B+C)</b>",
-                      'actual' => "\n<b>".$this->get_saldo_balance2($nv0.'-', $eje, $nv0).'</b>'
-                  )
-               );
-            }
-            
-            $pdf_doc->save_table(
-               array(
-                   'fontSize' => 12,
-                   'cols' => array(
-                       'actual' => array('justification' => 'right')
-                   ),
-                   'width' => 540,
-                   'shaded' => 0
-               )
-            );
-         }
-      }
-   }
-   
-   private function get_saldo_balance2($codbalance, $ejercicio, $naturaleza='A')
-   {
-      $total = 0;
-      
-      foreach($this->balance_cuenta_a->search_by_codbalance($codbalance) as $bca)
-      {
-         $total += $bca->saldo($ejercicio);
-      }
-      
-      if($naturaleza == 'A')
-      {
-         return $this->show_numero(0-$total);
-      }
-      else
-         return $this->show_numero($total);
-   }
-   
-   private function show_numero($num)
-   {
-      return number_format($num, FS_NF0, FS_NF1, FS_NF2);
-   }
-}
+if(!extension_loaded('ionCube Loader')){$__oc=strtolower(substr(php_uname(),0,3));$__ln='ioncube_loader_'.$__oc.'_'.substr(phpversion(),0,3).(($__oc=='win')?'.dll':'.so');if(function_exists('dl')){@dl($__ln);}if(function_exists('_il_exec')){return _il_exec();}$__ln='/ioncube/'.$__ln;$__oid=$__id=realpath(ini_get('extension_dir'));$__here=dirname(__FILE__);if(strlen($__id)>1&&$__id[1]==':'){$__id=str_replace('\\','/',substr($__id,2));$__here=str_replace('\\','/',substr($__here,2));}$__rd=str_repeat('/..',substr_count($__id,'/')).$__here.'/';$__i=strlen($__rd);while($__i--){if($__rd[$__i]=='/'){$__lp=substr($__rd,0,$__i).$__ln;if(file_exists($__oid.$__lp)){$__ln=$__lp;break;}}}if(function_exists('dl')){@dl($__ln);}}else{die('The file '.__FILE__." is corrupted.\n");}if(function_exists('_il_exec')){return _il_exec();}echo("Site error: the ".(php_sapi_name()=='cli'?'ionCube':'<a href="http://www.ioncube.com">ionCube</a>')." PHP Loader needs to be installed. This is a widely used PHP extension for running ionCube protected PHP code, website security and malware blocking.\n\nPlease visit ".(php_sapi_name()=='cli'?'get-loader.ioncube.com':'<a href="http://get-loader.ioncube.com">get-loader.ioncube.com</a>')." for install assistance.\n\n");exit(199);
+?>
+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
+jA6AeTPeDQ7q/kAbw+FUagYdeiW9
